@@ -28,6 +28,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -143,6 +144,7 @@ private fun ScrollHelper(
     listState: LazyListState,
     onPaginate: () -> Unit,
 ) {
+    val updatedOnPaginate by rememberUpdatedState(onPaginate)
     val lastVisibleItemIndex by remember {
         derivedStateOf { listState.firstVisibleItemIndex + listState.layoutInfo.visibleItemsInfo.size - 1 }
     }
@@ -154,7 +156,7 @@ private fun ScrollHelper(
     }
     LaunchedEffect(needsPagination, lastVisibleItemIndex) {
         if (needsPagination) {
-            onPaginate()
+            updatedOnPaginate()
             delay(400L)
         }
     }

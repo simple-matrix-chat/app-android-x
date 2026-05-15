@@ -183,6 +183,7 @@ private fun PickButton(
     }
 }
 
+@Suppress("ModifierClickableOrder")
 @Composable
 private fun BoxScope.OverlayEditButton(
     onClick: () -> Unit,
