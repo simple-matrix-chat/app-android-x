@@ -18,7 +18,6 @@ import io.element.android.features.messages.impl.actionlist.ActionListEvent
 import io.element.android.features.messages.impl.actionlist.ActionListState
 import io.element.android.features.messages.impl.actionlist.anActionListState
 import io.element.android.features.messages.impl.actionlist.model.TimelineItemAction
-import io.element.android.features.messages.impl.crypto.identity.anIdentityChangeState
 import io.element.android.features.messages.impl.fixtures.aMessageEvent
 import io.element.android.features.messages.impl.link.aLinkState
 import io.element.android.features.messages.impl.messagecomposer.MessageComposerEvent
@@ -59,14 +58,12 @@ import io.element.android.libraries.matrix.api.core.RoomId
 import io.element.android.libraries.matrix.api.core.ThreadId
 import io.element.android.libraries.matrix.api.core.UserId
 import io.element.android.libraries.matrix.api.core.toThreadId
-import io.element.android.libraries.matrix.api.encryption.identity.IdentityState
 import io.element.android.libraries.matrix.api.media.MediaSource
 import io.element.android.libraries.matrix.api.permalink.PermalinkParser
 import io.element.android.libraries.matrix.api.room.MessageEventType
 import io.element.android.libraries.matrix.api.room.RoomMembersState
 import io.element.android.libraries.matrix.api.room.RoomMembershipState
 import io.element.android.libraries.matrix.api.room.StateEventType
-import io.element.android.libraries.matrix.api.room.history.RoomHistoryVisibility
 import io.element.android.libraries.matrix.api.room.tombstone.SuccessorRoom
 import io.element.android.libraries.matrix.api.timeline.Timeline
 import io.element.android.libraries.matrix.api.timeline.item.TimelineItemDebugInfo
@@ -83,7 +80,6 @@ import io.element.android.libraries.matrix.test.A_THREAD_ID
 import io.element.android.libraries.matrix.test.A_USER_ID
 import io.element.android.libraries.matrix.test.A_USER_ID_2
 import io.element.android.libraries.matrix.test.core.aBuildMeta
-import io.element.android.libraries.matrix.test.encryption.FakeEncryptionService
 import io.element.android.libraries.matrix.test.permalink.FakePermalinkParser
 import io.element.android.libraries.matrix.test.room.FakeBaseRoom
 import io.element.android.libraries.matrix.test.room.FakeJoinedRoom
@@ -1101,40 +1097,6 @@ class MessagesPresenterTest {
     }
 
     @Test
-    fun `present - when room is encrypted and a DM, the DM user's identity state is fetched onResume`() = runTest {
-        val room = FakeJoinedRoom(
-            baseRoom = FakeBaseRoom(
-                sessionId = A_SESSION_ID,
-                roomPermissions = FakeRoomPermissions(
-                    canSendState = { true },
-                    canSendMessage = { true },
-                    canRedactOther = true,
-                    canRedactOwn = true,
-                    canPinUnpin = true,
-                ),
-                initialRoomInfo = aRoomInfo(isDm = true, isEncrypted = true)
-            ).apply {
-                givenRoomMembersState(RoomMembersState.Ready(persistentListOf(aRoomMember(userId = A_SESSION_ID), aRoomMember(userId = A_USER_ID_2))))
-            },
-            typingNoticeResult = { Result.success(Unit) },
-        )
-        val encryptionService = FakeEncryptionService(getUserIdentityResult = { Result.success(IdentityState.Verified) })
-
-        val presenter = createMessagesPresenter(joinedRoom = room, encryptionService = encryptionService)
-        val lifecycleOwner = FakeLifecycleOwner()
-        presenter.testWithLifecycleOwner(lifecycleOwner) {
-            val initialState = awaitItem()
-            assertThat(initialState.dmUserVerificationState).isNull()
-
-            skipItems(1)
-            ensureAllEventsConsumed()
-
-            lifecycleOwner.givenState(Lifecycle.State.RESUMED)
-            assertThat(awaitItem().dmUserVerificationState).isEqualTo(IdentityState.Verified)
-        }
-    }
-
-    @Test
     fun `present - handle action reply in thread for an event in a thread`() = runTest {
         val openThreadLambda = lambdaRecorder { _: ThreadId, _: EventId? -> }
         val presenter = createMessagesPresenter(
@@ -1255,42 +1217,6 @@ class MessagesPresenterTest {
     }
 
     @Test
-    fun `present - shows a history icon if the room is encrypted and history is shared`() = runTest {
-        val presenter = createMessagesPresenter(
-            joinedRoom = FakeJoinedRoom(
-                baseRoom = FakeBaseRoom(
-                    roomPermissions = roomPermissions(),
-                    initialRoomInfo = aRoomInfo(isEncrypted = true, historyVisibility = RoomHistoryVisibility.Shared),
-                ),
-            ),
-        )
-        presenter.testWithLifecycleOwner {
-            awaitItem()
-            runCurrent()
-            val state = awaitItem()
-            assertThat(state.topBarSharedHistoryIcon).isEqualTo(SharedHistoryIcon.SHARED)
-        }
-    }
-
-    @Test
-    fun `present - shows a 'world_readable' icon if the room is encrypted and history is world_readable`() = runTest {
-        val presenter = createMessagesPresenter(
-            joinedRoom = FakeJoinedRoom(
-                baseRoom = FakeBaseRoom(
-                    roomPermissions = roomPermissions(),
-                    initialRoomInfo = aRoomInfo(isEncrypted = true, historyVisibility = RoomHistoryVisibility.WorldReadable),
-                ),
-            ),
-        )
-        presenter.testWithLifecycleOwner {
-            awaitItem()
-            runCurrent()
-            val state = awaitItem()
-            assertThat(state.topBarSharedHistoryIcon).isEqualTo(SharedHistoryIcon.WORLD_READABLE)
-        }
-    }
-
-    @Test
     fun `present - only has threads enabled if the feature flag is on`() = runTest {
         val itemsFlow = MutableStateFlow(listOf(aThreadListItem()))
         val room = FakeJoinedRoom(
@@ -1377,7 +1303,6 @@ class MessagesPresenterTest {
         roomMemberModerationPresenter: Presenter<RoomMemberModerationState> = Presenter {
             aRoomMemberModerationState()
         },
-        encryptionService: FakeEncryptionService = FakeEncryptionService(),
         featureFlagService: FakeFeatureFlagService = FakeFeatureFlagService(),
         actionListEventSink: (ActionListEvent) -> Unit = {},
         addRecentEmoji: AddRecentEmoji = AddRecentEmoji { _ -> lambdaError() },
@@ -1391,7 +1316,6 @@ class MessagesPresenterTest {
             voiceMessageComposerPresenterFactory = FakeDefaultVoiceMessageComposerPresenterFactory(backgroundScope),
             timelinePresenter = { aTimelineState(eventSink = timelineEventSink) },
             timelineProtectionPresenter = { aTimelineProtectionState() },
-            identityChangeStatePresenter = { anIdentityChangeState() },
             linkPresenter = { aLinkState() },
             actionListPresenter = { anActionListState(eventSink = actionListEventSink) },
             customReactionPresenter = { aCustomReactionState() },
@@ -1408,7 +1332,6 @@ class MessagesPresenterTest {
             timelineController = TimelineController(joinedRoom, timeline),
             permalinkParser = permalinkParser,
             analyticsService = analyticsService,
-            encryptionService = encryptionService,
             featureFlagService = featureFlagService,
             addRecentEmoji = addRecentEmoji,
             markAsFullyRead = markAsFullyRead,

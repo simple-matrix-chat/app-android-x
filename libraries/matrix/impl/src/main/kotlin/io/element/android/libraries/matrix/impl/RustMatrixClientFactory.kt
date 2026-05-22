@@ -43,9 +43,6 @@ import org.matrix.rustcomponents.sdk.use
 import timber.log.Timber
 import uniffi.matrix_sdk_base.DmRoomDefinition
 import uniffi.matrix_sdk_base.MediaRetentionPolicy
-import uniffi.matrix_sdk_crypto.CollectStrategy
-import uniffi.matrix_sdk_crypto.DecryptionSettings
-import uniffi.matrix_sdk_crypto.TrustRequirement
 import java.io.File
 import kotlin.time.Duration.Companion.days
 import kotlin.time.toJavaDuration
@@ -150,24 +147,8 @@ class RustMatrixClientFactory(
             .setSessionDelegate(sessionDelegate)
             .userAgent(userAgentProvider.provide())
             .addRootCertificates(userCertificatesProvider.provides())
-            .autoEnableBackups(true)
-            .autoEnableCrossSigning(true)
-            .roomKeyRecipientStrategy(
-                strategy = if (featureFlagService.isFeatureEnabled(FeatureFlags.OnlySignedDeviceIsolationMode)) {
-                    CollectStrategy.IDENTITY_BASED_STRATEGY
-                } else {
-                    CollectStrategy.ERROR_ON_VERIFIED_USER_PROBLEM
-                }
-            )
-            .decryptionSettings(
-                DecryptionSettings(
-                    senderDeviceTrustRequirement = if (featureFlagService.isFeatureEnabled(FeatureFlags.OnlySignedDeviceIsolationMode)) {
-                        TrustRequirement.CROSS_SIGNED_OR_LEGACY
-                    } else {
-                        TrustRequirement.UNTRUSTED
-                    }
-                )
-            )
+            .autoEnableBackups(false)
+            .autoEnableCrossSigning(false)
             .enableShareHistoryOnInvite(true)
             .threadsEnabled(featureFlagService.isFeatureEnabled(FeatureFlags.Threads), threadSubscriptions = false)
             .dmRoomDefinition(DmRoomDefinition.TWO_MEMBERS)

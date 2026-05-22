@@ -22,10 +22,7 @@ import io.element.android.compound.tokens.generated.CompoundIcons
 import io.element.android.features.preferences.impl.R
 import io.element.android.libraries.androidutils.system.startNotificationSettingsIntent
 import io.element.android.libraries.architecture.AsyncData
-import io.element.android.libraries.designsystem.components.Announcement
-import io.element.android.libraries.designsystem.components.AnnouncementType
 import io.element.android.libraries.designsystem.components.async.AsyncActionView
-import io.element.android.libraries.designsystem.components.dialogs.ErrorDialog
 import io.element.android.libraries.designsystem.components.dialogs.ListOption
 import io.element.android.libraries.designsystem.components.dialogs.SingleSelectionDialog
 import io.element.android.libraries.designsystem.components.list.ListItemContent
@@ -67,11 +64,6 @@ fun NotificationSettingsView(
         title = stringResource(id = R.string.screen_notification_settings_title)
     ) {
         when (state.matrixSettings) {
-            is NotificationSettingsState.MatrixSettings.Invalid -> InvalidNotificationSettingsView(
-                showError = state.matrixSettings.fixFailed,
-                onContinueClick = { state.eventSink(NotificationSettingsEvents.FixConfigurationMismatch) },
-                onDismissError = { state.eventSink(NotificationSettingsEvents.ClearConfigurationMismatchError) },
-            )
             NotificationSettingsState.MatrixSettings.Uninitialized -> return@PreferencePage
             is NotificationSettingsState.MatrixSettings.Valid -> NotificationSettingsContentView(
                 matrixSettings = state.matrixSettings,
@@ -269,33 +261,6 @@ private fun getTitleForRoomNotificationMode(mode: RoomNotificationMode?) =
         RoomNotificationMode.MUTE -> stringResource(id = CommonStrings.common_mute)
         null -> ""
     }
-
-@Composable
-private fun InvalidNotificationSettingsView(
-    showError: Boolean,
-    onContinueClick: () -> Unit,
-    onDismissError: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Announcement(
-        title = stringResource(R.string.screen_notification_settings_configuration_mismatch),
-        description = stringResource(R.string.screen_notification_settings_configuration_mismatch_description),
-        type = AnnouncementType.Actionable(
-            onActionClick = onContinueClick,
-            actionText = stringResource(CommonStrings.action_continue),
-            onDismissClick = null,
-        ),
-        modifier = modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-    )
-
-    if (showError) {
-        ErrorDialog(
-            title = stringResource(id = CommonStrings.dialog_title_error),
-            content = stringResource(id = R.string.screen_notification_settings_failed_fixing_configuration),
-            onSubmit = onDismissError
-        )
-    }
-}
 
 @PreviewsDayNight
 @Composable

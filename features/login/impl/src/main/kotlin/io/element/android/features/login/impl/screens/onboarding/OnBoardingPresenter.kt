@@ -85,9 +85,6 @@ class OnBoardingPresenter(
             // Else use the account provider passed in the params if any and if allowed
             forcedAccountProvider ?: linkAccountProvider
         }
-        val canLoginWithQrCode by produceState(initialValue = false, linkAccountProvider) {
-            value = OnBoardingConfig.CAN_LOGIN_WITH_QR_CODE && linkAccountProvider == null
-        }
         val canReportBug by remember { rageshakeFeatureAvailability.isAvailable() }.collectAsState(false)
         var showReportBug by rememberSaveable { mutableStateOf(false) }
         val onBoardingLogoResId = remember {
@@ -130,7 +127,6 @@ class OnBoardingPresenter(
             productionApplicationName = buildMeta.productionApplicationName,
             defaultAccountProvider = defaultAccountProvider,
             mustChooseAccountProvider = mustChooseAccountProvider,
-            canLoginWithQrCode = canLoginWithQrCode,
             canCreateAccount = defaultAccountProvider == null && canConnectToAnyHomeserver && OnBoardingConfig.CAN_CREATE_ACCOUNT,
             canReportBug = canReportBug && showReportBug,
             loginMode = loginMode,

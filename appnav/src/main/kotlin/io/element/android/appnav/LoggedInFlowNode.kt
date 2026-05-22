@@ -39,7 +39,6 @@ import com.bumble.appyx.navmodel.backstack.operation.singleTop
 import dev.zacsweers.metro.Assisted
 import dev.zacsweers.metro.AssistedInject
 import io.element.android.annotations.ContributesNode
-import io.element.android.appconfig.OnBoardingConfig
 import io.element.android.appnav.loggedin.LoggedInNode
 import io.element.android.appnav.loggedin.MediaPreviewConfigMigration
 import io.element.android.appnav.loggedin.SendQueues
@@ -54,7 +53,6 @@ import io.element.android.features.ftue.api.FtueEntryPoint
 import io.element.android.features.ftue.api.state.FtueService
 import io.element.android.features.ftue.api.state.FtueState
 import io.element.android.features.home.api.HomeEntryPoint
-import io.element.android.features.linknewdevice.api.LinkNewDeviceEntryPoint
 import io.element.android.features.location.api.live.ActiveLiveLocationShareManager
 import io.element.android.features.networkmonitor.api.NetworkMonitor
 import io.element.android.features.networkmonitor.api.NetworkStatus
@@ -62,12 +60,10 @@ import io.element.android.features.networkmonitor.api.ui.ConnectivityIndicatorCo
 import io.element.android.features.preferences.api.PreferencesEntryPoint
 import io.element.android.features.roomdirectory.api.RoomDescription
 import io.element.android.features.roomdirectory.api.RoomDirectoryEntryPoint
-import io.element.android.features.securebackup.api.SecureBackupEntryPoint
 import io.element.android.features.share.api.ShareEntryPoint
 import io.element.android.features.share.api.ShareIntentData
 import io.element.android.features.startchat.api.StartChatEntryPoint
 import io.element.android.features.userprofile.api.UserProfileEntryPoint
-import io.element.android.features.verifysession.api.IncomingVerificationEntryPoint
 import io.element.android.libraries.architecture.BackstackView
 import io.element.android.libraries.architecture.BaseFlowNode
 import io.element.android.libraries.architecture.callback
@@ -89,8 +85,6 @@ import io.element.android.libraries.matrix.api.core.toRoomIdOrAlias
 import io.element.android.libraries.matrix.api.permalink.PermalinkData
 import io.element.android.libraries.matrix.api.room.JoinedRoom
 import io.element.android.libraries.matrix.api.sync.SyncService
-import io.element.android.libraries.matrix.api.verification.SessionVerificationServiceListener
-import io.element.android.libraries.matrix.api.verification.VerificationRequest
 import io.element.android.libraries.preferences.api.store.AppPreferencesStore
 import io.element.android.libraries.push.api.notifications.conversations.NotificationConversationService
 import io.element.android.libraries.ui.common.nodes.emptyNode
@@ -103,16 +97,10 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withTimeout
 import kotlinx.parcelize.Parcelize
 import timber.log.Timber
-import java.time.Duration
-import java.time.Instant
 import java.util.Optional
 import java.util.UUID
-import kotlin.time.Duration.Companion.minutes
-import kotlin.time.Duration.Companion.seconds
-import kotlin.time.toKotlinDuration
 import im.vector.app.features.analytics.plan.JoinedRoom as JoinedRoomAnalyticsEvent
 
 // The maximum number of room nodes that should be kept in the backstack at the same time.
@@ -128,10 +116,8 @@ class LoggedInFlowNode(
     private val preferencesEntryPoint: PreferencesEntryPoint,
     private val startChatEntryPoint: StartChatEntryPoint,
     private val appNavigationStateService: AppNavigationStateService,
-    private val secureBackupEntryPoint: SecureBackupEntryPoint,
     private val userProfileEntryPoint: UserProfileEntryPoint,
     private val ftueEntryPoint: FtueEntryPoint,
-    private val linkNewDeviceEntryPoint: LinkNewDeviceEntryPoint,
     @SessionCoroutineScope
     private val sessionCoroutineScope: CoroutineScope,
     private val ftueService: FtueService,
@@ -139,7 +125,6 @@ class LoggedInFlowNode(
     private val shareEntryPoint: ShareEntryPoint,
     private val matrixClient: MatrixClient,
     private val sendingQueue: SendQueues,
-    private val incomingVerificationEntryPoint: IncomingVerificationEntryPoint,
     private val mediaPreviewConfigMigration: MediaPreviewConfigMigration,
     private val sessionEnterpriseService: SessionEnterpriseService,
     private val networkMonitor: NetworkMonitor,
@@ -177,39 +162,6 @@ class LoggedInFlowNode(
         roomMembershipObserver = matrixClient.roomMembershipObserver,
     )
 
-    private val verificationListener = object : SessionVerificationServiceListener {
-        override fun onIncomingSessionRequest(verificationRequest: VerificationRequest.Incoming) {
-            // Without this launch the rendering and actual state of this Appyx node's children gets out of sync, resulting in a crash.
-            // This might be because this method is called back from Rust in a background thread.
-            lifecycleScope.launch {
-                val receivedAt = Instant.now()
-
-                // Wait until the app is in foreground to display the incoming verification request
-                appNavigationStateService.appNavigationState.first { it.isInForeground }
-
-                // TODO there should also be a timeout for > 10 minutes elapsed since the request was created, but the SDK doesn't expose that info yet
-                val now = Instant.now()
-                val elapsedTimeSinceReceived = Duration.between(receivedAt, now).toKotlinDuration()
-
-                // Discard the incoming verification request if it has timed out
-                if (elapsedTimeSinceReceived > 2.minutes) {
-                    Timber.w("Incoming verification request ${verificationRequest.details.flowId} discarded due to timeout.")
-                    return@launch
-                }
-
-                // Wait for the RoomList UI to be ready so the incoming verification screen can be displayed on top of it
-                // Otherwise, the RoomList UI may be incorrectly displayed on top
-                withTimeout(5.seconds) {
-                    backstack.elements.first { elements ->
-                        elements.any { it.key.navTarget == NavTarget.Home }
-                    }
-                }
-
-                backstack.singleTop(NavTarget.IncomingVerificationRequest(verificationRequest))
-            }
-        }
-    }
-
     override fun onBuilt() {
         super.onBuilt()
         lifecycleScope.launch {
@@ -221,7 +173,6 @@ class LoggedInFlowNode(
                 analyticsRoomListStateWatcher.start()
                 appNavigationStateService.onNavigateToSession(id, matrixClient.sessionId)
                 loggedInFlowProcessor.observeEvents(sessionCoroutineScope)
-                matrixClient.sessionVerificationService.setListener(verificationListener)
                 mediaPreviewConfigMigration()
                 sessionCoroutineScope.launch {
                     // Wait for the network to be connected before pre-fetching the max file upload size
@@ -250,7 +201,6 @@ class LoggedInFlowNode(
             onDestroy = {
                 appNavigationStateService.onLeavingSession(id)
                 loggedInFlowProcessor.stopObserving()
-                matrixClient.sessionVerificationService.setListener(null)
                 analyticsRoomListStateWatcher.stop()
             }
         )
@@ -298,24 +248,13 @@ class LoggedInFlowNode(
         data object CreateSpace : NavTarget
 
         @Parcelize
-        data class SecureBackup(
-            val initialElement: SecureBackupEntryPoint.InitialTarget = SecureBackupEntryPoint.InitialTarget.Root
-        ) : NavTarget
-
-        @Parcelize
         data object Ftue : NavTarget
-
-        @Parcelize
-        data object LinkNewDevice : NavTarget
 
         @Parcelize
         data object RoomDirectory : NavTarget
 
         @Parcelize
         data class IncomingShare(val shareIntentData: ShareIntentData) : NavTarget
-
-        @Parcelize
-        data class IncomingVerificationRequest(val data: VerificationRequest.Incoming) : NavTarget
     }
 
     override fun resolve(navTarget: NavTarget, buildContext: BuildContext): Node {
@@ -351,14 +290,6 @@ class LoggedInFlowNode(
 
                     override fun navigateToCreateSpace() {
                         backstack.push(NavTarget.CreateSpace)
-                    }
-
-                    override fun navigateToSetUpRecovery() {
-                        backstack.push(NavTarget.SecureBackup(initialElement = SecureBackupEntryPoint.InitialTarget.Root))
-                    }
-
-                    override fun navigateToEnterRecoveryKey() {
-                        backstack.push(NavTarget.SecureBackup(initialElement = SecureBackupEntryPoint.InitialTarget.EnterRecoveryKey))
                     }
 
                     override fun navigateToRoomSettings(roomId: RoomId) {
@@ -462,18 +393,8 @@ class LoggedInFlowNode(
                         callback.navigateToAddAccount()
                     }
 
-                    override fun navigateToLinkNewDevice() {
-                        if (OnBoardingConfig.CAN_LOGIN_WITH_QR_CODE) {
-                            backstack.push(NavTarget.LinkNewDevice)
-                        }
-                    }
-
                     override fun navigateToBugReport() {
                         callback.navigateToBugReport()
-                    }
-
-                    override fun navigateToSecureBackup() {
-                        backstack.push(NavTarget.SecureBackup())
                     }
 
                     override fun navigateToRoomNotificationSettings(roomId: RoomId) {
@@ -537,28 +458,8 @@ class LoggedInFlowNode(
                     .setIsSpace(true)
                     .build()
             }
-            is NavTarget.SecureBackup -> {
-                secureBackupEntryPoint.createNode(
-                    parentNode = this,
-                    buildContext = buildContext,
-                    params = SecureBackupEntryPoint.Params(initialElement = navTarget.initialElement),
-                    callback = object : SecureBackupEntryPoint.Callback {
-                        override fun onDone() {
-                            backstack.pop()
-                        }
-                    },
-                )
-            }
             NavTarget.Ftue -> {
                 ftueEntryPoint.createNode(this, buildContext)
-            }
-            NavTarget.LinkNewDevice -> {
-                val callback = object : LinkNewDeviceEntryPoint.Callback {
-                    override fun onDone() {
-                        backstack.pop()
-                    }
-                }
-                linkNewDeviceEntryPoint.createNode(this, buildContext, callback)
             }
             NavTarget.RoomDirectory -> {
                 roomDirectoryEntryPoint.createNode(
@@ -597,18 +498,6 @@ class LoggedInFlowNode(
                                     attachRoom(roomId.toRoomIdOrAlias(), clearBackstack = false)
                                 }
                             }
-                        }
-                    },
-                )
-            }
-            is NavTarget.IncomingVerificationRequest -> {
-                incomingVerificationEntryPoint.createNode(
-                    parentNode = this,
-                    buildContext = buildContext,
-                    params = IncomingVerificationEntryPoint.Params(navTarget.data),
-                    callback = object : IncomingVerificationEntryPoint.Callback {
-                        override fun onDone() {
-                            backstack.pop()
                         }
                     },
                 )

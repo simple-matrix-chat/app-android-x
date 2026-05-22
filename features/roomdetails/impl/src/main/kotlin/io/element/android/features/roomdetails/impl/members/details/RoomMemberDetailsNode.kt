@@ -82,7 +82,6 @@ class RoomMemberDetailsNode(
             onOpenDm = ::navigateToRoom,
             onStartCall = ::onStartCall,
             openAvatarPreview = callback::navigateToAvatarPreview,
-            onVerifyClick = callback::startVerifyUserFlow,
         )
     }
 }

@@ -1,8 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
-  <string name="crypto_history_sharing_room_info_hidden_badge_content">"Τα νέα μέλη δεν βλέπουν το ιστορικό"</string>
-  <string name="crypto_history_sharing_room_info_shared_badge_content">"Τα νέα μέλη βλέπουν το ιστορικό"</string>
-  <string name="crypto_history_sharing_room_info_world_readable_badge_content">"Οποιοσδήποτε μπορεί να δει το ιστορικό"</string>
   <string name="screen_edit_room_address_room_address_section_footer">"Θα χρειαστείτε μια διεύθυνση για να την κάνετε ορατή στον δημόσιο κατάλογο."</string>
   <string name="screen_edit_room_address_title">"Επεξεργασία διεύθυνσης"</string>
   <string name="screen_notification_settings_edit_failed_updating_default_mode">"Παρουσιάστηκε σφάλμα κατά την ενημέρωση της ρύθμισης ειδοποίησης."</string>
@@ -42,8 +39,6 @@
   <string name="screen_room_change_role_unsaved_changes_description">"Έχεις μη αποθηκευμένες αλλαγές."</string>
   <string name="screen_room_change_role_unsaved_changes_title">"Αποθήκευση αλλαγών;"</string>
   <string name="screen_room_details_add_topic_title">"Προσθήκη θέματος"</string>
-  <string name="screen_room_details_badge_encrypted">"Κρυπτογραφημένο"</string>
-  <string name="screen_room_details_badge_not_encrypted">"Μη κρυπτογραφημένο"</string>
   <string name="screen_room_details_badge_public">"Δημόσια αίθουσα"</string>
   <string name="screen_room_details_edit_room_title">"Επεξεργασία λεπτομερειών"</string>
   <string name="screen_room_details_edition_error">"Υπήρξε ένα άγνωστο σφάλμα και οι πληροφορίες δεν μπορούσαν να αλλάξουν."</string>

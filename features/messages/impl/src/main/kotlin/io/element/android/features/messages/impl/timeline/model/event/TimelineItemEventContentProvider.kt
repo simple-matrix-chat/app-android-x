@@ -13,13 +13,11 @@ import android.text.style.StyleSpan
 import androidx.compose.ui.tooling.preview.PreviewParameterProvider
 import androidx.core.text.buildSpannedString
 import androidx.core.text.inSpans
-import io.element.android.libraries.matrix.api.timeline.item.event.UnableToDecryptContent
 import org.jsoup.nodes.Document
 
 class TimelineItemEventContentProvider : PreviewParameterProvider<TimelineItemEventContent> {
     override val values = sequenceOf(
         aTimelineItemEmoteContent(),
-        aTimelineItemEncryptedContent(),
         aTimelineItemImageContent(),
         aTimelineItemVideoContent(),
         aTimelineItemFileContent(),
@@ -72,10 +70,6 @@ fun aTimelineItemEmoteContent(
     htmlDocument = htmlDocument,
     formattedBody = formattedBody,
     isEdited = isEdited,
-)
-
-fun aTimelineItemEncryptedContent() = TimelineItemEncryptedContent(
-    data = UnableToDecryptContent.Data.Unknown
 )
 
 fun aTimelineItemNoticeContent(

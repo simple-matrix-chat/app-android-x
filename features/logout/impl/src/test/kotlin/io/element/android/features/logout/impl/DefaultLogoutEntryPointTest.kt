@@ -12,7 +12,6 @@ import androidx.arch.core.executor.testing.InstantTaskExecutorRule
 import com.bumble.appyx.core.modality.BuildContext
 import com.google.common.truth.Truth.assertThat
 import io.element.android.features.logout.api.LogoutEntryPoint
-import io.element.android.tests.testutils.lambda.lambdaError
 import io.element.android.tests.testutils.node.TestParentNode
 import org.junit.Rule
 import org.junit.Test
@@ -32,9 +31,7 @@ class DefaultLogoutEntryPointTest {
                 presenter = createLogoutPresenter(),
             )
         }
-        val callback = object : LogoutEntryPoint.Callback {
-            override fun navigateToSecureBackup() = lambdaError()
-        }
+        val callback = object : LogoutEntryPoint.Callback {}
         val result = entryPoint.createNode(
             parentNode = parentNode,
             buildContext = BuildContext.root(null),

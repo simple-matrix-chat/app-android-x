@@ -15,8 +15,6 @@ import io.element.android.features.messages.impl.FakeMessagesNavigator
 import io.element.android.features.messages.impl.crypto.sendfailure.resolve.aResolveVerifiedUserSendFailureState
 import io.element.android.features.messages.impl.fixtures.aMessageEvent
 import io.element.android.features.messages.impl.fixtures.aTimelineItemsFactoryCreator
-import io.element.android.features.messages.impl.timeline.components.MessageShieldData
-import io.element.android.features.messages.impl.timeline.components.aCriticalShield
 import io.element.android.features.messages.impl.timeline.model.NewEventState
 import io.element.android.features.messages.impl.timeline.model.TimelineItem
 import io.element.android.features.messages.impl.typing.aTypingNotificationState
@@ -843,25 +841,6 @@ class TimelinePresenterTest {
                     value(AN_EVENT_ID),
                     value(emptyList<String>())
                 )
-        }
-    }
-
-    @Test
-    fun `present - show shield hide shield`() = runTest {
-        val presenter = createTimelinePresenter()
-        val shield = aCriticalShield()
-        presenter.test {
-            val initialState = awaitFirstItem()
-            assertThat(initialState.messageShieldDialogData).isNull()
-            val shieldData = MessageShieldData(shield, null, null)
-            initialState.eventSink(TimelineEvent.ShowShieldDialog(shieldData))
-            awaitItem().also { state ->
-                assertThat(state.messageShieldDialogData).isEqualTo(shieldData)
-                state.eventSink(TimelineEvent.HideShieldDialog)
-            }
-            awaitItem().also { state ->
-                assertThat(state.messageShieldDialogData).isNull()
-            }
         }
     }
 

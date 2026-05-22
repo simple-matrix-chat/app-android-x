@@ -167,21 +167,6 @@ class RoomDetailsViewTest {
 
     @Config(qualifiers = "h1024dp")
     @Test
-    fun `click on security and privacy invokes expected callback`() = runAndroidComposeUiTest {
-        ensureCalledOnce { callback ->
-            setRoomDetailView(
-                state = aRoomDetailsState(
-                    eventSink = EventsRecorder(expectEvents = false),
-                    canShowSecurityAndPrivacy = true,
-                ),
-                onSecurityAndPrivacyClick = callback,
-            )
-            clickOn(R.string.screen_room_details_security_and_privacy_title)
-        }
-    }
-
-    @Config(qualifiers = "h1024dp")
-    @Test
     fun `click on add topic emit expected event`() = runAndroidComposeUiTest {
         ensureCalledOnceWithParam<RoomDetailsAction>(RoomDetailsAction.AddTopic) { callback ->
             setRoomDetailView(
@@ -379,7 +364,6 @@ private fun AndroidComposeUiTest<ComponentActivity>.setRoomDetailView(
     onJoinCallClick: (CallIntent) -> Unit = EnsureNeverCalledWithParam(),
     onPinnedMessagesClick: () -> Unit = EnsureNeverCalled(),
     onKnockRequestsClick: () -> Unit = EnsureNeverCalled(),
-    onSecurityAndPrivacyClick: () -> Unit = EnsureNeverCalled(),
     onProfileClick: (UserId) -> Unit = EnsureNeverCalledWithParam(),
     onReportRoomClick: () -> Unit = EnsureNeverCalled(),
 ) {
@@ -399,7 +383,6 @@ private fun AndroidComposeUiTest<ComponentActivity>.setRoomDetailView(
             onJoinCallClick = onJoinCallClick,
             onPinnedMessagesClick = onPinnedMessagesClick,
             onKnockRequestsClick = onKnockRequestsClick,
-            onSecurityAndPrivacyClick = onSecurityAndPrivacyClick,
             onProfileClick = onProfileClick,
             onReportRoomClick = onReportRoomClick,
             leaveRoomView = {},

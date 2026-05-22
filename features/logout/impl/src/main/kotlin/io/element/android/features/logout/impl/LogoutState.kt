@@ -9,17 +9,8 @@
 package io.element.android.features.logout.impl
 
 import io.element.android.libraries.architecture.AsyncAction
-import io.element.android.libraries.matrix.api.encryption.BackupState
-import io.element.android.libraries.matrix.api.encryption.BackupUploadState
-import io.element.android.libraries.matrix.api.encryption.RecoveryState
 
 data class LogoutState(
-    val isLastDevice: Boolean,
-    val backupState: BackupState,
-    val doesBackupExistOnServer: Boolean,
-    val recoveryState: RecoveryState,
-    val backupUploadState: BackupUploadState,
-    val waitingForALongTime: Boolean,
     val logoutAction: AsyncAction<Unit>,
     val eventSink: (LogoutEvents) -> Unit,
 )

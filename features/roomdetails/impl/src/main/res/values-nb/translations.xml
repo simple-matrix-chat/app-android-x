@@ -1,8 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
-  <string name="crypto_history_sharing_room_info_hidden_badge_content">"Nye medlemmer ser ikke historikken"</string>
-  <string name="crypto_history_sharing_room_info_shared_badge_content">"Nye medlemmer ser historikk"</string>
-  <string name="crypto_history_sharing_room_info_world_readable_badge_content">"Alle kan se historikk"</string>
   <string name="screen_edit_room_address_room_address_section_footer">"Du trenger en adresse for å gjøre den synlig i den offentlige katalogen."</string>
   <string name="screen_edit_room_address_title">"Rediger adresse"</string>
   <string name="screen_notification_settings_edit_failed_updating_default_mode">"Det oppstod en feil under oppdatering av varslingsinnstillingen."</string>
@@ -42,8 +39,6 @@
   <string name="screen_room_change_role_unsaved_changes_description">"Du har endringer som ikke er lagret."</string>
   <string name="screen_room_change_role_unsaved_changes_title">"Lagre endringer?"</string>
   <string name="screen_room_details_add_topic_title">"Legg til emne"</string>
-  <string name="screen_room_details_badge_encrypted">"Kryptert"</string>
-  <string name="screen_room_details_badge_not_encrypted">"Ikke kryptert"</string>
   <string name="screen_room_details_badge_public">"Offentlig rom"</string>
   <string name="screen_room_details_edit_room_title">"Rediger detaljer"</string>
   <string name="screen_room_details_edition_error">"Det oppstod en ukjent feil, og informasjonen kunne ikke endres."</string>

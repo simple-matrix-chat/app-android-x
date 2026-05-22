@@ -12,38 +12,27 @@ package io.element.android.appnav.loggedin
 
 import app.cash.turbine.ReceiveTurbine
 import com.google.common.truth.Truth.assertThat
-import im.vector.app.features.analytics.plan.CryptoSessionStateChange
-import im.vector.app.features.analytics.plan.UserProperties
 import io.element.android.features.networkmonitor.api.NetworkStatus
 import io.element.android.features.networkmonitor.test.FakeNetworkMonitor
 import io.element.android.libraries.core.meta.BuildMeta
 import io.element.android.libraries.matrix.api.MatrixClient
 import io.element.android.libraries.matrix.api.core.SessionId
-import io.element.android.libraries.matrix.api.encryption.EncryptionService
-import io.element.android.libraries.matrix.api.encryption.RecoveryState
 import io.element.android.libraries.matrix.api.oauth.AccountManagementAction
 import io.element.android.libraries.matrix.api.roomlist.RoomListService
 import io.element.android.libraries.matrix.api.sync.SlidingSyncVersion
 import io.element.android.libraries.matrix.api.sync.SyncState
-import io.element.android.libraries.matrix.api.verification.SessionVerificationService
-import io.element.android.libraries.matrix.api.verification.SessionVerifiedStatus
 import io.element.android.libraries.matrix.test.AN_EXCEPTION
 import io.element.android.libraries.matrix.test.A_SESSION_ID
 import io.element.android.libraries.matrix.test.FakeHomeserverCapabilitiesProvider
 import io.element.android.libraries.matrix.test.FakeMatrixClient
 import io.element.android.libraries.matrix.test.core.aBuildMeta
-import io.element.android.libraries.matrix.test.encryption.FakeEncryptionService
 import io.element.android.libraries.matrix.test.roomlist.FakeRoomListService
 import io.element.android.libraries.matrix.test.sync.FakeSyncService
-import io.element.android.libraries.matrix.test.verification.FakeSessionVerificationService
 import io.element.android.libraries.push.api.PushService
-import io.element.android.libraries.push.api.PusherRegistrationFailure
 import io.element.android.libraries.push.test.FakePushService
 import io.element.android.libraries.pushproviders.api.Distributor
 import io.element.android.libraries.pushproviders.api.PushProvider
 import io.element.android.libraries.pushproviders.test.FakePushProvider
-import io.element.android.services.analytics.api.AnalyticsService
-import io.element.android.services.analytics.test.FakeAnalyticsService
 import io.element.android.tests.testutils.WarmUpRule
 import io.element.android.tests.testutils.consumeItemsUntilPredicate
 import io.element.android.tests.testutils.lambda.lambdaError
@@ -67,6 +56,7 @@ class LoggedInPresenterTest {
             assertThat(initialState.showSyncSpinner).isFalse()
             assertThat(initialState.pusherRegistrationState.isUninitialized()).isTrue()
             assertThat(initialState.ignoreRegistrationError).isFalse()
+            cancelAndIgnoreRemainingEvents()
         }
     }
 
@@ -83,6 +73,7 @@ class LoggedInPresenterTest {
             advanceUntilIdle()
             accountManagementUrlResult.assertions().isCalledOnce()
                 .with(value(null))
+            cancelAndIgnoreRemainingEvents()
         }
     }
 
@@ -103,76 +94,13 @@ class LoggedInPresenterTest {
     }
 
     @Test
-    fun `present - report crypto status analytics`() = runTest {
-        val analyticsService = FakeAnalyticsService()
-        val roomListService = FakeRoomListService()
-        val verificationService = FakeSessionVerificationService()
-        val encryptionService = FakeEncryptionService()
-        val buildMeta = aBuildMeta()
-        val networkMonitor = FakeNetworkMonitor()
-        LoggedInPresenter(
-            matrixClient = FakeMatrixClient(
-                roomListService = roomListService,
-                encryptionService = encryptionService,
-            ),
-            syncService = FakeSyncService(initialSyncState = SyncState.Running),
-            pushService = FakePushService(
-                ensurePusherIsRegisteredResult = { Result.success(Unit) },
-            ),
-            sessionVerificationService = verificationService,
-            analyticsService = analyticsService,
-            encryptionService = encryptionService,
-            buildMeta = buildMeta,
-            networkMonitor = networkMonitor,
-        ).test {
-            encryptionService.emitRecoveryState(RecoveryState.UNKNOWN)
-            encryptionService.emitRecoveryState(RecoveryState.INCOMPLETE)
-            verificationService.emitVerifiedStatus(SessionVerifiedStatus.Verified)
-            skipItems(2)
-            assertThat(analyticsService.capturedEvents.size).isEqualTo(1)
-            assertThat(analyticsService.capturedEvents[0]).isInstanceOf(CryptoSessionStateChange::class.java)
-            assertThat(analyticsService.capturedUserProperties.size).isEqualTo(1)
-            assertThat(analyticsService.capturedUserProperties[0].recoveryState).isEqualTo(UserProperties.RecoveryState.Incomplete)
-            assertThat(analyticsService.capturedUserProperties[0].verificationState).isEqualTo(UserProperties.VerificationState.Verified)
-            // ensure a sync status change does not trigger a new capture
-            roomListService.postSyncIndicator(RoomListService.SyncIndicator.Show)
-            skipItems(1)
-            assertThat(analyticsService.capturedEvents.size).isEqualTo(1)
-        }
-    }
-
-    @Test
-    fun `present - ensure default pusher is not registered if session is not verified`() = runTest {
-        val lambda = lambdaRecorder<Result<Unit>> {
-            Result.success(Unit)
-        }
-        val pushService = createFakePushService(ensurePusherIsRegisteredResult = lambda)
-        val verificationService = FakeSessionVerificationService(
-            initialSessionVerifiedStatus = SessionVerifiedStatus.NotVerified
-        )
-        createLoggedInPresenter(
-            pushService = pushService,
-            sessionVerificationService = verificationService,
-        ).test {
-            val finalState = awaitFirstItem()
-            assertThat(finalState.pusherRegistrationState.errorOrNull())
-                .isInstanceOf(PusherRegistrationFailure.AccountNotVerified::class.java)
-            lambda.assertions().isNeverCalled()
-        }
-    }
-
-    @Test
     fun `present - ensure default pusher is registered with default provider`() = runTest {
         val lambda = lambdaRecorder<Result<Unit>> { Result.success(Unit) }
-        val sessionVerificationService = FakeSessionVerificationService(
-            initialSessionVerifiedStatus = SessionVerifiedStatus.Verified
-        )
         val pushService = createFakePushService(
             ensurePusherIsRegisteredResult = lambda,
         )
         createLoggedInPresenter(
             pushService = pushService,
-            sessionVerificationService = sessionVerificationService,
             matrixClient = FakeMatrixClient(
                 accountManagementUrlResult = { Result.success(null) },
             ),
@@ -187,15 +115,11 @@ class LoggedInPresenterTest {
     @Test
     fun `present - ensure default pusher is registered with default provider - fail to register`() = runTest {
         val lambda = lambdaRecorder<Result<Unit>> { Result.failure(AN_EXCEPTION) }
-        val sessionVerificationService = FakeSessionVerificationService(
-            initialSessionVerifiedStatus = SessionVerifiedStatus.Verified
-        )
         val pushService = createFakePushService(
             ensurePusherIsRegisteredResult = lambda,
         )
         createLoggedInPresenter(
             pushService = pushService,
-            sessionVerificationService = sessionVerificationService,
             matrixClient = FakeMatrixClient(
                 accountManagementUrlResult = { Result.success(null) },
             ),
@@ -216,16 +140,12 @@ class LoggedInPresenterTest {
     fun `present - ensure default pusher is registered with default provider - fail to register - do not show again`() = runTest {
         val lambda = lambdaRecorder<Result<Unit>> { Result.failure(AN_EXCEPTION) }
         val setIgnoreRegistrationErrorLambda = lambdaRecorder<SessionId, Boolean, Unit> { _, _ -> }
-        val sessionVerificationService = FakeSessionVerificationService(
-            initialSessionVerifiedStatus = SessionVerifiedStatus.Verified
-        )
         val pushService = createFakePushService(
             ensurePusherIsRegisteredResult = lambda,
             setIgnoreRegistrationErrorLambda = setIgnoreRegistrationErrorLambda,
         )
         createLoggedInPresenter(
             pushService = pushService,
-            sessionVerificationService = sessionVerificationService,
             matrixClient = FakeMatrixClient(
                 accountManagementUrlResult = { Result.success(null) },
             ),
@@ -292,7 +212,7 @@ class LoggedInPresenterTest {
             val initialState = awaitItem()
             assertThat(initialState.forceNativeSlidingSyncMigration).isFalse()
             initialState.eventSink(LoggedInEvents.CheckSlidingSyncProxyAvailability)
-            assertThat(awaitItem().forceNativeSlidingSyncMigration).isTrue()
+            consumeItemsUntilPredicate { it.forceNativeSlidingSyncMigration }
         }
     }
 
@@ -318,6 +238,7 @@ class LoggedInPresenterTest {
             advanceUntilIdle()
 
             assertThat(logoutLambda.assertions().isCalledOnce())
+            cancelAndIgnoreRemainingEvents()
         }
     }
 
@@ -339,6 +260,7 @@ class LoggedInPresenterTest {
             advanceUntilIdle()
 
             refreshLambda.assertions().isCalledOnce()
+            cancelAndIgnoreRemainingEvents()
         }
     }
 
@@ -349,10 +271,7 @@ class LoggedInPresenterTest {
 
     private fun createLoggedInPresenter(
         syncState: SyncState = SyncState.Running,
-        analyticsService: AnalyticsService = FakeAnalyticsService(),
-        sessionVerificationService: SessionVerificationService = FakeSessionVerificationService(),
-        encryptionService: EncryptionService = FakeEncryptionService(),
-        pushService: PushService = FakePushService(),
+        pushService: PushService = createFakePushService(),
         matrixClient: MatrixClient = FakeMatrixClient(
             accountManagementUrlResult = { Result.success(null) },
         ),
@@ -363,9 +282,6 @@ class LoggedInPresenterTest {
             matrixClient = matrixClient,
             syncService = FakeSyncService(initialSyncState = syncState),
             pushService = pushService,
-            sessionVerificationService = sessionVerificationService,
-            analyticsService = analyticsService,
-            encryptionService = encryptionService,
             buildMeta = buildMeta,
             networkMonitor = networkMonitor,
         )

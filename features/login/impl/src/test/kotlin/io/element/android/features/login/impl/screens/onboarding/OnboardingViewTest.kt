@@ -73,22 +73,7 @@ class OnboardingViewTest {
     }
 
     @Test
-    fun `when can login with QR code - clicking on sign in with QR code calls the expected callback`() = runAndroidComposeUiTest {
-        val eventSink = EventsRecorder<OnBoardingEvents>(expectEvents = false)
-        ensureCalledOnce { callback ->
-            setOnboardingView(
-                state = anOnBoardingState(
-                    canLoginWithQrCode = true,
-                    eventSink = eventSink,
-                ),
-                onSignInWithQrCode = callback,
-            )
-            clickOn(R.string.screen_onboarding_sign_in_with_qr_code)
-        }
-    }
-
-    @Test
-    fun `when can login with QR code - clicking on sign in manually calls the expected callback`(
+    fun `when can create account - clicking on sign in manually calls the expected callback`(
         @TestParameter mustChooseAccountProvider: Boolean = namedTestValues(
             "can search account provider" to false,
             "cannot search account provider" to true,
@@ -98,7 +83,7 @@ class OnboardingViewTest {
         ensureCalledOnceWithParam(mustChooseAccountProvider) { callback ->
             setOnboardingView(
                 state = anOnBoardingState(
-                    canLoginWithQrCode = true,
+                    canCreateAccount = true,
                     mustChooseAccountProvider = mustChooseAccountProvider,
                     eventSink = eventSink,
                 ),
@@ -109,7 +94,7 @@ class OnboardingViewTest {
     }
 
     @Test
-    fun `when cannot login with QR code or create account - clicking on continue calls the sign in callback`(
+    fun `when cannot create account - clicking on continue calls the sign in callback`(
         @TestParameter mustChooseAccountProvider: Boolean = namedTestValues(
             "can search account provider" to false,
             "cannot search account provider" to true,
@@ -119,7 +104,6 @@ class OnboardingViewTest {
         ensureCalledOnceWithParam(mustChooseAccountProvider) { callback ->
             setOnboardingView(
                 state = anOnBoardingState(
-                    canLoginWithQrCode = false,
                     canCreateAccount = false,
                     mustChooseAccountProvider = mustChooseAccountProvider,
                     eventSink = eventSink,
@@ -255,7 +239,6 @@ class OnboardingViewTest {
         state: OnBoardingState,
         onBackClick: () -> Unit = EnsureNeverCalled(),
         onDeveloperSettingsClick: () -> Unit = EnsureNeverCalled(),
-        onSignInWithQrCode: () -> Unit = EnsureNeverCalled(),
         onSignIn: (Boolean) -> Unit = EnsureNeverCalledWithParam(),
         onCreateAccount: () -> Unit = EnsureNeverCalled(),
         onReportProblem: () -> Unit = EnsureNeverCalled(),
@@ -269,7 +252,6 @@ class OnboardingViewTest {
                 state = state,
                 onBackClick = onBackClick,
                 onDeveloperSettingsClick = onDeveloperSettingsClick,
-                onSignInWithQrCode = onSignInWithQrCode,
                 onSignIn = onSignIn,
                 onCreateAccount = onCreateAccount,
                 onReportProblem = onReportProblem,

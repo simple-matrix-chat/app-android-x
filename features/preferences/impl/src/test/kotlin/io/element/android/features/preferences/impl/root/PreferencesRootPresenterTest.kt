@@ -23,8 +23,6 @@ import io.element.android.libraries.featureflag.api.FeatureFlagService
 import io.element.android.libraries.featureflag.api.FeatureFlags
 import io.element.android.libraries.featureflag.test.FakeFeature
 import io.element.android.libraries.featureflag.test.FakeFeatureFlagService
-import io.element.android.libraries.indicator.api.IndicatorService
-import io.element.android.libraries.indicator.test.FakeIndicatorService
 import io.element.android.libraries.matrix.api.oauth.AccountManagementAction
 import io.element.android.libraries.matrix.api.user.MatrixUser
 import io.element.android.libraries.matrix.test.AN_AVATAR_URL
@@ -35,11 +33,9 @@ import io.element.android.libraries.matrix.test.A_USER_ID_2
 import io.element.android.libraries.matrix.test.A_USER_NAME
 import io.element.android.libraries.matrix.test.FakeMatrixClient
 import io.element.android.libraries.matrix.test.core.aBuildMeta
-import io.element.android.libraries.matrix.test.verification.FakeSessionVerificationService
 import io.element.android.libraries.sessionstorage.api.SessionStore
 import io.element.android.libraries.sessionstorage.test.InMemorySessionStore
 import io.element.android.libraries.sessionstorage.test.aSessionData
-import io.element.android.services.analytics.test.FakeAnalyticsService
 import io.element.android.tests.testutils.WarmUpRule
 import io.element.android.tests.testutils.lambda.lambdaRecorder
 import io.element.android.tests.testutils.lambda.value
@@ -91,11 +87,7 @@ class PreferencesRootPresenterTest {
                     avatarUrl = AN_AVATAR_URL
                 )
             )
-            assertThat(loadedState.showSecureBackup).isFalse()
-            assertThat(loadedState.showSecureBackupBadge).isFalse()
             assertThat(loadedState.accountManagementUrl).isNull()
-            assertThat(loadedState.showAnalyticsSettings).isFalse()
-            assertThat(loadedState.showLinkNewDevice).isFalse()
             assertThat(loadedState.showDeveloperSettings).isTrue()
             assertThat(loadedState.canDeactivateAccount).isTrue()
             assertThat(loadedState.canReportBug).isTrue()
@@ -138,27 +130,6 @@ class PreferencesRootPresenterTest {
             skipItems(1)
             val initialState = awaitItem()
             assertThat(initialState.nbOfBlockedUsers).isEqualTo(2)
-        }
-    }
-
-    @Test
-    fun `present - secure backup badge`() = runTest {
-        val matrixClient = FakeMatrixClient(
-            canDeactivateAccountResult = { true },
-            accountManagementUrlResult = { Result.success("") },
-        )
-        val indicatorService = FakeIndicatorService()
-        createPresenter(
-            matrixClient = matrixClient,
-            rageshakeFeatureAvailability = { flowOf(false) },
-            indicatorService = indicatorService,
-        ).test {
-            skipItems(1)
-            val initialState = awaitItem()
-            assertThat(initialState.showSecureBackupBadge).isFalse()
-            indicatorService.setShowSettingChatBackupIndicator(true)
-            val finalState = awaitItem()
-            assertThat(finalState.showSecureBackupBadge).isTrue()
         }
     }
 
@@ -303,22 +274,6 @@ class PreferencesRootPresenterTest {
         }
     }
 
-    @Test
-    fun `present - link new device is hidden when QR login is disabled`() = runTest {
-        createPresenter(
-            matrixClient = FakeMatrixClient(
-                sessionId = A_SESSION_ID,
-                canDeactivateAccountResult = { true },
-            ),
-            featureFlagService = FakeFeatureFlagService(
-                initialState = mapOf(FeatureFlags.QrCodeLogin.key to true)
-            ),
-        ).test {
-            val state = awaitFirstItem()
-            assertThat(state.showLinkNewDevice).isFalse()
-        }
-    }
-
     private suspend fun <T> ReceiveTurbine<T>.awaitFirstItem(): T {
         skipItems(1)
         return awaitItem()
@@ -326,20 +281,15 @@ class PreferencesRootPresenterTest {
 
     private fun createPresenter(
         matrixClient: FakeMatrixClient = FakeMatrixClient(),
-        sessionVerificationService: FakeSessionVerificationService = FakeSessionVerificationService(),
         showDeveloperSettingsProvider: ShowDeveloperSettingsProvider = ShowDeveloperSettingsProvider(aBuildMeta(BuildType.DEBUG)),
         rageshakeFeatureAvailability: RageshakeFeatureAvailability = RageshakeFeatureAvailability { flowOf(true) },
-        indicatorService: IndicatorService = FakeIndicatorService(),
         featureFlagService: FeatureFlagService = FakeFeatureFlagService(),
         sessionStore: SessionStore = InMemorySessionStore(),
         sessionEnterpriseService: SessionEnterpriseService = FakeSessionEnterpriseService(),
     ) = PreferencesRootPresenter(
         matrixClient = matrixClient,
-        sessionVerificationService = sessionVerificationService,
-        analyticsService = FakeAnalyticsService(),
         versionFormatter = FakeVersionFormatter(),
         snackbarDispatcher = SnackbarDispatcher(),
-        indicatorService = indicatorService,
         directLogoutPresenter = { aDirectLogoutState() },
         showDeveloperSettingsProvider = showDeveloperSettingsProvider,
         rageshakeFeatureAvailability = rageshakeFeatureAvailability,

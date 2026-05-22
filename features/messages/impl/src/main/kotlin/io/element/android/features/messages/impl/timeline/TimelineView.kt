@@ -54,7 +54,6 @@ import io.element.android.compound.tokens.generated.CompoundIcons
 import io.element.android.features.messages.impl.crypto.sendfailure.resolve.ResolveVerifiedUserSendFailureView
 import io.element.android.features.messages.impl.timeline.components.FloatingDateBadgeOverlay
 import io.element.android.features.messages.impl.timeline.components.TimelineItemRow
-import io.element.android.features.messages.impl.timeline.components.toText
 import io.element.android.features.messages.impl.timeline.di.LocalTimelineItemPresenterFactories
 import io.element.android.features.messages.impl.timeline.di.aFakeTimelineItemPresenterFactories
 import io.element.android.features.messages.impl.timeline.focus.FocusRequestStateView
@@ -65,7 +64,6 @@ import io.element.android.features.messages.impl.timeline.model.event.TimelineIt
 import io.element.android.features.messages.impl.timeline.protection.TimelineProtectionState
 import io.element.android.features.messages.impl.timeline.protection.aTimelineProtectionState
 import io.element.android.libraries.androidutils.system.copyToClipboard
-import io.element.android.libraries.designsystem.components.dialogs.AlertDialog
 import io.element.android.libraries.designsystem.preview.ElementPreview
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
 import io.element.android.libraries.designsystem.theme.components.FloatingActionButton
@@ -225,17 +223,6 @@ fun TimelineView(
     }
 
     ResolveVerifiedUserSendFailureView(state = state.resolveVerifiedUserSendFailureState)
-
-    MessageShieldDialog(state)
-}
-
-@Composable
-private fun MessageShieldDialog(state: TimelineState) {
-    val messageShield = state.messageShieldDialogData ?: return
-    AlertDialog(
-        content = messageShield.toText(),
-        onDismiss = { state.eventSink.invoke(TimelineEvent.HideShieldDialog) },
-    )
 }
 
 @Composable

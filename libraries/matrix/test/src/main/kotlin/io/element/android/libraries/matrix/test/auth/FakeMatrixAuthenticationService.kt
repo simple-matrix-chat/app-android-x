@@ -15,23 +15,17 @@ import io.element.android.libraries.matrix.api.auth.MatrixHomeServerDetails
 import io.element.android.libraries.matrix.api.auth.OAuthDetails
 import io.element.android.libraries.matrix.api.auth.OAuthPrompt
 import io.element.android.libraries.matrix.api.auth.external.ExternalSession
-import io.element.android.libraries.matrix.api.auth.qrlogin.MatrixQrCodeLoginData
-import io.element.android.libraries.matrix.api.auth.qrlogin.QrCodeLoginStep
 import io.element.android.libraries.matrix.api.core.SessionId
 import io.element.android.libraries.matrix.api.core.UserId
-import io.element.android.libraries.matrix.test.A_SESSION_ID
 import io.element.android.libraries.matrix.test.A_USER_ID
 import io.element.android.libraries.matrix.test.FakeMatrixClient
 import io.element.android.tests.testutils.lambda.lambdaError
-import io.element.android.tests.testutils.lambda.lambdaRecorder
 import io.element.android.tests.testutils.simulateLongTask
 
 val AN_OAUTH_DATA = OAuthDetails(url = "a-url")
 
 class FakeMatrixAuthenticationService(
     var matrixClientResult: ((SessionId) -> Result<MatrixClient>)? = null,
-    var loginWithQrCodeResult: (qrCodeData: MatrixQrCodeLoginData, progress: (QrCodeLoginStep) -> Unit) -> Result<SessionId> =
-        lambdaRecorder<MatrixQrCodeLoginData, (QrCodeLoginStep) -> Unit, Result<SessionId>> { _, _ -> Result.success(A_SESSION_ID) },
     private val importCreatedSessionLambda: (ExternalSession) -> Result<SessionId> = { lambdaError() },
     private val setHomeserverResult: (String) -> Result<MatrixHomeServerDetails> = { lambdaError() },
     private val setElementClassicSessionResult: (ElementClassicSession?) -> Unit = { lambdaError() },
@@ -86,11 +80,6 @@ class FakeMatrixAuthenticationService(
             onAuthenticationListener?.invoke(matrixClient ?: FakeMatrixClient())
             Result.success(A_USER_ID)
         }
-    }
-
-    override suspend fun loginWithQrCode(qrCodeData: MatrixQrCodeLoginData, progress: (QrCodeLoginStep) -> Unit): Result<SessionId> = simulateLongTask {
-        onAuthenticationListener?.invoke(matrixClient ?: FakeMatrixClient())
-        loginWithQrCodeResult(qrCodeData, progress)
     }
 
     override fun listenToNewMatrixClients(lambda: (MatrixClient) -> Unit) {

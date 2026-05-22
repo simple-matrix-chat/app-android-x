@@ -19,7 +19,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import dev.zacsweers.metro.Inject
-import io.element.android.appconfig.OnBoardingConfig
 import io.element.android.features.enterprise.api.SessionEnterpriseService
 import io.element.android.features.logout.api.direct.DirectLogoutState
 import io.element.android.features.preferences.impl.utils.ShowDeveloperSettingsProvider
@@ -29,13 +28,10 @@ import io.element.android.libraries.designsystem.utils.snackbar.SnackbarDispatch
 import io.element.android.libraries.designsystem.utils.snackbar.collectSnackbarMessageAsState
 import io.element.android.libraries.featureflag.api.FeatureFlagService
 import io.element.android.libraries.featureflag.api.FeatureFlags
-import io.element.android.libraries.indicator.api.IndicatorService
 import io.element.android.libraries.matrix.api.MatrixClient
 import io.element.android.libraries.matrix.api.core.UserId
 import io.element.android.libraries.matrix.api.user.MatrixUser
-import io.element.android.libraries.matrix.api.verification.SessionVerificationService
 import io.element.android.libraries.sessionstorage.api.SessionStore
-import io.element.android.services.analytics.api.AnalyticsService
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.CoroutineScope
@@ -47,11 +43,8 @@ import kotlinx.coroutines.launch
 @Inject
 class PreferencesRootPresenter(
     private val matrixClient: MatrixClient,
-    private val sessionVerificationService: SessionVerificationService,
-    private val analyticsService: AnalyticsService,
     private val versionFormatter: VersionFormatter,
     private val snackbarDispatcher: SnackbarDispatcher,
-    private val indicatorService: IndicatorService,
     private val directLogoutPresenter: Presenter<DirectLogoutState>,
     private val showDeveloperSettingsProvider: ShowDeveloperSettingsProvider,
     private val rageshakeFeatureAvailability: RageshakeFeatureAvailability,
@@ -71,9 +64,6 @@ class PreferencesRootPresenter(
         val isMultiAccountEnabled by remember {
             featureFlagService.isFeatureEnabledFlow(FeatureFlags.MultiAccount)
         }.collectAsState(initial = false)
-        val qrCodeLoginEnabled by remember {
-            featureFlagService.isFeatureEnabledFlow(FeatureFlags.QrCodeLogin)
-        }.collectAsState(initial = false)
 
         val otherSessions by remember {
             sessionStore.sessionsFlow().map { list ->
@@ -91,13 +81,6 @@ class PreferencesRootPresenter(
         }.collectAsState(initial = persistentListOf())
 
         val snackbarMessage by snackbarDispatcher.collectSnackbarMessageAsState()
-        val hasAnalyticsProviders = remember { analyticsService.getAvailableAnalyticsProviders().isNotEmpty() }
-
-        // We should display the 'complete verification' option if the current session can be verified
-        val canVerifyUserSession by sessionVerificationService.needsSessionVerification.collectAsState(false)
-
-        val showSecureBackupIndicator by indicatorService.showSettingChatBackupIndicator()
-
         val accountManagementUrl: MutableState<String?> = remember {
             mutableStateOf(null)
         }
@@ -142,12 +125,8 @@ class PreferencesRootPresenter(
             deviceId = matrixClient.deviceId,
             isMultiAccountEnabled = isMultiAccountEnabled,
             otherSessions = otherSessions,
-            showSecureBackup = !canVerifyUserSession,
-            showSecureBackupBadge = showSecureBackupIndicator,
             accountManagementUrl = accountManagementUrl.value,
-            showAnalyticsSettings = hasAnalyticsProviders,
             canReportBug = canReportBug,
-            showLinkNewDevice = OnBoardingConfig.CAN_LOGIN_WITH_QR_CODE && qrCodeLoginEnabled,
             showDeveloperSettings = showDeveloperSettings,
             canDeactivateAccount = canDeactivateAccount,
             nbOfBlockedUsers = nbOfBlockedUsers,

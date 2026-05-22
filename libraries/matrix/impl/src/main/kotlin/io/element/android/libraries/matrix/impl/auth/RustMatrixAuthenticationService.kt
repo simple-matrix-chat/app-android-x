@@ -24,16 +24,10 @@ import io.element.android.libraries.matrix.api.auth.OAuthDetails
 import io.element.android.libraries.matrix.api.auth.OAuthPrompt
 import io.element.android.libraries.matrix.api.auth.SessionRestorationException
 import io.element.android.libraries.matrix.api.auth.external.ExternalSession
-import io.element.android.libraries.matrix.api.auth.qrlogin.MatrixQrCodeLoginData
-import io.element.android.libraries.matrix.api.auth.qrlogin.QrCodeLoginStep
 import io.element.android.libraries.matrix.api.core.SessionId
 import io.element.android.libraries.matrix.api.core.UserId
-import io.element.android.libraries.matrix.api.verification.SessionVerifiedStatus
 import io.element.android.libraries.matrix.impl.ClientBuilderSlidingSync
 import io.element.android.libraries.matrix.impl.RustMatrixClientFactory
-import io.element.android.libraries.matrix.impl.auth.qrlogin.QrErrorMapper
-import io.element.android.libraries.matrix.impl.auth.qrlogin.SdkQrCodeLoginData
-import io.element.android.libraries.matrix.impl.auth.qrlogin.toStep
 import io.element.android.libraries.matrix.impl.exception.mapClientException
 import io.element.android.libraries.matrix.impl.keys.PassphraseGenerator
 import io.element.android.libraries.matrix.impl.mapper.toSessionData
@@ -42,21 +36,12 @@ import io.element.android.libraries.matrix.impl.paths.SessionPathsFactory
 import io.element.android.libraries.matrix.impl.toSession
 import io.element.android.libraries.sessionstorage.api.LoginType
 import io.element.android.libraries.sessionstorage.api.SessionStore
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.withTimeoutOrNull
 import org.matrix.rustcomponents.sdk.Client
 import org.matrix.rustcomponents.sdk.ClientBuilder
-import org.matrix.rustcomponents.sdk.HumanQrLoginException
-import org.matrix.rustcomponents.sdk.QrCodeData
-import org.matrix.rustcomponents.sdk.QrCodeDecodeException
-import org.matrix.rustcomponents.sdk.QrLoginProgress
-import org.matrix.rustcomponents.sdk.QrLoginProgressListener
 import org.matrix.rustcomponents.sdk.SecretsBundleWithUserId
 import timber.log.Timber
 import uniffi.matrix_sdk.OAuthAuthorizationData
-import kotlin.time.Duration.Companion.seconds
 
 @ContributesBinding(AppScope::class)
 @SingleIn(AppScope::class)
@@ -239,10 +224,6 @@ class RustMatrixAuthenticationService(
                 client.restoreSession(sessionData.toSession())
                 val matrixClient = rustMatrixClientFactory.create(client)
 
-                // We wait for the verification state to be known
-                matrixClient.waitForKnownVerificationState()
-
-                // And once it's ready we share it and save the actual session data
                 newMatrixClientObservers.forEach { it.invoke(matrixClient) }
                 sessionStore.addSession(sessionData)
 
@@ -328,7 +309,6 @@ class RustMatrixAuthenticationService(
                     sessionPaths = currentSessionPaths,
                 )
                 val matrixClient = rustMatrixClientFactory.create(client)
-                matrixClient.waitForKnownVerificationState()
 
                 newMatrixClientObservers.forEach { it.invoke(matrixClient) }
                 sessionStore.addSession(sessionData)
@@ -359,61 +339,6 @@ class RustMatrixAuthenticationService(
         }
     }
 
-    override suspend fun loginWithQrCode(qrCodeData: MatrixQrCodeLoginData, progress: (QrCodeLoginStep) -> Unit) =
-        withContext(coroutineDispatchers.io) {
-            val sdkQrCodeLoginData = (qrCodeData as SdkQrCodeLoginData).rustQrCodeData
-            val emptySessionPaths = rotateSessionPath()
-            val oAuthConfiguration = oAuthConfigurationProvider.get()
-            val progressListener = object : QrLoginProgressListener {
-                override fun onUpdate(state: QrLoginProgress) {
-                    Timber.d("QR Code login progress: $state")
-                    progress(state.toStep())
-                }
-            }
-            runCatchingExceptions {
-                val client = makeQrCodeLoginClient(
-                    sessionPaths = emptySessionPaths,
-                    qrCodeData = sdkQrCodeLoginData,
-                )
-                client.newLoginWithQrCodeHandler(
-                    oauthConfiguration = oAuthConfiguration,
-                ).use {
-                    it.scan(
-                        qrCodeData = qrCodeData.rustQrCodeData,
-                        progressListener = progressListener,
-                    )
-                }
-                // Ensure that the user is not already logged in with the same account
-                ensureNotAlreadyLoggedIn(client)
-                val sessionData = client.session()
-                    .toSessionData(
-                        isTokenValid = true,
-                        loginType = LoginType.QR,
-                        passphrase = pendingPassphrase,
-                        sessionPaths = emptySessionPaths,
-                    )
-                val matrixClient = rustMatrixClientFactory.create(client)
-                newMatrixClientObservers.forEach { it.invoke(matrixClient) }
-                sessionStore.addSession(sessionData)
-
-                // Clean up the strong reference held here since it's no longer necessary
-                currentClient = null
-
-                SessionId(sessionData.userId)
-            }.mapFailure {
-                when (it) {
-                    is QrCodeDecodeException -> QrErrorMapper.map(it)
-                    is HumanQrLoginException -> QrErrorMapper.map(it)
-                    else -> it
-                }
-            }.onFailure { throwable ->
-                if (throwable is CancellationException) {
-                    throw throwable
-                }
-                Timber.e(throwable, "Failed to login with QR code")
-            }
-        }
-
     private suspend fun makeClient(
         sessionPaths: SessionPaths,
         config: suspend ClientBuilder.() -> ClientBuilder,
@@ -429,48 +354,8 @@ class RustMatrixAuthenticationService(
             .build()
     }
 
-    private suspend fun makeQrCodeLoginClient(
-        sessionPaths: SessionPaths,
-        qrCodeData: QrCodeData,
-    ): Client {
-        Timber.d("Creating client for QR Code login with simplified sliding sync")
-        // The 2025 version of MSC4108 provides baseUrl; the 2024 version has null baseUrl and uses
-        // serverName instead, which can be null or malformed. We only enforce presence/non-blankness
-        // here and rely on serverNameOrHomeserverUrl()/the Rust builder layer to validate structure.
-        val baseUrlOrServerName = qrCodeData.baseUrl() ?: qrCodeData.serverName()
-
-        if (baseUrlOrServerName == null) {
-            // With the 2024 version of MSC4108 we treat the absence of serverName as meaning that
-            // the other device is not signed in.
-            Timber.e("The QR code is from a device that is not yet signed in")
-            throw HumanQrLoginException.OtherDeviceNotSignedIn()
-        }
-
-        if (baseUrlOrServerName.isBlank()) {
-            Timber.e("The QR code contains an empty base URL or server name, which is invalid")
-            throw HumanQrLoginException.Unknown()
-        }
-
-        return rustMatrixClientFactory
-            .getBaseClientBuilder(
-                sessionPaths = sessionPaths,
-                passphrase = pendingPassphrase,
-                slidingSyncType = ClientBuilderSlidingSync.Discovered,
-            )
-            .serverNameOrHomeserverUrl(baseUrlOrServerName)
-            .build()
-    }
-
     private fun clear() {
         currentClient?.close()
         currentClient = null
-    }
-
-    private suspend fun MatrixClient.waitForKnownVerificationState() {
-        withTimeoutOrNull(10.seconds) {
-            Timber.d("Waiting for a known verification status...")
-            val status = sessionVerificationService.sessionVerifiedStatus.first { it != SessionVerifiedStatus.Unknown }
-            Timber.d("Finished waiting for a known verification status: $status")
-        } ?: Timber.w("Timed out waiting for a known verification status")
     }
 }

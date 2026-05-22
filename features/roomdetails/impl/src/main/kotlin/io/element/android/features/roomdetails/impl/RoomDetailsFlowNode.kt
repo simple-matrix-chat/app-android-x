@@ -40,9 +40,7 @@ import io.element.android.features.roomdetails.impl.members.RoomMemberListNode
 import io.element.android.features.roomdetails.impl.members.details.RoomMemberDetailsNode
 import io.element.android.features.roomdetails.impl.notificationsettings.RoomNotificationSettingsNode
 import io.element.android.features.roomdetailsedit.api.RoomDetailsEditEntryPoint
-import io.element.android.features.securityandprivacy.api.SecurityAndPrivacyEntryPoint
 import io.element.android.features.userprofile.shared.UserProfileNodeHelper
-import io.element.android.features.verifysession.api.OutgoingVerificationEntryPoint
 import io.element.android.libraries.architecture.BackstackWithOverlayBox
 import io.element.android.libraries.architecture.BaseFlowNode
 import io.element.android.libraries.architecture.callback
@@ -58,7 +56,6 @@ import io.element.android.libraries.matrix.api.core.toRoomIdOrAlias
 import io.element.android.libraries.matrix.api.notification.CallIntent
 import io.element.android.libraries.matrix.api.permalink.PermalinkData
 import io.element.android.libraries.matrix.api.room.JoinedRoom
-import io.element.android.libraries.matrix.api.verification.VerificationRequest
 import io.element.android.libraries.mediaviewer.api.MediaGalleryEntryPoint
 import io.element.android.libraries.mediaviewer.api.MediaViewerEntryPoint
 import io.element.android.services.analytics.api.AnalyticsService
@@ -81,11 +78,9 @@ class RoomDetailsFlowNode(
     private val knockRequestsListEntryPoint: KnockRequestsListEntryPoint,
     private val mediaViewerEntryPoint: MediaViewerEntryPoint,
     private val mediaGalleryEntryPoint: MediaGalleryEntryPoint,
-    private val outgoingVerificationEntryPoint: OutgoingVerificationEntryPoint,
     private val reportRoomEntryPoint: ReportRoomEntryPoint,
     private val changeRoomMemberRolesEntryPoint: ChangeRoomMemberRolesEntryPoint,
     private val rolesAndPermissionsEntryPoint: RolesAndPermissionsEntryPoint,
-    private val securityAndPrivacyEntryPoint: SecurityAndPrivacyEntryPoint,
     private val roomDetailsEditEntryPoint: RoomDetailsEditEntryPoint,
 ) : BaseFlowNode<RoomDetailsFlowNode.NavTarget>(
     backstack = BackStack(
@@ -137,12 +132,6 @@ class RoomDetailsFlowNode(
 
         @Parcelize
         data object KnockRequestsList : NavTarget
-
-        @Parcelize
-        data object SecurityAndPrivacy : NavTarget
-
-        @Parcelize
-        data class VerifyUser(val userId: UserId) : NavTarget
 
         @Parcelize
         data object ReportRoom : NavTarget
@@ -214,10 +203,6 @@ class RoomDetailsFlowNode(
 
                     override fun navigateToKnockRequestsList() {
                         backstack.push(NavTarget.KnockRequestsList)
-                    }
-
-                    override fun navigateToSecurityAndPrivacy() {
-                        backstack.push(NavTarget.SecurityAndPrivacy)
                     }
 
                     override fun navigateToRoomMemberDetails(userId: UserId) {
@@ -307,10 +292,6 @@ class RoomDetailsFlowNode(
                                 isAudioCall = callIntent == CallIntent.AUDIO
                             )
                         )
-                    }
-
-                    override fun startVerifyUserFlow(userId: UserId) {
-                        backstack.push(NavTarget.VerifyUser(userId))
                     }
                 }
                 val plugins = listOf(RoomMemberDetailsNode.RoomMemberDetailsInput(navTarget.roomMemberId), callback)
@@ -415,42 +396,6 @@ class RoomDetailsFlowNode(
             }
             NavTarget.KnockRequestsList -> {
                 knockRequestsListEntryPoint.createNode(this, buildContext)
-            }
-            NavTarget.SecurityAndPrivacy -> {
-                val callback = object : SecurityAndPrivacyEntryPoint.Callback {
-                    override fun onDone() {
-                        backstack.pop()
-                    }
-                }
-                securityAndPrivacyEntryPoint.createNode(
-                    parentNode = this,
-                    buildContext = buildContext,
-                    callback = callback,
-                )
-            }
-            is NavTarget.VerifyUser -> {
-                val params = OutgoingVerificationEntryPoint.Params(
-                    showDeviceVerifiedScreen = true,
-                    verificationRequest = VerificationRequest.Outgoing.User(userId = navTarget.userId)
-                )
-                outgoingVerificationEntryPoint.createNode(
-                    parentNode = this,
-                    buildContext = buildContext,
-                    params = params,
-                    callback = object : OutgoingVerificationEntryPoint.Callback {
-                        override fun onDone() {
-                            backstack.pop()
-                        }
-
-                        override fun onBack() {
-                            backstack.pop()
-                        }
-
-                        override fun navigateToLearnMoreAboutEncryption() {
-                            learnMoreUrl.value = LearnMoreConfig.ENCRYPTION_URL
-                        }
-                    },
-                )
             }
             is NavTarget.ReportRoom -> {
                 reportRoomEntryPoint.createNode(

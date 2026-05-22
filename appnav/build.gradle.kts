@@ -24,9 +24,17 @@ android {
 setupDependencyInjection()
 
 dependencies {
-    allFeaturesApi(project)
+    allFeaturesApi(
+        project = project,
+        excludedPaths = setOf(
+            ":features:analytics:api",
+            ":features:linknewdevice:api",
+            ":features:securebackup:api",
+            ":features:securityandprivacy:api",
+            ":features:verifysession:api",
+        ),
+    )
 
-    implementation(projects.appconfig)
     implementation(projects.libraries.core)
     implementation(projects.libraries.accountselect.api)
     implementation(projects.libraries.androidutils)
@@ -50,7 +58,6 @@ dependencies {
 
     implementation(projects.features.announcement.api)
     implementation(projects.features.ftue.api)
-    implementation(projects.features.linknewdevice.api)
     implementation(projects.features.share.api)
 
     implementation(projects.services.apperror.api)

@@ -29,8 +29,6 @@ import io.element.android.compound.tokens.generated.CompoundIcons
 import io.element.android.features.messages.impl.timeline.TimelineEvent
 import io.element.android.features.messages.impl.timeline.model.TimelineItem
 import io.element.android.features.messages.impl.timeline.model.event.isEdited
-import io.element.android.features.messages.impl.timeline.model.event.isRedacted
-import io.element.android.libraries.core.bool.orFalse
 import io.element.android.libraries.designsystem.preview.ElementPreview
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
 import io.element.android.libraries.designsystem.theme.components.Icon
@@ -46,27 +44,16 @@ fun TimelineEventTimestampView(
 ) {
     val formattedTime = event.sentTime
     val hasError = event.failedToSend
-    val hasEncryptionCritical = event.messageShield?.isCritical.orFalse()
     val isMessageEdited = event.content.isEdited()
-    val isMessageRedacted = event.content.isRedacted()
-    val tint = if (hasError || hasEncryptionCritical && !isMessageRedacted) ElementTheme.colors.textCriticalPrimary else ElementTheme.colors.textSecondary
+    val tint = if (hasError) ElementTheme.colors.textCriticalPrimary else ElementTheme.colors.textSecondary
 
-    val shield = event.messageShield
     val isVerifiedUserSendFailure = event.localSendState is LocalEventSendState.Failed.VerifiedUser
     val onClickLabel = when {
-        shield != null -> stringResource(CommonStrings.a11y_view_details)
         hasError && isVerifiedUserSendFailure -> stringResource(CommonStrings.action_open_context_menu)
         else -> null
     }
-    val clickableModifier = remember(shield, hasError) {
+    val clickableModifier = remember(hasError) {
         when {
-            shield != null -> {
-                Modifier.clickable(
-                    onClickLabel = onClickLabel,
-                ) {
-                    eventSink(TimelineEvent.ShowShieldDialog(shield))
-                }
-            }
             hasError -> Modifier
                 .clickable(
                     enabled = isVerifiedUserSendFailure,
@@ -107,19 +94,6 @@ fun TimelineEventTimestampView(
                 tint = tint,
                 modifier = Modifier.size(15.dp, 18.dp),
             )
-        }
-
-        if (!isMessageRedacted) {
-            shield?.let { shield ->
-                Spacer(modifier = Modifier.width(2.dp))
-                Icon(
-                    imageVector = shield.toIcon(),
-                    contentDescription = stringResource(id = CommonStrings.a11y_encryption_details),
-                    modifier = Modifier.size(15.dp),
-                    tint = shield.toIconColor(),
-                )
-                Spacer(modifier = Modifier.width(4.dp))
-            }
         }
     }
 }

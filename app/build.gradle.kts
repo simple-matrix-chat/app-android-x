@@ -257,7 +257,16 @@ dependencies {
         implementation(projects.features.enterprise.implFoss)
         implementation(projects.appicon.element)
     }
-    allFeaturesImpl(project)
+    allFeaturesImpl(
+        project = project,
+        excludedPaths = setOf(
+            ":features:analytics:impl",
+            ":features:linknewdevice:impl",
+            ":features:securebackup:impl",
+            ":features:securityandprivacy:impl",
+            ":features:verifysession:impl",
+        ),
+    )
     implementation(projects.features.migration.api)
     implementation(projects.appnav)
     implementation(projects.appconfig)

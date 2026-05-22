@@ -18,7 +18,6 @@ open class SpaceSettingsStateProvider : PreviewParameterProvider<SpaceSettingsSt
         get() = sequenceOf(
             aSpaceSettingsState(),
             aSpaceSettingsState(alias = null),
-            aSpaceSettingsState(showSecurityAndPrivacy = true),
             aSpaceSettingsState(showRolesAndPermissions = true),
         )
 }
@@ -30,7 +29,6 @@ fun aSpaceSettingsState(
     avatarUrl: String? = null,
     memberCount: Long = 100,
     showRolesAndPermissions: Boolean = false,
-    showSecurityAndPrivacy: Boolean = false,
     canEditDetails: Boolean = false,
     eventSink: (SpaceSettingsEvents) -> Unit = {},
 ) = SpaceSettingsState(
@@ -41,6 +39,5 @@ fun aSpaceSettingsState(
     memberCount = memberCount,
     canEditDetails = canEditDetails,
     showRolesAndPermissions = showRolesAndPermissions,
-    showSecurityAndPrivacy = showSecurityAndPrivacy,
     eventSink = eventSink,
 )

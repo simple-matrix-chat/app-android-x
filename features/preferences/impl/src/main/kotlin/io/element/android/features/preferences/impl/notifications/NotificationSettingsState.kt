@@ -34,10 +34,6 @@ data class NotificationSettingsState(
             val defaultGroupNotificationMode: RoomNotificationMode?,
             val defaultOneToOneNotificationMode: RoomNotificationMode?,
         ) : MatrixSettings
-
-        data class Invalid(
-            val fixFailed: Boolean
-        ) : MatrixSettings
     }
 
     data class AppSettings(

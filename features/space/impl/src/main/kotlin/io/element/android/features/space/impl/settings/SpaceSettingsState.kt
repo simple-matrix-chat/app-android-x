@@ -19,6 +19,5 @@ data class SpaceSettingsState(
     val memberCount: Long,
     val canEditDetails: Boolean,
     val showRolesAndPermissions: Boolean,
-    val showSecurityAndPrivacy: Boolean,
     val eventSink: (SpaceSettingsEvents) -> Unit
 )

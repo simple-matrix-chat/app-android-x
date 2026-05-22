@@ -42,7 +42,6 @@ import im.vector.app.features.analytics.plan.Interaction
 import io.element.android.compound.theme.ElementTheme
 import io.element.android.compound.tokens.generated.CompoundIcons
 import io.element.android.features.roomcall.api.hasPermissionToJoin
-import io.element.android.features.userprofile.api.UserProfileVerificationState
 import io.element.android.features.userprofile.shared.blockuser.BlockUserDialogs
 import io.element.android.features.userprofile.shared.blockuser.BlockUserSection
 import io.element.android.libraries.androidutils.system.copyToClipboard
@@ -111,7 +110,6 @@ fun RoomDetailsView(
     onJoinCallClick: (CallIntent) -> Unit,
     onPinnedMessagesClick: () -> Unit,
     onKnockRequestsClick: () -> Unit,
-    onSecurityAndPrivacyClick: () -> Unit,
     onProfileClick: (UserId) -> Unit,
     onReportRoomClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -203,11 +201,6 @@ fun RoomDetailsView(
                     }
                 )
 
-                if (state.canShowSecurityAndPrivacy) {
-                    SecurityAndPrivacyItem(
-                        onClick = onSecurityAndPrivacyClick
-                    )
-                }
             }
 
             state.roomMemberDetailsState?.let { dmMemberDetails ->
@@ -218,7 +211,6 @@ fun RoomDetailsView(
                 }
                 PreferenceCategory {
                     ProfileItem(
-                        verificationState = dmMemberDetails.verificationState,
                         onClick = { onProfileClick(dmMemberDetails.userId) }
                     )
                 }
@@ -228,7 +220,6 @@ fun RoomDetailsView(
                 PreferenceCategory {
                     MembersItem(
                         memberCount = state.memberCount,
-                        hasVerificationViolations = state.hasMemberVerificationViolations,
                         openRoomMemberList = openRoomMemberList,
                     )
                     if (state.canShowKnockRequests) {
@@ -530,46 +521,11 @@ private fun BadgeList(
 @Composable
 private fun RoomBadge.toMatrixBadgeData(): MatrixBadgeAtom.MatrixBadgeData {
     return when (this) {
-        RoomBadge.ENCRYPTED -> {
-            MatrixBadgeAtom.MatrixBadgeData(
-                text = stringResource(R.string.screen_room_details_badge_encrypted),
-                icon = CompoundIcons.LockSolid(),
-                type = MatrixBadgeAtom.Type.Positive,
-            )
-        }
-        RoomBadge.NOT_ENCRYPTED -> {
-            MatrixBadgeAtom.MatrixBadgeData(
-                text = stringResource(R.string.screen_room_details_badge_not_encrypted),
-                icon = CompoundIcons.LockOff(),
-                type = MatrixBadgeAtom.Type.Info,
-            )
-        }
         RoomBadge.PUBLIC -> {
             MatrixBadgeAtom.MatrixBadgeData(
                 text = stringResource(R.string.screen_room_details_badge_public),
                 icon = CompoundIcons.Public(),
                 type = MatrixBadgeAtom.Type.Info,
-            )
-        }
-        RoomBadge.SHARED_HISTORY_HIDDEN -> {
-            MatrixBadgeAtom.MatrixBadgeData(
-                text = stringResource(R.string.crypto_history_sharing_room_info_hidden_badge_content),
-                icon = CompoundIcons.VisibilityOff(),
-                type = MatrixBadgeAtom.Type.Info
-            )
-        }
-        RoomBadge.SHARED_HISTORY_SHARED -> {
-            MatrixBadgeAtom.MatrixBadgeData(
-                text = stringResource(R.string.crypto_history_sharing_room_info_shared_badge_content),
-                icon = CompoundIcons.History(),
-                type = MatrixBadgeAtom.Type.Info
-            )
-        }
-        RoomBadge.SHARED_HISTORY_WORLD_READABLE -> {
-            MatrixBadgeAtom.MatrixBadgeData(
-                text = stringResource(R.string.crypto_history_sharing_room_info_world_readable_badge_content),
-                icon = CompoundIcons.UserProfileSolid(),
-                type = MatrixBadgeAtom.Type.Info
             )
         }
     }
@@ -626,19 +582,6 @@ private fun NotificationItem(
 }
 
 @Composable
-private fun SecurityAndPrivacyItem(
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    ListItem(
-        headlineContent = { Text(stringResource(R.string.screen_room_details_security_and_privacy_title)) },
-        leadingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.Lock())),
-        onClick = onClick,
-        modifier = modifier,
-    )
-}
-
-@Composable
 private fun FavoriteItem(
     isFavorite: Boolean,
     onFavoriteChanges: (Boolean) -> Unit,
@@ -658,23 +601,11 @@ private fun FavoriteItem(
 
 @Composable
 private fun ProfileItem(
-    verificationState: UserProfileVerificationState,
     onClick: () -> Unit,
 ) {
     ListItem(
         leadingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.UserProfile())),
         headlineContent = { Text(stringResource(id = R.string.screen_room_details_profile_row_title)) },
-        trailingContent = when (verificationState) {
-            UserProfileVerificationState.VERIFIED -> ListItemContent.Icon(
-                iconSource = IconSource.Vector(CompoundIcons.Verified()),
-                tintColor = ElementTheme.colors.iconSuccessPrimary,
-            )
-            UserProfileVerificationState.VERIFICATION_VIOLATION -> ListItemContent.Icon(
-                iconSource = IconSource.Vector(CompoundIcons.ErrorSolid()),
-                tintColor = ElementTheme.colors.iconCriticalPrimary,
-            )
-            else -> null
-        },
         onClick = onClick,
     )
 }
@@ -682,20 +613,12 @@ private fun ProfileItem(
 @Composable
 private fun MembersItem(
     memberCount: Long,
-    hasVerificationViolations: Boolean,
     openRoomMemberList: () -> Unit,
 ) {
     ListItem(
         headlineContent = { Text(stringResource(CommonStrings.common_people)) },
         leadingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.User())),
-        trailingContent = if (hasVerificationViolations) {
-            ListItemContent.Icon(
-                iconSource = IconSource.Vector(CompoundIcons.ErrorSolid()),
-                tintColor = ElementTheme.colors.textCriticalPrimary,
-            )
-        } else {
-            ListItemContent.Text(memberCount.toString())
-        },
+        trailingContent = ListItemContent.Text(memberCount.toString()),
         onClick = openRoomMemberList,
     )
 }
@@ -865,7 +788,6 @@ private fun ContentToPreview(state: RoomDetailsState) {
         onJoinCallClick = {},
         onPinnedMessagesClick = {},
         onKnockRequestsClick = {},
-        onSecurityAndPrivacyClick = {},
         onProfileClick = {},
         onReportRoomClick = {},
         leaveRoomView = {},

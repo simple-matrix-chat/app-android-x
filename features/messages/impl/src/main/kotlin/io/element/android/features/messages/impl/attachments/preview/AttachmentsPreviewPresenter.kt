@@ -87,7 +87,7 @@ class AttachmentsPreviewPresenter(
 
         val markdownTextEditorState = rememberMarkdownTextEditorState(initialText = null, initialFocus = false)
         val textEditorState by rememberUpdatedState(
-            TextEditorState.Markdown(markdownTextEditorState, isRoomEncrypted = null)
+            TextEditorState.Markdown(markdownTextEditorState)
         )
 
         val ongoingSendAttachmentJob = remember { mutableStateOf<Job?>(null) }
