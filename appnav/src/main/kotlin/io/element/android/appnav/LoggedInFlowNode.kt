@@ -39,6 +39,7 @@ import com.bumble.appyx.navmodel.backstack.operation.singleTop
 import dev.zacsweers.metro.Assisted
 import dev.zacsweers.metro.AssistedInject
 import io.element.android.annotations.ContributesNode
+import io.element.android.appconfig.OnBoardingConfig
 import io.element.android.appnav.loggedin.LoggedInNode
 import io.element.android.appnav.loggedin.MediaPreviewConfigMigration
 import io.element.android.appnav.loggedin.SendQueues
@@ -462,7 +463,9 @@ class LoggedInFlowNode(
                     }
 
                     override fun navigateToLinkNewDevice() {
-                        backstack.push(NavTarget.LinkNewDevice)
+                        if (OnBoardingConfig.CAN_LOGIN_WITH_QR_CODE) {
+                            backstack.push(NavTarget.LinkNewDevice)
+                        }
                     }
 
                     override fun navigateToBugReport() {

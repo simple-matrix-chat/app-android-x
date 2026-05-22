@@ -304,7 +304,7 @@ class PreferencesRootPresenterTest {
     }
 
     @Test
-    fun `present - link new device`() = runTest {
+    fun `present - link new device is hidden when QR login is disabled`() = runTest {
         createPresenter(
             matrixClient = FakeMatrixClient(
                 sessionId = A_SESSION_ID,
@@ -315,7 +315,7 @@ class PreferencesRootPresenterTest {
             ),
         ).test {
             val state = awaitFirstItem()
-            assertThat(state.showLinkNewDevice).isTrue()
+            assertThat(state.showLinkNewDevice).isFalse()
         }
     }
 

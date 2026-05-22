@@ -28,6 +28,7 @@ import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.Assisted
 import dev.zacsweers.metro.AssistedInject
 import io.element.android.annotations.ContributesNode
+import io.element.android.appconfig.OnBoardingConfig
 import io.element.android.compound.theme.ElementTheme
 import io.element.android.features.login.api.LoginEntryPoint
 import io.element.android.features.login.impl.accountprovider.AccountProviderDataSource
@@ -190,7 +191,9 @@ class LoginFlowNode(
                     }
 
                     override fun navigateToQrCode() {
-                        backstack.push(NavTarget.QrCode)
+                        if (OnBoardingConfig.CAN_LOGIN_WITH_QR_CODE) {
+                            backstack.push(NavTarget.QrCode)
+                        }
                     }
 
                     override fun navigateToBugReport() {

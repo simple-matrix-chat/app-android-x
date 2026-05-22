@@ -19,6 +19,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import dev.zacsweers.metro.Inject
+import io.element.android.appconfig.OnBoardingConfig
 import io.element.android.features.enterprise.api.SessionEnterpriseService
 import io.element.android.features.logout.api.direct.DirectLogoutState
 import io.element.android.features.preferences.impl.utils.ShowDeveloperSettingsProvider
@@ -70,7 +71,7 @@ class PreferencesRootPresenter(
         val isMultiAccountEnabled by remember {
             featureFlagService.isFeatureEnabledFlow(FeatureFlags.MultiAccount)
         }.collectAsState(initial = false)
-        val showLinkNewDevice by remember {
+        val qrCodeLoginEnabled by remember {
             featureFlagService.isFeatureEnabledFlow(FeatureFlags.QrCodeLogin)
         }.collectAsState(initial = false)
 
@@ -146,7 +147,7 @@ class PreferencesRootPresenter(
             accountManagementUrl = accountManagementUrl.value,
             showAnalyticsSettings = hasAnalyticsProviders,
             canReportBug = canReportBug,
-            showLinkNewDevice = showLinkNewDevice,
+            showLinkNewDevice = OnBoardingConfig.CAN_LOGIN_WITH_QR_CODE && qrCodeLoginEnabled,
             showDeveloperSettings = showDeveloperSettings,
             canDeactivateAccount = canDeactivateAccount,
             nbOfBlockedUsers = nbOfBlockedUsers,

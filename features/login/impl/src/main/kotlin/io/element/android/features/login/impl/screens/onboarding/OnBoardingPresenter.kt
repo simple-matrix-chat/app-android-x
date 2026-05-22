@@ -60,7 +60,7 @@ class OnBoardingPresenter(
         val localCoroutineScope = rememberCoroutineScope()
         val forcedAccountProvider = remember {
             // If defaultHomeserverList() returns a singleton list, this is the default account provider.
-            // In this case, the user can sign in using this homeserver, or use QrCode login
+            // In this case, the user can sign in using this homeserver.
             enterpriseService.defaultHomeserverList().singleOrNull()
         }
         val canConnectToAnyHomeserver = remember {
@@ -86,7 +86,7 @@ class OnBoardingPresenter(
             forcedAccountProvider ?: linkAccountProvider
         }
         val canLoginWithQrCode by produceState(initialValue = false, linkAccountProvider) {
-            value = linkAccountProvider == null
+            value = OnBoardingConfig.CAN_LOGIN_WITH_QR_CODE && linkAccountProvider == null
         }
         val canReportBug by remember { rageshakeFeatureAvailability.isAvailable() }.collectAsState(false)
         var showReportBug by rememberSaveable { mutableStateOf(false) }
