@@ -63,7 +63,7 @@ class DefaultMessageParserTest {
         // missing homeServer
         assertThat(sut.parse(validMessage.replace(""""home_server": "home_server",""", ""))).isEqualTo(
             anExternalSession(
-                homeserverUrl = AuthenticationConfig.MATRIX_ORG_URL,
+                homeserverUrl = AuthenticationConfig.DEFAULT_HOMESERVER_URL,
             )
         )
     }

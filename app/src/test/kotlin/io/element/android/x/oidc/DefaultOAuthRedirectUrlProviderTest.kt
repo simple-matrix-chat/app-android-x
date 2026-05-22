@@ -9,21 +9,14 @@
 package io.element.android.x.oidc
 
 import com.google.common.truth.Truth.assertThat
-import io.element.android.services.toolbox.test.strings.FakeStringProvider
-import io.element.android.x.R
+import io.element.android.appconfig.AuthenticationConfig
 import org.junit.Test
 
 class DefaultOAuthRedirectUrlProviderTest {
     @Test
     fun `test provide`() {
-        val stringProvider = FakeStringProvider(
-            defaultResult = "str"
-        )
-        val sut = DefaultOAuthRedirectUrlProvider(
-            stringProvider = stringProvider,
-        )
+        val sut = DefaultOAuthRedirectUrlProvider()
         val result = sut.provide()
-        assertThat(result).isEqualTo("str:/")
-        assertThat(stringProvider.lastResIdParam).isEqualTo(R.string.login_redirect_scheme)
+        assertThat(result).isEqualTo(AuthenticationConfig.WBID_REDIRECT_URI)
     }
 }

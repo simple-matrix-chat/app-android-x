@@ -9,6 +9,7 @@
 package io.element.android.features.login.impl.screens.changeaccountprovider
 
 import com.google.common.truth.Truth.assertThat
+import io.element.android.appconfig.AuthenticationConfig
 import io.element.android.features.enterprise.api.EnterpriseService
 import io.element.android.features.enterprise.test.FakeEnterpriseService
 import io.element.android.features.login.impl.accountprovider.AccountProvider
@@ -38,11 +39,11 @@ class ChangeAccountProviderPresenterTest {
             assertThat(initialState.accountProviders).isEqualTo(
                 listOf(
                     AccountProvider(
-                        url = "https://matrix.org",
-                        title = "matrix.org",
+                        url = AuthenticationConfig.DEFAULT_HOMESERVER_URL,
+                        title = "unmoment.app",
                         subtitle = null,
-                        isPublic = true,
-                        isMatrixOrg = true,
+                        isPublic = false,
+                        isMatrixOrg = false,
                     )
                 )
             )

@@ -10,6 +10,7 @@ package io.element.android.features.enterprise.impl
 
 import app.cash.turbine.test
 import com.google.common.truth.Truth.assertThat
+import io.element.android.appconfig.AuthenticationConfig
 import io.element.android.compound.colors.SemanticColorsLightDark
 import io.element.android.features.enterprise.api.BugReportUrl
 import io.element.android.libraries.matrix.test.A_HOMESERVER_URL
@@ -25,9 +26,9 @@ class DefaultEnterpriseServiceTest {
     }
 
     @Test
-    fun `defaultHomeserverList should return empty list`() {
+    fun `defaultHomeserverList should return Moment homeserver`() {
         val defaultEnterpriseService = DefaultEnterpriseService()
-        assertThat(defaultEnterpriseService.defaultHomeserverList()).isEmpty()
+        assertThat(defaultEnterpriseService.defaultHomeserverList()).containsExactly(AuthenticationConfig.DEFAULT_HOMESERVER_URL)
     }
 
     @Test

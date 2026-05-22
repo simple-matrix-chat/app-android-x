@@ -35,7 +35,7 @@ class LoginPasswordPresenterTest {
     fun `present - initial state`() = runTest {
         createLoginPasswordPresenter().test {
             val initialState = awaitItem()
-            assertThat(initialState.accountProvider.url).isEqualTo(AuthenticationConfig.MATRIX_ORG_URL)
+            assertThat(initialState.accountProvider.url).isEqualTo(AuthenticationConfig.DEFAULT_HOMESERVER_URL)
             assertThat(initialState.formState).isEqualTo(LoginFormState.Default)
             assertThat(initialState.loginAction).isEqualTo(AsyncData.Uninitialized)
             assertThat(initialState.submitEnabled).isFalse()

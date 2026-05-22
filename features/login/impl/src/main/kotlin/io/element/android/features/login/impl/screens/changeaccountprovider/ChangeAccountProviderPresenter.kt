@@ -31,7 +31,7 @@ class ChangeAccountProviderPresenter(
             enterpriseService.defaultHomeserverList()
                 .filter { it != EnterpriseService.ANY_ACCOUNT_PROVIDER }
                 .map { it.ensureProtocol() }
-                .ifEmpty { listOf(AuthenticationConfig.MATRIX_ORG_URL) }
+                .ifEmpty { listOf(AuthenticationConfig.DEFAULT_HOMESERVER_URL) }
                 .map { url ->
                     AccountProvider(
                         url = url,
