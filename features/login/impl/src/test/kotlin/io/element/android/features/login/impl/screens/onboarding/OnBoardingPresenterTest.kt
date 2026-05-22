@@ -16,6 +16,8 @@ import io.element.android.features.enterprise.test.FakeEnterpriseService
 import io.element.android.features.login.impl.accesscontrol.DefaultAccountProviderAccessControl
 import io.element.android.features.login.impl.accountprovider.AccountProviderDataSource
 import io.element.android.features.login.impl.login.LoginHelper
+import io.element.android.features.login.impl.moment.FakeMomentAuthenticationService
+import io.element.android.features.login.impl.moment.MomentAuthenticationService
 import io.element.android.features.login.impl.web.FakeWebClientUrlForAuthenticationRetriever
 import io.element.android.features.login.impl.web.WebClientUrlForAuthenticationRetriever
 import io.element.android.features.wellknown.test.FakeWellknownRetriever
@@ -314,9 +316,11 @@ private fun createPresenter(
 fun createLoginHelper(
     oAuthActionFlow: OAuthActionFlow = FakeOAuthActionFlow(),
     authenticationService: MatrixAuthenticationService = FakeMatrixAuthenticationService(),
+    momentAuthenticationService: MomentAuthenticationService = FakeMomentAuthenticationService(),
     webClientUrlForAuthenticationRetriever: WebClientUrlForAuthenticationRetriever = FakeWebClientUrlForAuthenticationRetriever(),
 ): LoginHelper = LoginHelper(
     oAuthActionFlow = oAuthActionFlow,
     authenticationService = authenticationService,
+    momentAuthenticationService = momentAuthenticationService,
     webClientUrlForAuthenticationRetriever = webClientUrlForAuthenticationRetriever,
 )

@@ -73,6 +73,8 @@ dependencies {
     implementation(projects.libraries.wellknown.api)
     implementation(libs.androidx.browser)
     implementation(libs.androidx.webkit)
+    implementation(platform(libs.network.okhttp.bom))
+    implementation(libs.network.okhttp)
     implementation(libs.serialization.json)
     api(projects.features.login.api)
 
@@ -87,4 +89,5 @@ dependencies {
     testImplementation(projects.libraries.wellknown.test)
     testImplementation(libs.androidx.camera.camera2)
     testImplementation(libs.androidx.camera.lifecycle)
+    testImplementation(libs.network.mockwebserver)
 }
