@@ -134,7 +134,7 @@ class RoomListPresenterTest {
     }
 
     @Test
-    fun `present - handle DismissRequestVerificationPrompt`() = runTest {
+    fun `present - hides recovery confirmation banner when Matrix E2EE is disabled`() = runTest {
         val roomList = FakeDynamicRoomList(
             loadingState = MutableStateFlow(RoomList.LoadingState.Loaded(1))
         )
@@ -152,15 +152,13 @@ class RoomListPresenterTest {
             val eventWithContentAsRooms = consumeItemsUntilPredicate {
                 it.contentState is RoomListContentState.Rooms
             }.last()
-            val eventSink = eventWithContentAsRooms.eventSink
-            assertThat(eventWithContentAsRooms.contentAsRooms().securityBannerState).isEqualTo(SecurityBannerState.RecoveryKeyConfirmation)
-            eventSink(RoomListEvent.DismissRequestVerificationPrompt)
-            assertThat(awaitItem().contentAsRooms().securityBannerState).isEqualTo(SecurityBannerState.None)
+            assertThat(eventWithContentAsRooms.contentAsRooms().securityBannerState).isEqualTo(SecurityBannerState.None)
+            cancelAndIgnoreRemainingEvents()
         }
     }
 
     @Test
-    fun `present - handle DismissRecoveryKeyPrompt`() = runTest {
+    fun `present - hides recovery setup banner when Matrix E2EE is disabled`() = runTest {
         val encryptionService = FakeEncryptionService().apply {
             recoveryStateStateFlow.emit(RecoveryState.DISABLED)
         }
@@ -185,24 +183,8 @@ class RoomListPresenterTest {
             val initialState = consumeItemsUntilPredicate {
                 it.contentState is RoomListContentState.Rooms
             }.last()
-            assertThat(initialState.contentAsRooms().securityBannerState).isEqualTo(SecurityBannerState.SetUpRecovery)
-            encryptionService.emitRecoveryState(RecoveryState.INCOMPLETE)
-            val nextState = awaitItem()
-            assertThat(nextState.contentAsRooms().securityBannerState).isEqualTo(SecurityBannerState.RecoveryKeyConfirmation)
-            // Also check other states
-            encryptionService.emitRecoveryState(RecoveryState.DISABLED)
-            assertThat(awaitItem().contentAsRooms().securityBannerState).isEqualTo(SecurityBannerState.SetUpRecovery)
-            encryptionService.emitRecoveryState(RecoveryState.WAITING_FOR_SYNC)
-            assertThat(awaitItem().contentAsRooms().securityBannerState).isEqualTo(SecurityBannerState.None)
-            encryptionService.emitRecoveryState(RecoveryState.DISABLED)
-            assertThat(awaitItem().contentAsRooms().securityBannerState).isEqualTo(SecurityBannerState.SetUpRecovery)
-            encryptionService.emitRecoveryState(RecoveryState.ENABLED)
-            assertThat(awaitItem().contentAsRooms().securityBannerState).isEqualTo(SecurityBannerState.None)
-            encryptionService.emitRecoveryState(RecoveryState.DISABLED)
-            assertThat(awaitItem().contentAsRooms().securityBannerState).isEqualTo(SecurityBannerState.SetUpRecovery)
-            nextState.eventSink(RoomListEvent.DismissBanner)
-            val finalState = awaitItem()
-            assertThat(finalState.contentAsRooms().securityBannerState).isEqualTo(SecurityBannerState.None)
+            assertThat(initialState.contentAsRooms().securityBannerState).isEqualTo(SecurityBannerState.None)
+            cancelAndIgnoreRemainingEvents()
         }
     }
 

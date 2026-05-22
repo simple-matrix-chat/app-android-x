@@ -25,6 +25,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import dev.zacsweers.metro.Inject
 import im.vector.app.features.analytics.plan.Interaction
+import io.element.android.appconfig.MatrixE2EEConfig
 import io.element.android.features.announcement.api.Announcement
 import io.element.android.features.announcement.api.AnnouncementService
 import io.element.android.features.home.impl.datasource.RoomListDataSource
@@ -207,6 +208,9 @@ class RoomListPresenter(
         securityBannerDismissed: Boolean,
         recoveryState: RecoveryState,
     ): SecurityBannerState {
+        if (!MatrixE2EEConfig.ENABLED) {
+            return SecurityBannerState.None
+        }
         if (securityBannerDismissed) {
             return SecurityBannerState.None
         }

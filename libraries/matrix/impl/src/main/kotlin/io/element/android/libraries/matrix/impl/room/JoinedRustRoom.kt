@@ -8,6 +8,7 @@
 
 package io.element.android.libraries.matrix.impl.room
 
+import io.element.android.appconfig.MatrixE2EEConfig
 import io.element.android.libraries.core.coroutine.CoroutineDispatchers
 import io.element.android.libraries.core.coroutine.childScope
 import io.element.android.libraries.core.extensions.mapFailure
@@ -390,6 +391,9 @@ class JoinedRustRoom(
     }
 
     override suspend fun enableEncryption(): Result<Unit> = withContext(roomDispatcher) {
+        if (!MatrixE2EEConfig.ENABLED) {
+            return@withContext Result.success(Unit)
+        }
         runCatchingExceptions {
             innerRoom.enableEncryption()
         }

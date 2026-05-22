@@ -10,6 +10,7 @@ package io.element.android.features.securityandprivacy.impl.root
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
+import io.element.android.appconfig.MatrixE2EEConfig
 import io.element.android.features.securityandprivacy.api.SecurityAndPrivacyPermissions
 import io.element.android.features.securityandprivacy.impl.R
 import io.element.android.libraries.architecture.AsyncAction
@@ -84,7 +85,7 @@ data class SecurityAndPrivacyState(
         editedSettings.roomAccess.canConfigureRoomVisibility()
 
     val showHistoryVisibilitySection = permissions.canChangeHistoryVisibility && !isSpace
-    val showEncryptionSection = permissions.canChangeEncryption && !isSpace
+    val showEncryptionSection = MatrixE2EEConfig.ENABLED && permissions.canChangeEncryption && !isSpace
 
     @Composable
     fun spaceMemberDescription(): String {

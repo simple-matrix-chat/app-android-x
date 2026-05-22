@@ -24,6 +24,7 @@ import dev.zacsweers.metro.Assisted
 import dev.zacsweers.metro.AssistedFactory
 import dev.zacsweers.metro.AssistedInject
 import dev.zacsweers.metro.ContributesBinding
+import io.element.android.appconfig.MatrixE2EEConfig
 import io.element.android.features.invitepeople.api.InvitePeopleEvents
 import io.element.android.features.invitepeople.api.InvitePeoplePresenter
 import io.element.android.features.invitepeople.api.InvitePeopleState
@@ -286,7 +287,7 @@ class DefaultInvitePeoplePresenter(
                 CreateRoomParameters(
                     name = null,
                     topic = null,
-                    isEncrypted = true,
+                    isEncrypted = MatrixE2EEConfig.ENABLED,
                     isDirect = false,
                     visibility = RoomVisibility.Private,
                     preset = RoomPreset.PRIVATE_CHAT,

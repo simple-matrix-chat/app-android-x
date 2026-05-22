@@ -12,6 +12,7 @@ import android.Manifest
 import android.os.Build
 import dev.zacsweers.metro.ContributesBinding
 import dev.zacsweers.metro.SingleIn
+import io.element.android.appconfig.MatrixE2EEConfig
 import io.element.android.features.ftue.api.state.FtueService
 import io.element.android.features.ftue.api.state.FtueState
 import io.element.android.features.lockscreen.api.LockScreenService
@@ -29,6 +30,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
@@ -58,13 +60,18 @@ class DefaultFtueService(
         }
 
     init {
-        combine(
+        val sessionVerifiedStatusFlow = if (MatrixE2EEConfig.ENABLED) {
             sessionVerificationService.sessionVerifiedStatus.onEach { sessionVerifiedStatus ->
                 if (sessionVerifiedStatus == SessionVerifiedStatus.NotVerified) {
                     // Ensure we wait for the user to confirm the session verified screen before going further
                     userNeedsToConfirmSessionVerificationSuccess.value = true
                 }
-            },
+            }
+        } else {
+            flowOf(SessionVerifiedStatus.Verified)
+        }
+        combine(
+            sessionVerifiedStatusFlow,
             userNeedsToConfirmSessionVerificationSuccess,
             analyticsService.didAskUserConsentFlow.distinctUntilChanged(),
         ) {
@@ -112,11 +119,11 @@ class DefaultFtueService(
         }
 
     private fun isSessionVerificationStateReady(): Boolean {
-        return sessionVerificationService.sessionVerifiedStatus.value != SessionVerifiedStatus.Unknown
+        return !MatrixE2EEConfig.ENABLED || sessionVerificationService.sessionVerifiedStatus.value != SessionVerifiedStatus.Unknown
     }
 
     private suspend fun isSessionNotVerified(): Boolean {
-        return sessionVerificationService.sessionVerifiedStatus.value == SessionVerifiedStatus.NotVerified && !canSkipVerification()
+        return MatrixE2EEConfig.ENABLED && sessionVerificationService.sessionVerifiedStatus.value == SessionVerifiedStatus.NotVerified && !canSkipVerification()
     }
 
     private suspend fun canSkipVerification(): Boolean {
