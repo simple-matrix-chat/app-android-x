@@ -42,7 +42,7 @@ class ConfirmAccountProviderPresenterTest {
             val initialState = awaitItem()
             assertThat(initialState.isAccountCreation).isFalse()
             assertThat(initialState.submitEnabled).isTrue()
-            assertThat(initialState.accountProvider.url).isEqualTo(AuthenticationConfig.MATRIX_ORG_URL)
+            assertThat(initialState.accountProvider.url).isEqualTo(AuthenticationConfig.DEFAULT_HOMESERVER_URL)
             assertThat(initialState.loginMode).isEqualTo(AsyncData.Uninitialized)
         }
     }

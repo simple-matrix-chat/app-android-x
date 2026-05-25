@@ -9,7 +9,13 @@
 package io.element.android.appconfig
 
 object AuthenticationConfig {
+    const val DEFAULT_HOMESERVER_URL = "https://unmoment.app"
     const val MATRIX_ORG_URL = "https://matrix.org"
+    const val OAUTH_BFF_BASE_URL = "https://unmoment.app"
+    const val WBID_CLIENT_ID = "wb_m"
+    const val WBID_SCOPE = "openid phone read:profile"
+    const val WBID_AUDIENCE = "https://unmoment.app"
+    const val WBID_REDIRECT_URI = "https://unmoment.app/auth/callback"
 
     /**
      * URL with some docs that explain what's sliding sync and how to add it to your home server.

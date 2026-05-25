@@ -10,16 +10,10 @@ package io.element.android.x.oidc
 
 import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.ContributesBinding
+import io.element.android.appconfig.AuthenticationConfig
 import io.element.android.libraries.matrix.api.auth.OAuthRedirectUrlProvider
-import io.element.android.services.toolbox.api.strings.StringProvider
-import io.element.android.x.R
 
 @ContributesBinding(AppScope::class)
-class DefaultOAuthRedirectUrlProvider(
-    private val stringProvider: StringProvider,
-) : OAuthRedirectUrlProvider {
-    override fun provide() = buildString {
-        append(stringProvider.getString(R.string.login_redirect_scheme))
-        append(":/")
-    }
+class DefaultOAuthRedirectUrlProvider : OAuthRedirectUrlProvider {
+    override fun provide() = AuthenticationConfig.WBID_REDIRECT_URI
 }
