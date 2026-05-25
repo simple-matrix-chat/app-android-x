@@ -1,8 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
-  <string name="crypto_history_sharing_room_info_hidden_badge_content">"New members don\'t see history"</string>
-  <string name="crypto_history_sharing_room_info_shared_badge_content">"New members see history"</string>
-  <string name="crypto_history_sharing_room_info_world_readable_badge_content">"Anyone can see history"</string>
   <string name="screen_edit_room_address_room_address_section_footer">"You’ll need an address in order to make it visible in the public directory."</string>
   <string name="screen_edit_room_address_title">"Edit address"</string>
   <string name="screen_notification_settings_edit_failed_updating_default_mode">"An error occurred while updating the notification setting."</string>
@@ -42,8 +39,6 @@
   <string name="screen_room_change_role_unsaved_changes_description">"You have unsaved changes."</string>
   <string name="screen_room_change_role_unsaved_changes_title">"Save changes?"</string>
   <string name="screen_room_details_add_topic_title">"Add topic"</string>
-  <string name="screen_room_details_badge_encrypted">"Encrypted"</string>
-  <string name="screen_room_details_badge_not_encrypted">"Not encrypted"</string>
   <string name="screen_room_details_badge_public">"Public room"</string>
   <string name="screen_room_details_edit_room_title">"Edit details"</string>
   <string name="screen_room_details_edition_error">"There was an unknown error and the information couldn\'t be changed."</string>

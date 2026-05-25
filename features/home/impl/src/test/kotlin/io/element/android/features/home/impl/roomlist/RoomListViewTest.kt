@@ -14,14 +14,12 @@ import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.AndroidComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.longClick
-import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.v2.runAndroidComposeUiTest
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.element.android.features.home.impl.HomeView
-import io.element.android.features.home.impl.R
 import io.element.android.features.home.impl.aHomeState
 import io.element.android.features.home.impl.components.RoomListMenuAction
 import io.element.android.features.home.impl.model.RoomListRoomSummary
@@ -47,91 +45,15 @@ class RoomListViewTest {
         val eventsRecorder = EventsRecorder<RoomListEvent>()
         setRoomListView(
             state = aRoomListState(
-                contentState = aRoomsContentState(securityBannerState = SecurityBannerState.RecoveryKeyConfirmation),
                 eventSink = eventsRecorder,
             )
         )
 
         eventsRecorder.assertList(
             listOf(
-                RoomListEvent.UpdateVisibleRange(0..5),
+                RoomListEvent.UpdateVisibleRange(0..4),
             )
         )
-    }
-
-    @Test
-    fun `clicking on close recovery key banner emits the expected Event`() = runAndroidComposeUiTest {
-        val eventsRecorder = EventsRecorder<RoomListEvent>()
-        setRoomListView(
-            state = aRoomListState(
-                contentState = aRoomsContentState(securityBannerState = SecurityBannerState.RecoveryKeyConfirmation),
-                eventSink = eventsRecorder,
-            )
-        )
-
-        // Remove automatic initial events
-        eventsRecorder.clear()
-
-        val close = activity!!.getString(CommonStrings.action_close)
-        onNodeWithContentDescription(close).performClick()
-        eventsRecorder.assertSingle(RoomListEvent.DismissBanner)
-    }
-
-    @Test
-    fun `clicking on close setup key banner emits the expected Event`() = runAndroidComposeUiTest {
-        val eventsRecorder = EventsRecorder<RoomListEvent>()
-        setRoomListView(
-            state = aRoomListState(
-                contentState = aRoomsContentState(securityBannerState = SecurityBannerState.SetUpRecovery),
-                eventSink = eventsRecorder,
-            )
-        )
-
-        // Remove automatic initial events
-        eventsRecorder.clear()
-
-        val close = activity!!.getString(CommonStrings.action_close)
-        onNodeWithContentDescription(close).performClick()
-        eventsRecorder.assertSingle(RoomListEvent.DismissBanner)
-    }
-
-    @Test
-    fun `clicking on continue recovery key banner invokes the expected callback`() = runAndroidComposeUiTest {
-        val eventsRecorder = EventsRecorder<RoomListEvent>()
-        ensureCalledOnce { callback ->
-            setRoomListView(
-                state = aRoomListState(
-                    contentState = aRoomsContentState(securityBannerState = SecurityBannerState.RecoveryKeyConfirmation),
-                    eventSink = eventsRecorder,
-                ),
-                onConfirmRecoveryKeyClick = callback,
-            )
-
-            // Remove automatic initial events
-            eventsRecorder.clear()
-
-            clickOn(CommonStrings.action_continue)
-
-            eventsRecorder.assertEmpty()
-        }
-    }
-
-    @Test
-    fun `clicking on continue setup key banner invokes the expected callback`() = runAndroidComposeUiTest {
-        val eventsRecorder = EventsRecorder<RoomListEvent>()
-        ensureCalledOnce { callback ->
-            setRoomListView(
-                state = aRoomListState(
-                    contentState = aRoomsContentState(securityBannerState = SecurityBannerState.SetUpRecovery),
-                    eventSink = eventsRecorder,
-                ),
-                onSetUpRecoveryClick = callback,
-            )
-            // Remove automatic initial events
-            eventsRecorder.clear()
-            clickOn(R.string.banner_set_up_recovery_submit)
-            eventsRecorder.assertEmpty()
-        }
     }
 
     @Test
@@ -267,8 +189,6 @@ private fun AndroidComposeUiTest<ComponentActivity>.setRoomListView(
     state: RoomListState,
     onRoomClick: (RoomId) -> Unit = EnsureNeverCalledWithParam(),
     onSettingsClick: () -> Unit = EnsureNeverCalled(),
-    onSetUpRecoveryClick: () -> Unit = EnsureNeverCalled(),
-    onConfirmRecoveryKeyClick: () -> Unit = EnsureNeverCalled(),
     onCreateRoomClick: () -> Unit = EnsureNeverCalled(),
     onCreateSpaceClick: () -> Unit = EnsureNeverCalled(),
     onRoomSettingsClick: (RoomId) -> Unit = EnsureNeverCalledWithParam(),
@@ -281,8 +201,6 @@ private fun AndroidComposeUiTest<ComponentActivity>.setRoomListView(
             homeState = aHomeState(roomListState = state),
             onRoomClick = onRoomClick,
             onSettingsClick = onSettingsClick,
-            onSetUpRecoveryClick = onSetUpRecoveryClick,
-            onConfirmRecoveryKeyClick = onConfirmRecoveryKeyClick,
             onStartChatClick = onCreateRoomClick,
             onCreateSpaceClick = onCreateSpaceClick,
             onRoomSettingsClick = onRoomSettingsClick,

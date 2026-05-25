@@ -37,7 +37,6 @@ dependencies {
     implementation(projects.libraries.featureflag.api)
     implementation(projects.features.call.api)
     implementation(projects.features.enterprise.api)
-    implementation(projects.features.verifysession.api)
     api(projects.features.userprofile.api)
     api(projects.features.userprofile.shared)
     implementation(libs.coil.compose)
@@ -49,7 +48,6 @@ dependencies {
     testImplementation(projects.libraries.mediaviewer.test)
     testImplementation(projects.libraries.featureflag.test)
     testImplementation(projects.features.call.test)
-    testImplementation(projects.features.verifysession.test)
     testImplementation(projects.features.startchat.test)
     testImplementation(projects.features.enterprise.test)
 }

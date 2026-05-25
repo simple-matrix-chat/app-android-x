@@ -47,7 +47,6 @@ import io.element.android.libraries.designsystem.preview.PreviewsDayNight
 import io.element.android.libraries.designsystem.theme.components.Button
 import io.element.android.libraries.designsystem.theme.components.Icon
 import io.element.android.libraries.designsystem.theme.components.IconButton
-import io.element.android.libraries.designsystem.theme.components.IconSource
 import io.element.android.libraries.designsystem.theme.components.Text
 import io.element.android.libraries.designsystem.theme.components.TextButton
 import io.element.android.libraries.matrix.api.auth.OAuthDetails
@@ -65,7 +64,6 @@ fun OnBoardingView(
     state: OnBoardingState,
     onBackClick: () -> Unit,
     onDeveloperSettingsClick: () -> Unit,
-    onSignInWithQrCode: () -> Unit,
     onSignIn: (mustChooseAccountProvider: Boolean) -> Unit,
     onCreateAccount: () -> Unit,
     onOAuthDetails: (OAuthDetails) -> Unit,
@@ -90,7 +88,6 @@ fun OnBoardingView(
     val buttons = @Composable {
         OnBoardingButtons(
             state = state,
-            onSignInWithQrCode = onSignInWithQrCode,
             onSignIn = onSignIn,
             onCreateAccount = onCreateAccount,
             onReportProblem = onReportProblem,
@@ -258,7 +255,6 @@ private fun OnBoardingLogo(
 @Composable
 private fun OnBoardingButtons(
     state: OnBoardingState,
-    onSignInWithQrCode: () -> Unit,
     onSignIn: (mustChooseAccountProvider: Boolean) -> Unit,
     onCreateAccount: () -> Unit,
     onReportProblem: () -> Unit,
@@ -270,18 +266,10 @@ private fun OnBoardingButtons(
     }
 
     ButtonColumnMolecule {
-        val signInButtonStringRes = if (state.canLoginWithQrCode || state.canCreateAccount) {
+        val signInButtonStringRes = if (state.canCreateAccount) {
             R.string.screen_onboarding_sign_in_manually
         } else {
             CommonStrings.action_continue
-        }
-        if (state.canLoginWithQrCode) {
-            Button(
-                text = stringResource(id = R.string.screen_onboarding_sign_in_with_qr_code),
-                leadingIcon = IconSource.Vector(CompoundIcons.QrCode()),
-                onClick = onSignInWithQrCode,
-                modifier = Modifier.fillMaxWidth()
-            )
         }
         val defaultAccountProvider = state.defaultAccountProvider
         if (defaultAccountProvider == null) {
@@ -350,7 +338,6 @@ internal fun OnBoardingViewPreview(
         state = state,
         onBackClick = {},
         onDeveloperSettingsClick = {},
-        onSignInWithQrCode = {},
         onSignIn = {},
         onCreateAccount = {},
         onReportProblem = {},

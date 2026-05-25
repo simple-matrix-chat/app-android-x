@@ -36,15 +36,6 @@ enum class FeatureFlags(
         defaultValue = { true },
         isFinished = false,
     ),
-    OnlySignedDeviceIsolationMode(
-        key = "feature.onlySignedDeviceIsolationMode",
-        title = "Exclude insecure devices when sending/receiving messages",
-        description = "This setting controls how end-to-end encryption (E2E) keys are shared." +
-            " Enabling it will prevent the inclusion of devices that have not been explicitly verified by their owners." +
-            " You'll have to stop and re-open the app manually for that setting to take effect.",
-        defaultValue = { false },
-        isFinished = false,
-    ),
     Knock(
         key = "feature.knock",
         title = "Ask to join",
@@ -83,13 +74,6 @@ enum class FeatureFlags(
         title = "Multi accounts",
         description = "Allow the application to connect to multiple accounts at the same time." +
             "\n\nWARNING: this feature is EXPERIMENTAL and UNSTABLE.",
-        defaultValue = { false },
-        isFinished = false,
-    ),
-    QrCodeLogin(
-        key = "feature.qr_code_login",
-        title = "QR Code Login",
-        description = "Allow logging in on other devices using a QR code.",
         defaultValue = { false },
         isFinished = false,
     ),

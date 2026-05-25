@@ -16,7 +16,6 @@ import io.element.android.features.userprofile.api.UserProfilePresenterFactory
 import io.element.android.libraries.androidutils.clipboard.ClipboardHelper
 import io.element.android.libraries.di.RoomScope
 import io.element.android.libraries.matrix.api.core.UserId
-import io.element.android.libraries.matrix.api.encryption.EncryptionService
 import io.element.android.libraries.matrix.api.room.JoinedRoom
 
 @BindingContainer
@@ -26,7 +25,6 @@ object RoomMemberModule {
     fun provideRoomMemberDetailsPresenterFactory(
         room: JoinedRoom,
         userProfilePresenterFactory: UserProfilePresenterFactory,
-        encryptionService: EncryptionService,
         clipboardHelper: ClipboardHelper,
     ): RoomMemberDetailsPresenter.Factory {
         return object : RoomMemberDetailsPresenter.Factory {
@@ -35,7 +33,6 @@ object RoomMemberModule {
                     roomMemberId = roomMemberId,
                     room = room,
                     userProfilePresenterFactory = userProfilePresenterFactory,
-                    encryptionService = encryptionService,
                     clipboardHelper = clipboardHelper,
                 )
             }

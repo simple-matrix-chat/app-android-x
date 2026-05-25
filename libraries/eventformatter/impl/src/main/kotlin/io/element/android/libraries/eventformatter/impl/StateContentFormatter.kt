@@ -12,7 +12,6 @@ import dev.zacsweers.metro.Inject
 import io.element.android.libraries.eventformatter.impl.mode.RenderingMode
 import io.element.android.libraries.matrix.api.timeline.item.event.OtherState
 import io.element.android.libraries.matrix.api.timeline.item.event.StateContent
-import io.element.android.libraries.ui.strings.CommonStrings
 import io.element.android.services.toolbox.api.strings.StringProvider
 import timber.log.Timber
 
@@ -43,7 +42,7 @@ class StateContentFormatter(
                     sp.getString(R.string.state_event_room_created, senderDisambiguatedDisplayName)
                 }
             }
-            is OtherState.RoomEncryption -> sp.getString(CommonStrings.common_encryption_enabled)
+            is OtherState.RoomEncryption -> null
             is OtherState.RoomName -> {
                 val hasRoomName = content.name != null
                 when {

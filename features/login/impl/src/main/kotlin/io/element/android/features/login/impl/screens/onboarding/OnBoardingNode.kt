@@ -37,7 +37,6 @@ class OnBoardingNode(
     interface Callback : Plugin {
         fun navigateToSignUpFlow()
         fun navigateToSignInFlow(mustChooseAccountProvider: Boolean)
-        fun navigateToQrCode()
         fun navigateToBugReport()
         fun navigateToLoginPassword()
         fun navigateToOAuth(oAuthDetails: OAuthDetails)
@@ -69,7 +68,6 @@ class OnBoardingNode(
             modifier = modifier,
             onSignIn = callback::navigateToSignInFlow,
             onCreateAccount = callback::navigateToSignUpFlow,
-            onSignInWithQrCode = callback::navigateToQrCode,
             onReportProblem = callback::navigateToBugReport,
             onOAuthDetails = callback::navigateToOAuth,
             onNeedLoginPassword = callback::navigateToLoginPassword,

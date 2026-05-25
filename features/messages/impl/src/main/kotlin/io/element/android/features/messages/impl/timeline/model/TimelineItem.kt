@@ -9,7 +9,6 @@
 package io.element.android.features.messages.impl.timeline.model
 
 import androidx.compose.runtime.Immutable
-import io.element.android.features.messages.impl.timeline.components.MessageShieldData
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemEventContent
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemImageContent
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemStickerContent
@@ -28,7 +27,6 @@ import io.element.android.libraries.matrix.api.timeline.item.ThreadSummary
 import io.element.android.libraries.matrix.api.timeline.item.TimelineItemDebugInfo
 import io.element.android.libraries.matrix.api.timeline.item.event.EventOrTransactionId
 import io.element.android.libraries.matrix.api.timeline.item.event.LocalEventSendState
-import io.element.android.libraries.matrix.api.timeline.item.event.MessageShield
 import io.element.android.libraries.matrix.api.timeline.item.event.MessageShieldProvider
 import io.element.android.libraries.matrix.api.timeline.item.event.ProfileDetails
 import io.element.android.libraries.matrix.api.timeline.item.event.SendHandleProvider
@@ -98,7 +96,6 @@ sealed interface TimelineItem {
         val sendHandleProvider: SendHandleProvider,
         /**
          * If the keys to this message were forwarded by another user via history sharing (MSC4268), the ID of that user.
-         * If this is non-null, then [messageShieldProvider] will also return [MessageShield.AuthenticityNotGuaranteed].
          */
         val forwarder: UserId?,
         /** If [forwarder] is set, the profile of the forwarding user, if it was cached at the time the `EventTimelineItem` was created. */
@@ -129,11 +126,6 @@ sealed interface TimelineItem {
 
         val eventOrTransactionId: EventOrTransactionId
             get() = EventOrTransactionId.from(eventId = eventId, transactionId = transactionId)
-
-        // No need to be lazy here?
-        val messageShield: MessageShieldData? = messageShieldProvider(strict = false)?.let {
-            MessageShieldData(it, forwarder, forwarderProfile)
-        }
 
         val debugInfo: TimelineItemDebugInfo
             get() = timelineItemDebugInfoProvider()

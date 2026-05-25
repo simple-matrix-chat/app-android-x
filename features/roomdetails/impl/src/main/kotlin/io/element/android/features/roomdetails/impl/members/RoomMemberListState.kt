@@ -12,7 +12,6 @@ import androidx.compose.foundation.text.input.TextFieldState
 import io.element.android.features.roommembermoderation.api.RoomMemberModerationState
 import io.element.android.libraries.architecture.AsyncData
 import io.element.android.libraries.core.bool.orFalse
-import io.element.android.libraries.matrix.api.encryption.identity.IdentityState
 import io.element.android.libraries.matrix.api.room.RoomMember
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.toImmutableList
@@ -36,9 +35,9 @@ enum class SelectedSection {
 }
 
 data class RoomMembers(
-    val invited: ImmutableList<RoomMemberWithIdentityState>,
-    val joined: ImmutableList<RoomMemberWithIdentityState>,
-    val banned: ImmutableList<RoomMemberWithIdentityState>,
+    val invited: ImmutableList<RoomMemberListMember>,
+    val joined: ImmutableList<RoomMemberListMember>,
+    val banned: ImmutableList<RoomMemberListMember>,
 ) {
     fun isEmpty(section: SelectedSection): Boolean {
         return when (section) {
@@ -51,7 +50,7 @@ data class RoomMembers(
         if (query.isBlank()) {
             return this
         }
-        val filterPredicate = { member: RoomMemberWithIdentityState ->
+        val filterPredicate = { member: RoomMemberListMember ->
             member.roomMember.userId.value.contains(query, ignoreCase = true) ||
                 member.roomMember.displayName?.contains(query, ignoreCase = true).orFalse()
         }
@@ -63,7 +62,6 @@ data class RoomMembers(
     }
 }
 
-data class RoomMemberWithIdentityState(
+data class RoomMemberListMember(
     val roomMember: RoomMember,
-    val identityState: IdentityState?,
 )

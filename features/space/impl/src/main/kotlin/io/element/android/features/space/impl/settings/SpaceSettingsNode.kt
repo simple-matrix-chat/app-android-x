@@ -35,7 +35,6 @@ class SpaceSettingsNode(
         fun navigateToEditDetails()
         fun navigateToSpaceMembers()
         fun navigateToRolesAndPermissions()
-        fun navigateToSecurityAndPrivacy()
         fun startLeaveSpaceFlow()
     }
 
@@ -52,7 +51,6 @@ class SpaceSettingsNode(
             onBackClick = callback::closeSettings,
             onMembersClick = callback::navigateToSpaceMembers,
             onRolesAndPermissionsClick = callback::navigateToRolesAndPermissions,
-            onSecurityAndPrivacyClick = callback::navigateToSecurityAndPrivacy,
             onLeaveSpaceClick = callback::startLeaveSpaceFlow,
         )
     }

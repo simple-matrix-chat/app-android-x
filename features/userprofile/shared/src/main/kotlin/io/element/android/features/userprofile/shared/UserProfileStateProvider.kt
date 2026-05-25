@@ -12,7 +12,6 @@ import androidx.compose.ui.tooling.preview.PreviewParameterProvider
 import io.element.android.features.startchat.api.ConfirmingStartDmWithMatrixUser
 import io.element.android.features.userprofile.api.UserProfileEvents
 import io.element.android.features.userprofile.api.UserProfileState
-import io.element.android.features.userprofile.api.UserProfileVerificationState
 import io.element.android.libraries.architecture.AsyncAction
 import io.element.android.libraries.architecture.AsyncData
 import io.element.android.libraries.designsystem.utils.snackbar.SnackbarMessage
@@ -25,14 +24,13 @@ open class UserProfileStateProvider : PreviewParameterProvider<UserProfileState>
         get() = sequenceOf(
             aUserProfileState(),
             aUserProfileState(userName = null),
-            aUserProfileState(isBlocked = AsyncData.Success(true), verificationState = UserProfileVerificationState.VERIFIED),
+            aUserProfileState(isBlocked = AsyncData.Success(true)),
             aUserProfileState(displayConfirmationDialog = UserProfileState.ConfirmationDialog.Block),
             aUserProfileState(displayConfirmationDialog = UserProfileState.ConfirmationDialog.Unblock),
-            aUserProfileState(isBlocked = AsyncData.Loading(true), verificationState = UserProfileVerificationState.UNKNOWN),
+            aUserProfileState(isBlocked = AsyncData.Loading(true)),
             aUserProfileState(startDmActionState = AsyncAction.Loading),
             aUserProfileState(canCall = true),
             aUserProfileState(startDmActionState = ConfirmingStartDmWithMatrixUser(aMatrixUser(), isUserIdentityUnknown = false)),
-            aUserProfileState(verificationState = UserProfileVerificationState.VERIFICATION_VIOLATION),
         )
 }
 
@@ -41,7 +39,6 @@ fun aUserProfileState(
     userName: String? = "Daniel",
     avatarUrl: String? = null,
     isBlocked: AsyncData<Boolean> = AsyncData.Success(false),
-    verificationState: UserProfileVerificationState = UserProfileVerificationState.UNVERIFIED,
     startDmActionState: AsyncAction<RoomId> = AsyncAction.Uninitialized,
     displayConfirmationDialog: UserProfileState.ConfirmationDialog? = null,
     isCurrentUser: Boolean = false,
@@ -54,7 +51,6 @@ fun aUserProfileState(
     userName = userName,
     avatarUrl = avatarUrl,
     isBlocked = isBlocked,
-    verificationState = verificationState,
     startDmActionState = startDmActionState,
     displayConfirmationDialog = displayConfirmationDialog,
     isCurrentUser = isCurrentUser,

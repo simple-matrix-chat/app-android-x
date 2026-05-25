@@ -94,7 +94,6 @@ private fun Throwable.getReason(): String? {
                 clientException.message ?: "Unknown error"
             }
         }
-        is PusherRegistrationFailure.AccountNotVerified -> null
         is PusherRegistrationFailure.NoDistributorsAvailable -> "No distributors available"
         is PusherRegistrationFailure.NoProvidersAvailable -> "No providers available"
         else -> "Other error: $message"

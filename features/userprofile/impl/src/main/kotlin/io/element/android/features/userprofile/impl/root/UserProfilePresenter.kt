@@ -26,7 +26,6 @@ import io.element.android.features.startchat.api.StartDMAction
 import io.element.android.features.userprofile.api.UserProfileEvents
 import io.element.android.features.userprofile.api.UserProfileState
 import io.element.android.features.userprofile.api.UserProfileState.ConfirmationDialog
-import io.element.android.features.userprofile.api.UserProfileVerificationState
 import io.element.android.libraries.architecture.AsyncAction
 import io.element.android.libraries.architecture.AsyncData
 import io.element.android.libraries.architecture.Presenter
@@ -146,7 +145,6 @@ class UserProfilePresenter(
             userName = userProfile?.displayName,
             avatarUrl = userProfile?.avatarUrl,
             isBlocked = isBlocked.value,
-            verificationState = UserProfileVerificationState.UNKNOWN,
             startDmActionState = startDmActionState.value,
             displayConfirmationDialog = confirmationDialog,
             isCurrentUser = isCurrentUser,

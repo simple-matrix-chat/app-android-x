@@ -24,12 +24,10 @@ import io.element.android.libraries.architecture.AsyncAction
 import io.element.android.libraries.architecture.AsyncData
 import io.element.android.libraries.architecture.Presenter
 import io.element.android.libraries.architecture.runUpdatingStateNoSuccess
-import io.element.android.libraries.core.extensions.runCatchingExceptions
 import io.element.android.libraries.di.annotations.SessionCoroutineScope
 import io.element.android.libraries.fullscreenintent.api.FullScreenIntentPermissionsState
 import io.element.android.libraries.matrix.api.MatrixClient
 import io.element.android.libraries.matrix.api.notificationsettings.NotificationSettingsService
-import io.element.android.libraries.matrix.api.room.RoomNotificationMode
 import io.element.android.libraries.push.api.PushService
 import io.element.android.libraries.pushproviders.api.Distributor
 import io.element.android.libraries.pushproviders.api.PushProvider
@@ -145,10 +143,6 @@ class NotificationSettingsPresenter(
                     localCoroutineScope.setInviteForMeNotificationsEnabled(event.enabled, changeNotificationSettingAction)
                 }
                 is NotificationSettingsEvents.SetNotificationsEnabled -> sessionCoroutineScope.setNotificationsEnabled(userPushStore, event.enabled)
-                NotificationSettingsEvents.ClearConfigurationMismatchError -> {
-                    matrixSettings.value = NotificationSettingsState.MatrixSettings.Invalid(fixFailed = false)
-                }
-                NotificationSettingsEvents.FixConfigurationMismatch -> localCoroutineScope.fixConfigurationMismatch(matrixSettings)
                 NotificationSettingsEvents.RefreshSystemNotificationsEnabled -> {
                     systemNotificationsEnabled.value = systemNotificationsEnabledProvider.notificationsEnabled()
                     refreshFullScreenIntentSettings++
@@ -191,15 +185,7 @@ class NotificationSettingsPresenter(
 
     private fun CoroutineScope.fetchSettings(target: MutableState<NotificationSettingsState.MatrixSettings>) = launch {
         val groupDefaultMode = notificationSettingsService.getDefaultRoomNotificationMode(isEncrypted = false, isOneToOne = false).getOrThrow()
-        val encryptedGroupDefaultMode = notificationSettingsService.getDefaultRoomNotificationMode(isEncrypted = true, isOneToOne = false).getOrThrow()
-
         val oneToOneDefaultMode = notificationSettingsService.getDefaultRoomNotificationMode(isEncrypted = false, isOneToOne = true).getOrThrow()
-        val encryptedOneToOneDefaultMode = notificationSettingsService.getDefaultRoomNotificationMode(isEncrypted = true, isOneToOne = true).getOrThrow()
-
-        if (groupDefaultMode != encryptedGroupDefaultMode || oneToOneDefaultMode != encryptedOneToOneDefaultMode) {
-            target.value = NotificationSettingsState.MatrixSettings.Invalid(fixFailed = false)
-            return@launch
-        }
 
         val callNotificationsEnabled = notificationSettingsService.isCallEnabled().getOrThrow()
         val atRoomNotificationsEnabled = notificationSettingsService.isRoomMentionEnabled().getOrThrow()
@@ -209,39 +195,8 @@ class NotificationSettingsPresenter(
             atRoomNotificationsEnabled = atRoomNotificationsEnabled,
             callNotificationsEnabled = callNotificationsEnabled,
             inviteForMeNotificationsEnabled = inviteForMeNotificationsEnabled,
-            defaultGroupNotificationMode = encryptedGroupDefaultMode,
-            defaultOneToOneNotificationMode = encryptedOneToOneDefaultMode,
-        )
-    }
-
-    private fun CoroutineScope.fixConfigurationMismatch(target: MutableState<NotificationSettingsState.MatrixSettings>) = launch {
-        runCatchingExceptions {
-            val groupDefaultMode = notificationSettingsService.getDefaultRoomNotificationMode(isEncrypted = false, isOneToOne = false).getOrThrow()
-            val encryptedGroupDefaultMode = notificationSettingsService.getDefaultRoomNotificationMode(isEncrypted = true, isOneToOne = false).getOrThrow()
-
-            if (groupDefaultMode != encryptedGroupDefaultMode) {
-                notificationSettingsService.setDefaultRoomNotificationMode(
-                    isEncrypted = encryptedGroupDefaultMode != RoomNotificationMode.ALL_MESSAGES,
-                    mode = RoomNotificationMode.ALL_MESSAGES,
-                    isDM = false,
-                )
-            }
-
-            val oneToOneDefaultMode = notificationSettingsService.getDefaultRoomNotificationMode(isEncrypted = false, isOneToOne = true).getOrThrow()
-            val encryptedOneToOneDefaultMode = notificationSettingsService.getDefaultRoomNotificationMode(isEncrypted = true, isOneToOne = true).getOrThrow()
-
-            if (oneToOneDefaultMode != encryptedOneToOneDefaultMode) {
-                notificationSettingsService.setDefaultRoomNotificationMode(
-                    isEncrypted = encryptedOneToOneDefaultMode != RoomNotificationMode.ALL_MESSAGES,
-                    mode = RoomNotificationMode.ALL_MESSAGES,
-                    isDM = true,
-                )
-            }
-        }.fold(
-            onSuccess = {},
-            onFailure = {
-                target.value = NotificationSettingsState.MatrixSettings.Invalid(fixFailed = true)
-            }
+            defaultGroupNotificationMode = groupDefaultMode,
+            defaultOneToOneNotificationMode = oneToOneDefaultMode,
         )
     }
 

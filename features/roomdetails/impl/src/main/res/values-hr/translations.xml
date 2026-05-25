@@ -1,8 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
-  <string name="crypto_history_sharing_room_info_hidden_badge_content">"član"</string>
-  <string name="crypto_history_sharing_room_info_shared_badge_content">"Novi članovi vide povijest"</string>
-  <string name="crypto_history_sharing_room_info_world_readable_badge_content">"Svatko može vidjeti povijest"</string>
   <string name="screen_edit_room_address_room_address_section_footer">"Trebat će vam adresa kako bi bila vidljiva u javnom direktoriju."</string>
   <string name="screen_edit_room_address_title">"Uredi adresu"</string>
   <string name="screen_notification_settings_edit_failed_updating_default_mode">"Došlo je do pogreške prilikom ažuriranja postavke obavijesti."</string>
@@ -42,8 +39,6 @@
   <string name="screen_room_change_role_unsaved_changes_description">"Niste spremili sve promjene."</string>
   <string name="screen_room_change_role_unsaved_changes_title">"Želite li spremiti promjene?"</string>
   <string name="screen_room_details_add_topic_title">"Dodaj temu"</string>
-  <string name="screen_room_details_badge_encrypted">"Šifrirano"</string>
-  <string name="screen_room_details_badge_not_encrypted">"Nije šifrirano"</string>
   <string name="screen_room_details_badge_public">"Javna soba"</string>
   <string name="screen_room_details_edit_room_title">"Uredi pojedinosti"</string>
   <string name="screen_room_details_edition_error">"Došlo je do nepoznate pogreške i podatci se nisu mogli promijeniti."</string>

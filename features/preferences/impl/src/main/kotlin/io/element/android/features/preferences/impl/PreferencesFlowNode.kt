@@ -27,7 +27,6 @@ import io.element.android.features.logout.api.LogoutEntryPoint
 import io.element.android.features.preferences.api.PreferencesEntryPoint
 import io.element.android.features.preferences.impl.about.AboutNode
 import io.element.android.features.preferences.impl.advanced.AdvancedSettingsNode
-import io.element.android.features.preferences.impl.analytics.AnalyticsSettingsNode
 import io.element.android.features.preferences.impl.blockedusers.BlockedUsersNode
 import io.element.android.features.preferences.impl.developer.DeveloperSettingsNode
 import io.element.android.features.preferences.impl.labs.LabsNode
@@ -81,9 +80,6 @@ class PreferencesFlowNode(
         data object Labs : NavTarget
 
         @Parcelize
-        data object AnalyticsSettings : NavTarget
-
-        @Parcelize
         data object About : NavTarget
 
         @Parcelize
@@ -131,14 +127,6 @@ class PreferencesFlowNode(
                         callback.navigateToBugReport()
                     }
 
-                    override fun navigateToSecureBackup() {
-                        callback.navigateToSecureBackup()
-                    }
-
-                    override fun navigateToAnalyticsSettings() {
-                        backstack.push(NavTarget.AnalyticsSettings)
-                    }
-
                     override fun navigateToAbout() {
                         backstack.push(NavTarget.About)
                     }
@@ -161,10 +149,6 @@ class PreferencesFlowNode(
 
                     override fun navigateToLabs() {
                         backstack.push(NavTarget.Labs)
-                    }
-
-                    override fun navigateToLinkNewDevice() {
-                        callback.navigateToLinkNewDevice()
                     }
 
                     override fun navigateToUserProfile(matrixUser: MatrixUser) {
@@ -216,9 +200,6 @@ class PreferencesFlowNode(
                     }
                 }
                 createNode<AboutNode>(buildContext, listOf(callback))
-            }
-            NavTarget.AnalyticsSettings -> {
-                createNode<AnalyticsSettingsNode>(buildContext)
             }
             NavTarget.NotificationSettings -> {
                 val notificationSettingsCallback = object : NotificationSettingsNode.Callback {
@@ -307,15 +288,10 @@ class PreferencesFlowNode(
                 createNode<BlockedUsersNode>(buildContext)
             }
             NavTarget.SignOut -> {
-                val callBack: LogoutEntryPoint.Callback = object : LogoutEntryPoint.Callback {
-                    override fun navigateToSecureBackup() {
-                        callback.navigateToSecureBackup()
-                    }
-                }
                 logoutEntryPoint.createNode(
                     parentNode = this,
                     buildContext = buildContext,
-                    callback = callBack,
+                    callback = object : LogoutEntryPoint.Callback {},
                 )
             }
             is NavTarget.OssLicenses -> {

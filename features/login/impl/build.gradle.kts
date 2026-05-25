@@ -67,12 +67,13 @@ dependencies {
     implementation(projects.libraries.uiStrings)
     implementation(projects.libraries.permissions.api)
     implementation(projects.libraries.sessionStorage.api)
-    implementation(projects.libraries.qrcode)
     implementation(projects.libraries.oauth.api)
     implementation(projects.libraries.uiUtils)
     implementation(projects.libraries.wellknown.api)
     implementation(libs.androidx.browser)
     implementation(libs.androidx.webkit)
+    implementation(platform(libs.network.okhttp.bom))
+    implementation(libs.network.okhttp)
     implementation(libs.serialization.json)
     api(projects.features.login.api)
 
@@ -85,6 +86,5 @@ dependencies {
     testImplementation(projects.libraries.permissions.test)
     testImplementation(projects.libraries.sessionStorage.test)
     testImplementation(projects.libraries.wellknown.test)
-    testImplementation(libs.androidx.camera.camera2)
-    testImplementation(libs.androidx.camera.lifecycle)
+    testImplementation(libs.network.mockwebserver)
 }

@@ -11,7 +11,6 @@ package io.element.android.features.home.impl.roomlist
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
-import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -19,8 +18,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import dev.zacsweers.metro.Inject
@@ -47,7 +44,6 @@ import io.element.android.libraries.architecture.Presenter
 import io.element.android.libraries.fullscreenintent.api.FullScreenIntentPermissionsState
 import io.element.android.libraries.matrix.api.MatrixClient
 import io.element.android.libraries.matrix.api.core.RoomId
-import io.element.android.libraries.matrix.api.encryption.RecoveryState
 import io.element.android.libraries.matrix.api.roomlist.RoomList
 import io.element.android.libraries.matrix.api.roomlist.RoomListFilter
 import io.element.android.libraries.matrix.api.timeline.ReceiptType
@@ -91,8 +87,6 @@ class RoomListPresenter(
     private val coldStartWatcher: AnalyticsColdStartWatcher,
     private val spaceFiltersPresenter: Presenter<SpaceFiltersState>,
 ) : Presenter<RoomListState> {
-    private val encryptionService = client.encryptionService
-
     @Composable
     override fun present(): RoomListState {
         val coroutineScope = rememberCoroutineScope()
@@ -106,7 +100,6 @@ class RoomListPresenter(
             roomListDataSource.launchIn(this)
         }
 
-        var securityBannerDismissed by rememberSaveable { mutableStateOf(false) }
         val showNewNotificationSoundBanner by remember {
             announcementService.announcementsToShowFlow().map { announcements ->
                 announcements.contains(Announcement.NewNotificationSound)
@@ -124,8 +117,6 @@ class RoomListPresenter(
                 is RoomListEvent.UpdateVisibleRange -> coroutineScope.launch {
                     roomListDataSource.updateVisibleRange(event.range)
                 }
-                RoomListEvent.DismissRequestVerificationPrompt -> securityBannerDismissed = true
-                RoomListEvent.DismissBanner -> securityBannerDismissed = true
                 RoomListEvent.DismissNewNotificationSoundBanner -> coroutineScope.launch {
                     announcementService.onAnnouncementDismissed(Announcement.NewNotificationSound)
                 }
@@ -166,7 +157,6 @@ class RoomListPresenter(
         }
 
         val contentState = roomListContentState(
-            securityBannerDismissed,
             showNewNotificationSoundBanner,
         )
 
@@ -188,43 +178,7 @@ class RoomListPresenter(
     }
 
     @Composable
-    private fun rememberSecurityBannerState(
-        securityBannerDismissed: Boolean,
-    ): State<SecurityBannerState> {
-        val currentSecurityBannerDismissed by rememberUpdatedState(securityBannerDismissed)
-        val recoveryState by encryptionService.recoveryStateStateFlow.collectAsState()
-        return remember {
-            derivedStateOf {
-                calculateBannerState(
-                    securityBannerDismissed = currentSecurityBannerDismissed,
-                    recoveryState = recoveryState,
-                )
-            }
-        }
-    }
-
-    private fun calculateBannerState(
-        securityBannerDismissed: Boolean,
-        recoveryState: RecoveryState,
-    ): SecurityBannerState {
-        if (securityBannerDismissed) {
-            return SecurityBannerState.None
-        }
-
-        when (recoveryState) {
-            RecoveryState.DISABLED -> return SecurityBannerState.SetUpRecovery
-            RecoveryState.INCOMPLETE -> return SecurityBannerState.RecoveryKeyConfirmation
-            RecoveryState.UNKNOWN,
-            RecoveryState.WAITING_FOR_SYNC,
-            RecoveryState.ENABLED -> Unit
-        }
-
-        return SecurityBannerState.None
-    }
-
-    @Composable
     private fun roomListContentState(
-        securityBannerDismissed: Boolean,
         showNewNotificationSoundBanner: Boolean,
     ): RoomListContentState {
         val roomSummaries by produceState(initialValue = AsyncData.Loading()) {
@@ -242,7 +196,7 @@ class RoomListPresenter(
             }
         }
         val seenRoomInvites by remember { seenInvitesStore.seenRoomIds() }.collectAsState(emptySet())
-        val securityBannerState by rememberSecurityBannerState(securityBannerDismissed)
+        val securityBannerState = SecurityBannerState.None
         return when {
             showEmpty -> RoomListContentState.Empty(
                 securityBannerState = securityBannerState,

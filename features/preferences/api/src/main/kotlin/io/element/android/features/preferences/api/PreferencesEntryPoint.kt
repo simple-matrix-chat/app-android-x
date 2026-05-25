@@ -44,9 +44,7 @@ interface PreferencesEntryPoint : FeatureEntryPoint {
 
     interface Callback : Plugin {
         fun navigateToAddAccount()
-        fun navigateToLinkNewDevice()
         fun navigateToBugReport()
-        fun navigateToSecureBackup()
         fun navigateToRoomNotificationSettings(roomId: RoomId)
         fun navigateToEvent(roomId: RoomId, eventId: EventId)
     }

@@ -36,7 +36,6 @@ import io.element.android.libraries.matrix.test.A_SESSION_ID
 import io.element.android.libraries.matrix.test.A_USER_ID_2
 import io.element.android.libraries.matrix.test.A_USER_NAME
 import io.element.android.libraries.matrix.test.FakeMatrixClient
-import io.element.android.libraries.matrix.test.encryption.FakeEncryptionService
 import io.element.android.libraries.matrix.test.notificationsettings.FakeNotificationSettingsService
 import io.element.android.libraries.matrix.test.room.aRoomInfo
 import io.element.android.libraries.matrix.test.room.powerlevels.FakeRoomPermissions
@@ -77,7 +76,6 @@ class RoomDetailsPresenterTest {
         dispatchers: CoroutineDispatchers = testCoroutineDispatchers(),
         notificationSettingsService: FakeNotificationSettingsService = FakeNotificationSettingsService(),
         analyticsService: AnalyticsService = FakeAnalyticsService(),
-        encryptionService: FakeEncryptionService = FakeEncryptionService(),
         clipboardHelper: ClipboardHelper = FakeClipboardHelper(),
         appPreferencesStore: AppPreferencesStore = InMemoryAppPreferencesStore()
     ): RoomDetailsPresenter {
@@ -90,7 +88,6 @@ class RoomDetailsPresenterTest {
                     userProfilePresenterFactory = {
                         Presenter { aUserProfileState() }
                     },
-                    encryptionService = encryptionService,
                     clipboardHelper = clipboardHelper,
                 )
             }
@@ -123,7 +120,6 @@ class RoomDetailsPresenterTest {
             assertThat(initialState.roomTopic).isEqualTo(RoomTopicState.ExistingTopic(room.info().topic!!))
             assertThat(initialState.memberCount).isEqualTo(room.info().joinedMembersCount)
             assertThat(initialState.pinnedMessagesCount).isEqualTo(0)
-            assertThat(initialState.canShowSecurityAndPrivacy).isFalse()
             assertThat(initialState.showDebugInfo).isFalse()
 
             cancelAndIgnoreRemainingEvents()
@@ -564,20 +560,6 @@ class RoomDetailsPresenterTest {
             room.givenRoomInfo(aRoomInfo(joinRule = JoinRule.Invite))
             assertThat(awaitItem().canShowKnockRequests).isFalse()
             cancelAndIgnoreRemainingEvents()
-        }
-    }
-
-    @Test
-    fun `present - show security and privacy`() = runTest {
-        val room = aJoinedRoom(
-            roomPermissions = roomPermissions(),
-        )
-        val presenter = createRoomDetailsPresenter(room = room)
-        presenter.testWithLifecycleOwner(lifecycleOwner = fakeLifecycleOwner) {
-            skipItems(1)
-            with(awaitItem()) {
-                assertThat(canShowSecurityAndPrivacy).isTrue()
-            }
         }
     }
 

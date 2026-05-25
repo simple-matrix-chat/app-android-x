@@ -93,32 +93,15 @@ class LogoutViewTest {
         clickOn(CommonStrings.action_cancel)
         eventsRecorder.assertSingle(LogoutEvents.CloseDialogs)
     }
-
-    @Test
-    fun `last session setting button invoke onChangeRecoveryKeyClicked`() = runAndroidComposeUiTest {
-        val eventsRecorder = EventsRecorder<LogoutEvents>(expectEvents = false)
-        ensureCalledOnce { callback ->
-            setLogoutView(
-                aLogoutState(
-                    isLastDevice = true,
-                    eventSink = eventsRecorder
-                ),
-                onChangeRecoveryKeyClick = callback,
-            )
-            clickOn(CommonStrings.common_settings)
-        }
-    }
 }
 
 private fun AndroidComposeUiTest<ComponentActivity>.setLogoutView(
     state: LogoutState,
-    onChangeRecoveryKeyClick: () -> Unit = EnsureNeverCalled(),
     onBackClick: () -> Unit = EnsureNeverCalled(),
 ) {
     setContent {
         LogoutView(
             state = state,
-            onChangeRecoveryKeyClick = onChangeRecoveryKeyClick,
             onBackClick = onBackClick,
         )
     }

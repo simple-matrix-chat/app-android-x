@@ -27,8 +27,6 @@ import io.element.android.features.roomcall.api.RoomCallState
 import io.element.android.features.roomdetails.impl.members.details.RoomMemberDetailsPresenter
 import io.element.android.features.roomdetailsedit.api.RoomDetailsEditPermissions
 import io.element.android.features.roomdetailsedit.api.roomDetailsEditPermissions
-import io.element.android.features.securityandprivacy.api.SecurityAndPrivacyPermissions
-import io.element.android.features.securityandprivacy.api.securityAndPrivacyPermissions
 import io.element.android.libraries.androidutils.clipboard.ClipboardHelper
 import io.element.android.libraries.architecture.Presenter
 import io.element.android.libraries.core.coroutine.CoroutineDispatchers
@@ -36,7 +34,6 @@ import io.element.android.libraries.designsystem.utils.snackbar.LocalSnackbarDis
 import io.element.android.libraries.designsystem.utils.snackbar.SnackbarMessage
 import io.element.android.libraries.designsystem.utils.snackbar.collectSnackbarMessageAsState
 import io.element.android.libraries.matrix.api.MatrixClient
-import io.element.android.libraries.matrix.api.encryption.identity.IdentityState
 import io.element.android.libraries.matrix.api.notificationsettings.NotificationSettingsService
 import io.element.android.libraries.matrix.api.room.JoinedRoom
 import io.element.android.libraries.matrix.api.room.RoomMember
@@ -45,7 +42,6 @@ import io.element.android.libraries.matrix.api.room.powerlevels.canEditRolesAndP
 import io.element.android.libraries.matrix.api.room.powerlevels.permissionsAsState
 import io.element.android.libraries.matrix.api.room.roomNotificationSettings
 import io.element.android.libraries.matrix.ui.room.getDirectRoomMember
-import io.element.android.libraries.matrix.ui.room.roomMemberIdentityStateChange
 import io.element.android.libraries.preferences.api.store.AppPreferencesStore
 import io.element.android.libraries.ui.strings.CommonStrings
 import io.element.android.services.analytics.api.AnalyticsService
@@ -91,7 +87,6 @@ class RoomDetailsPresenter(
         val membersState by room.membersStateFlow.collectAsState()
         val permissions by getPermissions()
         val canonicalAlias by remember { derivedStateOf { roomInfo.canonicalAlias } }
-        val isEncrypted by remember { derivedStateOf { roomInfo.isEncrypted == true } }
         val dmMember by room.getDirectRoomMember(membersState)
         val roomMemberDetailsPresenter = roomMemberDetailsPresenter(dmMember)
         val roomType = getRoomType(dmMember)
@@ -112,9 +107,6 @@ class RoomDetailsPresenter(
         }
         val canShowKnockRequests by remember {
             derivedStateOf { permissions.knockRequestsPermissions.hasAny && joinRule == JoinRule.Knock }
-        }
-        val canShowSecurityAndPrivacy by remember {
-            derivedStateOf { !isDm && permissions.securityAndPrivacyPermissions.hasAny(isSpace = false, joinRule = joinRule) }
         }
         val isDeveloperModeEnabled by remember {
             appPreferencesStore.isDeveloperModeEnabledFlow()
@@ -137,7 +129,7 @@ class RoomDetailsPresenter(
                 }
                 RoomDetailsEvent.UnmuteNotification -> {
                     scope.launch(dispatchers.io) {
-                        notificationSettingsService.unmuteRoom(room.roomId, isEncrypted, room.isDm())
+                        notificationSettingsService.unmuteRoom(room.roomId, isEncrypted = false, room.isDm())
                     }
                 }
                 is RoomDetailsEvent.SetFavorite -> scope.setFavorite(event.isFavorite)
@@ -150,12 +142,6 @@ class RoomDetailsPresenter(
 
         val roomMemberDetailsState = roomMemberDetailsPresenter?.present()
 
-        val hasMemberVerificationViolations by produceState(false) {
-            room.roomMemberIdentityStateChange(waitForEncryption = true)
-                .onEach { identities -> value = identities.any { it.identityState == IdentityState.VerificationViolation } }
-                .launchIn(this)
-        }
-
         val canReportRoom by produceState(false) { value = client.canReportRoom() }
 
         return RoomDetailsState(
@@ -165,7 +151,7 @@ class RoomDetailsPresenter(
             roomAvatarUrl = roomAvatar,
             roomTopic = topicState,
             memberCount = joinedMemberCount,
-            isEncrypted = isEncrypted,
+            isEncrypted = false,
             canInvite = permissions.canInvite,
             canEdit = roomType == RoomDetailsType.Room && permissions.editDetailsPermissions.hasAny,
             roomCallState = roomCallState,
@@ -181,8 +167,7 @@ class RoomDetailsPresenter(
             snackbarMessage = snackbarMessage,
             canShowKnockRequests = canShowKnockRequests,
             knockRequestsCount = knockRequestsCount,
-            canShowSecurityAndPrivacy = canShowSecurityAndPrivacy,
-            hasMemberVerificationViolations = hasMemberVerificationViolations,
+            hasMemberVerificationViolations = false,
             canReportRoom = canReportRoom,
             isTombstoned = roomInfo.successorRoom != null,
             showDebugInfo = isDeveloperModeEnabled,
@@ -212,7 +197,6 @@ class RoomDetailsPresenter(
         val canInvite: Boolean = false,
         val editDetailsPermissions: RoomDetailsEditPermissions = RoomDetailsEditPermissions.DEFAULT,
         val knockRequestsPermissions: KnockRequestPermissions = KnockRequestPermissions.DEFAULT,
-        val securityAndPrivacyPermissions: SecurityAndPrivacyPermissions = SecurityAndPrivacyPermissions.DEFAULT,
         val canEditRolesAndPermissions: Boolean = false,
     )
 
@@ -224,7 +208,6 @@ class RoomDetailsPresenter(
                 editDetailsPermissions = perms.roomDetailsEditPermissions(),
                 knockRequestsPermissions = perms.knockRequestPermissions(),
                 canEditRolesAndPermissions = perms.canEditRolesAndPermissions(),
-                securityAndPrivacyPermissions = perms.securityAndPrivacyPermissions(),
             )
         }
     }

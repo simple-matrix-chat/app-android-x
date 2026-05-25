@@ -38,13 +38,10 @@
   <string name="screen_login_title_with_homeserver">"Đăng nhập vào %1$s"</string>
   <string name="screen_onboarding_sign_in_manually">"Đăng nhập thủ công"</string>
   <string name="screen_onboarding_sign_in_to">"Đăng nhập vào %1$s"</string>
-  <string name="screen_onboarding_sign_in_with_qr_code">"Đăng nhập bằng mã QR"</string>
   <string name="screen_onboarding_sign_up">"Tạo tài khoản"</string>
   <string name="screen_onboarding_welcome_message">"Chào mừng đến với %1$s nhanh nhất từ trước đến nay. Tối ưu cho tốc độ và sự đơn giản."</string>
   <string name="screen_onboarding_welcome_subtitle">"Chào mừng đến với %1$s. Tối ưu hóa cho tốc độ và sự đơn giản."</string>
   <string name="screen_onboarding_welcome_title">"Hãy ở trong thế mạnh (element) của mình"</string>
-  <string name="screen_qr_code_login_invalid_scan_state_retry_button">"Thử lại"</string>
-  <string name="screen_qr_code_login_start_over_button">"Bắt đầu lại"</string>
   <string name="screen_server_confirmation_change_server">"Thay đổi nhà cung cấp tài khoản"</string>
   <string name="screen_server_confirmation_message_login_element_dot_io">"Máy chủ riêng dành cho nhân viên của Element."</string>
   <string name="screen_server_confirmation_message_login_matrix_dot_org">"Matrix là một mạng mở cho việc liên lạc an toàn và phi tập trung."</string>

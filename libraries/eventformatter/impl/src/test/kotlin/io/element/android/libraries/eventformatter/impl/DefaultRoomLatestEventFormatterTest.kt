@@ -649,11 +649,11 @@ class DefaultRoomLatestEventFormatterTest {
 
         val youCreatedRoomMessage = createLatestEvent(sentByYou = true, senderDisplayName = null, content = content)
         val youCreatedRoom = formatter.format(youCreatedRoomMessage, false)
-        assertThat(youCreatedRoom).isEqualTo("Encryption enabled")
+        assertThat(youCreatedRoom).isNull()
 
         val someoneCreatedRoomEvent = createLatestEvent(sentByYou = false, senderDisplayName = otherName, content = content)
         val someoneCreatedRoom = formatter.format(someoneCreatedRoomEvent, false)
-        assertThat(someoneCreatedRoom).isEqualTo("Encryption enabled")
+        assertThat(someoneCreatedRoom).isNull()
     }
 
     @Test

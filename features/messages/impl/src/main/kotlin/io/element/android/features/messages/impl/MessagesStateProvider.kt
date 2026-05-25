@@ -14,9 +14,6 @@ import io.element.android.features.messages.api.timeline.voicemessages.composer.
 import io.element.android.features.messages.api.timeline.voicemessages.composer.aVoiceMessagePreviewState
 import io.element.android.features.messages.impl.actionlist.ActionListState
 import io.element.android.features.messages.impl.actionlist.anActionListState
-import io.element.android.features.messages.impl.crypto.identity.IdentityChangeState
-import io.element.android.features.messages.impl.crypto.identity.aRoomMemberIdentityStateChange
-import io.element.android.features.messages.impl.crypto.identity.anIdentityChangeState
 import io.element.android.features.messages.impl.link.LinkState
 import io.element.android.features.messages.impl.link.aLinkState
 import io.element.android.features.messages.impl.messagecomposer.MessageComposerState
@@ -47,11 +44,9 @@ import io.element.android.libraries.designsystem.components.avatar.AvatarSize
 import io.element.android.libraries.designsystem.preview.ROOM_NAME
 import io.element.android.libraries.matrix.api.core.RoomId
 import io.element.android.libraries.matrix.api.core.ThreadId
-import io.element.android.libraries.matrix.api.encryption.identity.IdentityState
 import io.element.android.libraries.matrix.api.room.tombstone.SuccessorRoom
 import io.element.android.libraries.matrix.api.timeline.Timeline
 import io.element.android.libraries.textcomposer.model.MessageComposerMode
-import io.element.android.libraries.textcomposer.model.aTextEditorStateMarkdown
 import io.element.android.libraries.textcomposer.model.aTextEditorStateRich
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
@@ -88,10 +83,6 @@ open class MessagesStateProvider : PreviewParameterProvider<MessagesState> {
                     timelineItems = aTimelineItemList(aTimelineItemTextContent()),
                 )
             ),
-            aMessagesState(
-                composerState = aMessageComposerState(textEditorState = aTextEditorStateMarkdown()),
-                identityChangeState = anIdentityChangeState(listOf(aRoomMemberIdentityStateChange()))
-            ),
         )
 }
 
@@ -111,7 +102,6 @@ fun aMessagesState(
         focusedEventIndex = 2,
     ),
     timelineProtectionState: TimelineProtectionState = aTimelineProtectionState(),
-    identityChangeState: IdentityChangeState = anIdentityChangeState(),
     linkState: LinkState = aLinkState(),
     readReceiptBottomSheetState: ReadReceiptBottomSheetState = aReadReceiptBottomSheetState(),
     actionListState: ActionListState = anActionListState(),
@@ -120,9 +110,7 @@ fun aMessagesState(
     showReinvitePrompt: Boolean = false,
     roomCallState: RoomCallState = aStandByCallState(),
     pinnedMessagesBannerState: PinnedMessagesBannerState = aLoadedPinnedMessagesBannerState(),
-    dmUserVerificationState: IdentityState? = null,
     roomMemberModerationState: RoomMemberModerationState = aRoomMemberModerationState(),
-    topBarSharedHistoryIcon: SharedHistoryIcon = SharedHistoryIcon.NONE,
     successorRoom: SuccessorRoom? = null,
     threads: MessagesState.Threads = MessagesState.Threads(
         hasThreads = false,
@@ -139,7 +127,6 @@ fun aMessagesState(
     composerState = composerState,
     voiceMessageComposerState = voiceMessageComposerState,
     timelineProtectionState = timelineProtectionState,
-    identityChangeState = identityChangeState,
     linkState = linkState,
     timelineState = timelineState,
     readReceiptBottomSheetState = readReceiptBottomSheetState,
@@ -153,9 +140,7 @@ fun aMessagesState(
     roomCallState = roomCallState,
     appName = "Element",
     pinnedMessagesBannerState = pinnedMessagesBannerState,
-    dmUserVerificationState = dmUserVerificationState,
     roomMemberModerationState = roomMemberModerationState,
-    topBarSharedHistoryIcon = topBarSharedHistoryIcon,
     successorRoom = successorRoom,
     threads = threads,
     showLiveLocationShareBanner = isCurrentlySharingLiveLocationInRoom,

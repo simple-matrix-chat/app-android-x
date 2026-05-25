@@ -15,79 +15,79 @@ import org.junit.Test
 
 class RoomDetailsStateTest {
     @Test
-    fun `room not public not encrypted should have not encrypted badge`() {
+    fun `room not public not encrypted should not have badges`() {
         val sut = aRoomDetailsState(
             isPublic = false,
             isEncrypted = false,
         )
         assertThat(sut.roomBadges).isEqualTo(
-            persistentListOf(RoomBadge.NOT_ENCRYPTED)
+            persistentListOf<RoomBadge>()
         )
     }
 
     @Test
-    fun `room public not encrypted should have not encrypted and public badges`() {
+    fun `room public not encrypted should only have public badge`() {
         val sut = aRoomDetailsState(
             isPublic = true,
             isEncrypted = false,
         )
         assertThat(sut.roomBadges).isEqualTo(
-            persistentListOf(RoomBadge.NOT_ENCRYPTED, RoomBadge.PUBLIC)
+            persistentListOf(RoomBadge.PUBLIC)
         )
     }
 
     @Test
-    fun `room public encrypted should have encrypted, public, and history sharing shared badges`() {
+    fun `room public encrypted should only have public badge`() {
         val sut = aRoomDetailsState(
             isPublic = true,
             isEncrypted = true,
         )
         assertThat(sut.roomBadges).isEqualTo(
-            persistentListOf(RoomBadge.ENCRYPTED, RoomBadge.PUBLIC, RoomBadge.SHARED_HISTORY_SHARED)
+            persistentListOf(RoomBadge.PUBLIC)
         )
     }
 
     @Test
-    fun `room not public encrypted should have encrypted and history sharing shared badges`() {
+    fun `room not public encrypted should not have badges`() {
         val sut = aRoomDetailsState(
             isPublic = false,
             isEncrypted = true,
         )
         assertThat(sut.roomBadges).isEqualTo(
-            persistentListOf(RoomBadge.ENCRYPTED, RoomBadge.SHARED_HISTORY_SHARED)
+            persistentListOf<RoomBadge>()
         )
     }
 
     @Test
-    fun `room public not encrypted should not have history sharing badges`() {
+    fun `room public not encrypted should ignore history sharing badges`() {
         val sut = aRoomDetailsState(
             isEncrypted = false,
             roomHistoryVisibility = RoomHistoryVisibility.Shared
         )
         assertThat(sut.roomBadges).isEqualTo(
-            persistentListOf(RoomBadge.NOT_ENCRYPTED, RoomBadge.PUBLIC)
+            persistentListOf(RoomBadge.PUBLIC)
         )
     }
 
     @Test
-    fun `room public encrypted should have history sharing hidden badge`() {
+    fun `room public encrypted should ignore hidden history sharing badge`() {
         val sut = aRoomDetailsState(
             isEncrypted = true,
             roomHistoryVisibility = RoomHistoryVisibility.Joined
         )
         assertThat(sut.roomBadges).isEqualTo(
-            persistentListOf(RoomBadge.ENCRYPTED, RoomBadge.PUBLIC, RoomBadge.SHARED_HISTORY_HIDDEN)
+            persistentListOf(RoomBadge.PUBLIC)
         )
     }
 
     @Test
-    fun `room public encrypted with world_readable visibility should have history sharing world_readable badge`() {
+    fun `room public encrypted should ignore world readable history sharing badge`() {
         val sut = aRoomDetailsState(
             isEncrypted = true,
             roomHistoryVisibility = RoomHistoryVisibility.WorldReadable
         )
         assertThat(sut.roomBadges).isEqualTo(
-            persistentListOf(RoomBadge.ENCRYPTED, RoomBadge.PUBLIC, RoomBadge.SHARED_HISTORY_WORLD_READABLE)
+            persistentListOf(RoomBadge.PUBLIC)
         )
     }
 }

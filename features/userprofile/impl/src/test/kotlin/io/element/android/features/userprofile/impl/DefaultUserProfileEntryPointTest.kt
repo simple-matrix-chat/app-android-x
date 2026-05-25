@@ -14,7 +14,6 @@ import com.bumble.appyx.testing.junit4.util.MainDispatcherRule
 import com.google.common.truth.Truth.assertThat
 import io.element.android.features.call.test.FakeElementCallEntryPoint
 import io.element.android.features.userprofile.api.UserProfileEntryPoint
-import io.element.android.features.verifysession.test.FakeOutgoingVerificationEntryPoint
 import io.element.android.libraries.matrix.api.core.RoomId
 import io.element.android.libraries.matrix.test.A_SESSION_ID
 import io.element.android.libraries.matrix.test.A_USER_ID
@@ -42,7 +41,6 @@ class DefaultUserProfileEntryPointTest {
                 sessionId = A_SESSION_ID,
                 elementCallEntryPoint = FakeElementCallEntryPoint(),
                 mediaViewerEntryPoint = FakeMediaViewerEntryPoint(),
-                outgoingVerificationEntryPoint = FakeOutgoingVerificationEntryPoint(),
             )
         }
         val callback = object : UserProfileEntryPoint.Callback {

@@ -20,14 +20,12 @@ import io.element.android.features.startchat.api.ConfirmingStartDmWithMatrixUser
 import io.element.android.features.startchat.api.StartDMAction
 import io.element.android.features.userprofile.api.UserProfileEvents
 import io.element.android.features.userprofile.api.UserProfileState
-import io.element.android.features.userprofile.api.UserProfileVerificationState
 import io.element.android.features.userprofile.impl.root.UserProfilePresenter
 import io.element.android.libraries.architecture.AsyncAction
 import io.element.android.libraries.architecture.AsyncData
 import io.element.android.libraries.matrix.api.MatrixClient
 import io.element.android.libraries.matrix.api.core.RoomId
 import io.element.android.libraries.matrix.api.core.UserId
-import io.element.android.libraries.matrix.api.encryption.identity.IdentityState
 import io.element.android.libraries.matrix.api.room.StateEventType
 import io.element.android.libraries.matrix.api.user.MatrixUser
 import io.element.android.libraries.matrix.test.AN_EXCEPTION
@@ -35,7 +33,6 @@ import io.element.android.libraries.matrix.test.A_ROOM_ID
 import io.element.android.libraries.matrix.test.A_USER_ID
 import io.element.android.libraries.matrix.test.A_USER_ID_2
 import io.element.android.libraries.matrix.test.FakeMatrixClient
-import io.element.android.libraries.matrix.test.encryption.FakeEncryptionService
 import io.element.android.libraries.matrix.test.room.FakeBaseRoom
 import io.element.android.libraries.matrix.test.room.powerlevels.FakeRoomPermissions
 import io.element.android.libraries.matrix.ui.components.aMatrixUser
@@ -74,7 +71,6 @@ class UserProfilePresenterTest {
             assertThat(initialState.userName).isEqualTo(matrixUser.displayName)
             assertThat(initialState.avatarUrl).isEqualTo(matrixUser.avatarUrl)
             assertThat(initialState.isBlocked).isEqualTo(AsyncData.Success(false))
-            assertThat(initialState.verificationState).isEqualTo(UserProfileVerificationState.UNKNOWN)
             assertThat(initialState.dmRoomId).isEqualTo(A_ROOM_ID)
             assertThat(initialState.canCall).isFalse()
         }
@@ -388,14 +384,10 @@ class UserProfilePresenterTest {
     }
 
     private fun createFakeMatrixClient(
-        userIdentityState: IdentityState? = null,
         ignoreUserResult: (UserId) -> Result<Unit> = { Result.success(Unit) },
         unIgnoreUserResult: (UserId) -> Result<Unit> = { Result.success(Unit) },
         ignoredUsersFlow: StateFlow<ImmutableList<UserId>> = MutableStateFlow(persistentListOf())
     ) = FakeMatrixClient(
-        encryptionService = FakeEncryptionService(
-            getUserIdentityResult = { Result.success(userIdentityState) }
-        ),
         ignoreUserResult = ignoreUserResult,
         unIgnoreUserResult = unIgnoreUserResult,
         ignoredUsersFlow = ignoredUsersFlow,

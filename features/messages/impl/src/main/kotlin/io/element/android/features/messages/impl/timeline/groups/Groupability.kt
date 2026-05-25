@@ -10,7 +10,6 @@ package io.element.android.features.messages.impl.timeline.groups
 
 import io.element.android.features.messages.impl.timeline.model.TimelineItem
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemAudioContent
-import io.element.android.features.messages.impl.timeline.model.event.TimelineItemEncryptedContent
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemFileContent
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemImageContent
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemLegacyCallInviteContent
@@ -50,7 +49,6 @@ import io.element.android.libraries.matrix.api.timeline.item.event.UnknownConten
 internal fun TimelineItem.Event.canBeGrouped(): Boolean {
     return when (content) {
         is TimelineItemTextBasedContent,
-        is TimelineItemEncryptedContent,
         is TimelineItemImageContent,
         is TimelineItemStickerContent,
         is TimelineItemFileContent,

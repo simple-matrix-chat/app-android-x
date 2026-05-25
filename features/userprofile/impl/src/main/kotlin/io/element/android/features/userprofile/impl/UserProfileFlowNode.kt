@@ -25,7 +25,6 @@ import io.element.android.features.call.api.ElementCallEntryPoint
 import io.element.android.features.userprofile.api.UserProfileEntryPoint
 import io.element.android.features.userprofile.impl.root.UserProfileNode
 import io.element.android.features.userprofile.shared.UserProfileNodeHelper
-import io.element.android.features.verifysession.api.OutgoingVerificationEntryPoint
 import io.element.android.libraries.architecture.BackstackView
 import io.element.android.libraries.architecture.BaseFlowNode
 import io.element.android.libraries.architecture.callback
@@ -35,9 +34,7 @@ import io.element.android.libraries.di.SessionScope
 import io.element.android.libraries.matrix.api.core.EventId
 import io.element.android.libraries.matrix.api.core.RoomId
 import io.element.android.libraries.matrix.api.core.SessionId
-import io.element.android.libraries.matrix.api.core.UserId
 import io.element.android.libraries.matrix.api.notification.CallIntent
-import io.element.android.libraries.matrix.api.verification.VerificationRequest
 import io.element.android.libraries.mediaviewer.api.MediaViewerEntryPoint
 import kotlinx.parcelize.Parcelize
 
@@ -49,7 +46,6 @@ class UserProfileFlowNode(
     private val elementCallEntryPoint: ElementCallEntryPoint,
     private val sessionId: SessionId,
     private val mediaViewerEntryPoint: MediaViewerEntryPoint,
-    private val outgoingVerificationEntryPoint: OutgoingVerificationEntryPoint,
 ) : BaseFlowNode<UserProfileFlowNode.NavTarget>(
     backstack = BackStack(
         initialElement = NavTarget.Root,
@@ -64,9 +60,6 @@ class UserProfileFlowNode(
 
         @Parcelize
         data class AvatarPreview(val name: String, val avatarUrl: String) : NavTarget
-
-        @Parcelize
-        data class VerifyUser(val userId: UserId) : NavTarget
     }
 
     private val callback: UserProfileEntryPoint.Callback = callback()
@@ -94,9 +87,6 @@ class UserProfileFlowNode(
                         )
                     }
 
-                    override fun startVerifyUserFlow(userId: UserId) {
-                        backstack.push(NavTarget.VerifyUser(userId))
-                    }
                 }
                 val params = UserProfileNode.UserProfileInputs(userId = inputs.userId)
                 createNode<UserProfileNode>(buildContext, listOf(callback, params))
@@ -124,30 +114,6 @@ class UserProfileFlowNode(
                     buildContext = buildContext,
                     params = params,
                     callback = callback,
-                )
-            }
-            is NavTarget.VerifyUser -> {
-                val params = OutgoingVerificationEntryPoint.Params(
-                    showDeviceVerifiedScreen = false,
-                    verificationRequest = VerificationRequest.Outgoing.User(userId = navTarget.userId)
-                )
-                outgoingVerificationEntryPoint.createNode(
-                    parentNode = this,
-                    buildContext = buildContext,
-                    params = params,
-                    callback = object : OutgoingVerificationEntryPoint.Callback {
-                        override fun navigateToLearnMoreAboutEncryption() {
-                            // No op
-                        }
-
-                        override fun onBack() {
-                            // No op
-                        }
-
-                        override fun onDone() {
-                            // No op
-                        }
-                    }
                 )
             }
         }

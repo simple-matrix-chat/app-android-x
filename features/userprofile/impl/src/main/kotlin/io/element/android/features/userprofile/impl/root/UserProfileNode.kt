@@ -77,7 +77,6 @@ class UserProfileNode(
             onOpenDm = ::onStartDM,
             onStartCall = callback::startCall,
             openAvatarPreview = callback::navigateToAvatarPreview,
-            onVerifyClick = callback::startVerifyUserFlow,
         )
     }
 }

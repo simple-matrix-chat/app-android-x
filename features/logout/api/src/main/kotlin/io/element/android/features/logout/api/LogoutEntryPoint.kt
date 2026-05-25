@@ -20,7 +20,5 @@ interface LogoutEntryPoint : FeatureEntryPoint {
         callback: Callback,
     ): Node
 
-    interface Callback : Plugin {
-        fun navigateToSecureBackup()
-    }
+    interface Callback : Plugin
 }

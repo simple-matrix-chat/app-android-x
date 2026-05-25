@@ -1,8 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
-  <string name="crypto_history_sharing_room_info_hidden_badge_content">"Neue Mitglieder sehen den Nachrichtenverlauf nicht"</string>
-  <string name="crypto_history_sharing_room_info_shared_badge_content">"Neue Mitglieder sehen den Nachrichtenverlauf"</string>
-  <string name="crypto_history_sharing_room_info_world_readable_badge_content">"Jeder sieht den Nachrichtenverlauf"</string>
   <string name="screen_edit_room_address_room_address_section_footer">"Du benötigst eine Chat-Adresse, um den Chat im öffentlichen Verzeichnis sichtbar zu machen."</string>
   <string name="screen_edit_room_address_title">"Chat-Adresse bearbeiten"</string>
   <string name="screen_notification_settings_edit_failed_updating_default_mode">"Beim Aktualisieren der Benachrichtigungseinstellungen ist ein Fehler aufgetreten."</string>
@@ -42,8 +39,6 @@
   <string name="screen_room_change_role_unsaved_changes_description">"Du hast nicht gespeicherte Änderungen."</string>
   <string name="screen_room_change_role_unsaved_changes_title">"Änderungen speichern?"</string>
   <string name="screen_room_details_add_topic_title">"Thema hinzufügen"</string>
-  <string name="screen_room_details_badge_encrypted">"Verschlüsselt"</string>
-  <string name="screen_room_details_badge_not_encrypted">"Nicht verschlüsselt"</string>
   <string name="screen_room_details_badge_public">"Öffentlicher Chat"</string>
   <string name="screen_room_details_edit_room_title">"Chat bearbeiten"</string>
   <string name="screen_room_details_edition_error">"Es ist ein unbekannter Fehler aufgetreten und die Informationen konnten nicht geändert werden."</string>

@@ -151,27 +151,27 @@ class SecurityAndPrivacyViewTest {
 
     @Test
     @Config(qualifiers = "h1024dp")
-    fun `click on encryption item emits the expected event`() = runAndroidComposeUiTest {
-        val recorder = EventsRecorder<SecurityAndPrivacyEvent>()
+    fun `encryption item is hidden when Matrix E2EE is disabled`() = runAndroidComposeUiTest {
+        val recorder = EventsRecorder<SecurityAndPrivacyEvent>(expectEvents = false)
         val state = aSecurityAndPrivacyState(
             eventSink = recorder,
             savedSettings = aSecurityAndPrivacySettings(isEncrypted = false),
         )
         setSecurityAndPrivacyView(state)
-        clickOn(R.string.screen_security_and_privacy_encryption_toggle_title)
-        recorder.assertSingle(SecurityAndPrivacyEvent.ToggleEncryptionState)
+        onNodeWithText(activity!!.getString(R.string.screen_security_and_privacy_encryption_toggle_title)).assertDoesNotExist()
+        recorder.assertEmpty()
     }
 
     @Test
-    fun `click on encryption confirm emits the expected event`() = runAndroidComposeUiTest {
-        val recorder = EventsRecorder<SecurityAndPrivacyEvent>()
+    fun `encryption confirmation is hidden when Matrix E2EE is disabled`() = runAndroidComposeUiTest {
+        val recorder = EventsRecorder<SecurityAndPrivacyEvent>(expectEvents = false)
         val state = aSecurityAndPrivacyState(
             eventSink = recorder,
             showEncryptionConfirmation = true,
         )
         setSecurityAndPrivacyView(state)
-        clickOn(R.string.screen_security_and_privacy_enable_encryption_alert_confirm_button_title)
-        recorder.assertSingle(SecurityAndPrivacyEvent.ConfirmEnableEncryption)
+        onNodeWithText(activity!!.getString(R.string.screen_security_and_privacy_enable_encryption_alert_confirm_button_title)).assertDoesNotExist()
+        recorder.assertEmpty()
     }
 
     @Test

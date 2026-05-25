@@ -16,7 +16,6 @@ import io.element.android.libraries.core.coroutine.CoroutineDispatchers
 import io.element.android.libraries.matrix.api.room.JoinedRoom
 import io.element.android.libraries.matrix.api.room.RoomMembersState
 import io.element.android.libraries.matrix.api.room.RoomMembershipState
-import io.element.android.libraries.matrix.test.encryption.FakeEncryptionService
 import io.element.android.libraries.matrix.test.room.FakeBaseRoom
 import io.element.android.libraries.matrix.test.room.FakeJoinedRoom
 import io.element.android.libraries.matrix.test.room.aRoomInfo
@@ -214,7 +213,6 @@ private fun createFakeJoinedRoom(
 private fun TestScope.createPresenter(
     coroutineDispatchers: CoroutineDispatchers = testCoroutineDispatchers(useUnconfinedTestDispatcher = true),
     joinedRoom: JoinedRoom = createFakeJoinedRoom(),
-    encryptedService: FakeEncryptionService = FakeEncryptionService(),
     roomMemberModerationState: RoomMemberModerationState = aRoomMemberModerationState(),
 ) = RoomMemberListPresenter(
     room = joinedRoom,
@@ -222,5 +220,4 @@ private fun TestScope.createPresenter(
     roomMembersModerationPresenter = Presenter {
         roomMemberModerationState
     },
-    encryptionService = encryptedService,
 )

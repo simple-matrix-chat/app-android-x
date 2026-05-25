@@ -154,24 +154,35 @@ fun DependencyHandlerScope.allEnterpriseImpl(project: Project) = addAll(
     moduleSuffix = ":impl",
 )
 
-fun DependencyHandlerScope.allFeaturesImpl(project: Project) = addAll(
+fun DependencyHandlerScope.allFeaturesImpl(
+    project: Project,
+    excludedPaths: Set<String> = emptySet(),
+) = addAll(
     project = project,
     modulePrefix = ":features",
     moduleSuffix = ":impl",
+    excludedPaths = excludedPaths,
 )
 
-fun DependencyHandlerScope.allFeaturesApi(project: Project) = addAll(
+fun DependencyHandlerScope.allFeaturesApi(
+    project: Project,
+    excludedPaths: Set<String> = emptySet(),
+) = addAll(
     project = project,
     modulePrefix = ":features",
     moduleSuffix = ":api",
+    excludedPaths = excludedPaths,
 )
 
 private fun DependencyHandlerScope.addAll(
     project: Project,
     modulePrefix: String,
     moduleSuffix: String,
+    excludedPaths: Set<String> = emptySet(),
 ) {
-    val subProjects = project.rootProject.subprojects.filter { it.path.startsWith(modulePrefix) && it.path.endsWith(moduleSuffix) }
+    val subProjects = project.rootProject.subprojects.filter {
+        it.path.startsWith(modulePrefix) && it.path.endsWith(moduleSuffix) && it.path !in excludedPaths
+    }
     for (p in subProjects) {
         add("implementation", p)
     }

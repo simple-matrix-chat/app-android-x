@@ -74,7 +74,6 @@ dependencies {
     implementation(projects.libraries.fullscreenintent.api)
     implementation(projects.features.rageshake.api)
     implementation(projects.features.lockscreen.api)
-    implementation(projects.features.analytics.api)
     implementation(projects.features.enterprise.api)
     implementation(projects.features.licenses.api)
     implementation(projects.features.logout.api)

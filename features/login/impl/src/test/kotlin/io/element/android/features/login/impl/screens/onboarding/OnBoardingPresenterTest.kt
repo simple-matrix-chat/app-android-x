@@ -16,6 +16,8 @@ import io.element.android.features.enterprise.test.FakeEnterpriseService
 import io.element.android.features.login.impl.accesscontrol.DefaultAccountProviderAccessControl
 import io.element.android.features.login.impl.accountprovider.AccountProviderDataSource
 import io.element.android.features.login.impl.login.LoginHelper
+import io.element.android.features.login.impl.moment.FakeMomentAuthenticationService
+import io.element.android.features.login.impl.moment.MomentAuthenticationService
 import io.element.android.features.login.impl.web.FakeWebClientUrlForAuthenticationRetriever
 import io.element.android.features.login.impl.web.WebClientUrlForAuthenticationRetriever
 import io.element.android.features.wellknown.test.FakeWellknownRetriever
@@ -84,13 +86,11 @@ class OnBoardingPresenterTest {
             val initialState = awaitItem()
             assertThat(initialState.showBackButton).isFalse()
             assertThat(initialState.defaultAccountProvider).isNull()
-            assertThat(initialState.canLoginWithQrCode).isFalse()
             assertThat(initialState.productionApplicationName).isEqualTo("B")
             assertThat(initialState.canCreateAccount).isEqualTo(OnBoardingConfig.CAN_CREATE_ACCOUNT)
             assertThat(initialState.canReportBug).isFalse()
             assertThat(initialState.isAddingAccount).isFalse()
-            val finalState = awaitItem()
-            assertThat(finalState.canLoginWithQrCode).isTrue()
+            awaitItem()
         }
     }
 
@@ -144,7 +144,6 @@ class OnBoardingPresenterTest {
             rageshakeFeatureAvailability = { flowOf(false) },
         )
         presenter.test {
-            skipItems(1)
             awaitItem().also { state ->
                 assertThat(state.canReportBug).isFalse()
                 repeat(7) {
@@ -184,10 +183,9 @@ class OnBoardingPresenterTest {
             ),
         )
         presenter.test {
-            skipItems(3)
+            skipItems(2)
             awaitItem().also {
                 assertThat(it.defaultAccountProvider).isEqualTo(ACCOUNT_PROVIDER_FROM_LINK)
-                assertThat(it.canLoginWithQrCode).isFalse()
                 assertThat(it.canCreateAccount).isFalse()
             }
         }
@@ -210,7 +208,6 @@ class OnBoardingPresenterTest {
             skipItems(1)
             awaitItem().also {
                 assertThat(it.defaultAccountProvider).isNull()
-                assertThat(it.canLoginWithQrCode).isTrue()
                 assertThat(it.canCreateAccount).isFalse()
             }
         }
@@ -232,7 +229,6 @@ class OnBoardingPresenterTest {
             skipItems(1)
             awaitItem().also {
                 assertThat(it.defaultAccountProvider).isEqualTo(ACCOUNT_PROVIDER_FROM_CONFIG)
-                assertThat(it.canLoginWithQrCode).isTrue()
                 assertThat(it.canCreateAccount).isFalse()
             }
         }
@@ -261,7 +257,7 @@ class OnBoardingPresenterTest {
             accountProviderDataSource = accountProviderDataSource,
         )
         presenter.test {
-            skipItems(3)
+            skipItems(2)
             awaitItem().also {
                 assertThat(it.defaultAccountProvider).isEqualTo(A_HOMESERVER_URL)
                 assertThat(accountProviderDataSource.flow.first().url).isEqualTo(AuthenticationConfig.DEFAULT_HOMESERVER_URL)
@@ -314,9 +310,11 @@ private fun createPresenter(
 fun createLoginHelper(
     oAuthActionFlow: OAuthActionFlow = FakeOAuthActionFlow(),
     authenticationService: MatrixAuthenticationService = FakeMatrixAuthenticationService(),
+    momentAuthenticationService: MomentAuthenticationService = FakeMomentAuthenticationService(),
     webClientUrlForAuthenticationRetriever: WebClientUrlForAuthenticationRetriever = FakeWebClientUrlForAuthenticationRetriever(),
 ): LoginHelper = LoginHelper(
     oAuthActionFlow = oAuthActionFlow,
     authenticationService = authenticationService,
+    momentAuthenticationService = momentAuthenticationService,
     webClientUrlForAuthenticationRetriever = webClientUrlForAuthenticationRetriever,
 )

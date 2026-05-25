@@ -8,6 +8,7 @@
 
 package io.element.android.libraries.matrix.impl
 
+import io.element.android.appconfig.MatrixE2EEConfig
 import io.element.android.libraries.androidutils.file.getSizeOfFiles
 import io.element.android.libraries.core.bool.orFalse
 import io.element.android.libraries.core.coroutine.CoroutineDispatchers
@@ -28,6 +29,7 @@ import io.element.android.libraries.matrix.api.core.RoomIdOrAlias
 import io.element.android.libraries.matrix.api.core.UserId
 import io.element.android.libraries.matrix.api.createroom.CreateRoomParameters
 import io.element.android.libraries.matrix.api.createroom.RoomPreset
+import io.element.android.libraries.matrix.api.encryption.EncryptionService
 import io.element.android.libraries.matrix.api.linknewdevice.LinkDesktopHandler
 import io.element.android.libraries.matrix.api.linknewdevice.LinkMobileHandler
 import io.element.android.libraries.matrix.api.media.MatrixMediaLoader
@@ -49,6 +51,8 @@ import io.element.android.libraries.matrix.api.sync.SlidingSyncVersion
 import io.element.android.libraries.matrix.api.sync.SyncState
 import io.element.android.libraries.matrix.api.user.MatrixSearchUserResults
 import io.element.android.libraries.matrix.api.user.MatrixUser
+import io.element.android.libraries.matrix.api.verification.SessionVerificationService
+import io.element.android.libraries.matrix.impl.encryption.DisabledEncryptionService
 import io.element.android.libraries.matrix.impl.encryption.RustEncryptionService
 import io.element.android.libraries.matrix.impl.exception.mapClientException
 import io.element.android.libraries.matrix.impl.linknewdevice.RustLinkDesktopHandler
@@ -84,6 +88,7 @@ import io.element.android.libraries.matrix.impl.usersearch.UserSearchResultMappe
 import io.element.android.libraries.matrix.impl.util.SessionPathsProvider
 import io.element.android.libraries.matrix.impl.util.cancelAndDestroy
 import io.element.android.libraries.matrix.impl.util.mxCallbackFlow
+import io.element.android.libraries.matrix.impl.verification.DisabledSessionVerificationService
 import io.element.android.libraries.matrix.impl.verification.RustSessionVerificationService
 import io.element.android.libraries.matrix.impl.workmanager.PerformDatabaseVacuumRequestBuilder
 import io.element.android.libraries.sessionstorage.api.SessionStore
@@ -175,12 +180,17 @@ class RustMatrixClient(
     private val innerNotificationClient = runBlocking { innerClient.notificationClient(notificationProcessSetup) }
     override val notificationService = RustNotificationService(sessionId, innerNotificationClient, dispatchers, clock)
     override val notificationSettingsService = RustNotificationSettingsService(innerClient, sessionCoroutineScope, dispatchers)
-    override val encryptionService = RustEncryptionService(
-        client = innerClient,
-        syncService = syncService,
-        sessionCoroutineScope = sessionCoroutineScope,
-        dispatchers = dispatchers,
-    )
+    private val rustEncryptionService = if (MatrixE2EEConfig.ENABLED) {
+        RustEncryptionService(
+            client = innerClient,
+            syncService = syncService,
+            sessionCoroutineScope = sessionCoroutineScope,
+            dispatchers = dispatchers,
+        )
+    } else {
+        null
+    }
+    override val encryptionService: EncryptionService = rustEncryptionService ?: DisabledEncryptionService
 
     override val roomDirectoryService = RustRoomDirectoryService(
         client = innerClient,
@@ -219,11 +229,16 @@ class RustMatrixClient(
         innerClient.subscribeToOwnBeaconInfoUpdates(listener)
     }
 
-    override val sessionVerificationService = RustSessionVerificationService(
-        client = innerClient,
-        isSyncServiceReady = syncService.syncState.map { it == SyncState.Running },
-        sessionCoroutineScope = sessionCoroutineScope,
-    )
+    private val rustSessionVerificationService = if (MatrixE2EEConfig.ENABLED) {
+        RustSessionVerificationService(
+            client = innerClient,
+            isSyncServiceReady = syncService.syncState.map { it == SyncState.Running },
+            sessionCoroutineScope = sessionCoroutineScope,
+        )
+    } else {
+        null
+    }
+    override val sessionVerificationService: SessionVerificationService = rustSessionVerificationService ?: DisabledSessionVerificationService
 
     private val roomInfoMapper = RoomInfoMapper()
 
@@ -386,13 +401,18 @@ class RustMatrixClient(
             val hasPublicAccess = createRoomParams.preset == RoomPreset.PUBLIC_CHAT || createRoomParams.joinRuleOverride == JoinRule.Public
             val powerLevels = defaultRoomCreationPowerLevels(isSpace = createRoomParams.isSpace, isPublic = hasPublicAccess)
 
+            val roomPreset = if (!MatrixE2EEConfig.ENABLED && createRoomParams.preset == RoomPreset.TRUSTED_PRIVATE_CHAT) {
+                RoomPreset.PRIVATE_CHAT
+            } else {
+                createRoomParams.preset
+            }
             val rustParams = RustCreateRoomParameters(
                 name = createRoomParams.name,
                 topic = createRoomParams.topic,
-                isEncrypted = createRoomParams.isEncrypted,
+                isEncrypted = createRoomParams.isEncrypted && MatrixE2EEConfig.ENABLED,
                 isDirect = createRoomParams.isDirect,
                 visibility = createRoomParams.visibility.map(),
-                preset = when (createRoomParams.preset) {
+                preset = when (roomPreset) {
                     RoomPreset.PRIVATE_CHAT -> RustRoomPreset.PRIVATE_CHAT
                     RoomPreset.TRUSTED_PRIVATE_CHAT -> RustRoomPreset.TRUSTED_PRIVATE_CHAT
                     RoomPreset.PUBLIC_CHAT -> RustRoomPreset.PUBLIC_CHAT
@@ -426,10 +446,10 @@ class RustMatrixClient(
     override suspend fun createDM(userId: UserId): Result<RoomId> {
         val createRoomParams = CreateRoomParameters(
             name = null,
-            isEncrypted = true,
+            isEncrypted = MatrixE2EEConfig.ENABLED,
             isDirect = true,
             visibility = RoomVisibility.Private,
-            preset = RoomPreset.TRUSTED_PRIVATE_CHAT,
+            preset = if (MatrixE2EEConfig.ENABLED) RoomPreset.TRUSTED_PRIVATE_CHAT else RoomPreset.PRIVATE_CHAT,
             historyVisibilityOverride = RoomHistoryVisibility.Invited,
             invite = listOf(userId),
         )
@@ -580,13 +600,13 @@ class RustMatrixClient(
 
         sessionCoroutineScope.cancel()
         clientDelegateTaskHandle?.cancelAndDestroy()
-        sessionVerificationService.destroy()
+        rustSessionVerificationService?.destroy()
 
         sessionDelegate.clearCurrentClient()
         innerRoomListService.close()
         innerSpaceService.close()
         notificationService.close()
-        encryptionService.close()
+        rustEncryptionService?.close()
         innerClient.close()
     }
 

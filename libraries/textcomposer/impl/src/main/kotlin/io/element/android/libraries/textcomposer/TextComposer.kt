@@ -8,7 +8,6 @@
 
 package io.element.android.libraries.textcomposer
 
-import android.content.res.Configuration
 import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -58,9 +57,7 @@ import io.element.android.compound.theme.ElementTheme
 import io.element.android.compound.tokens.generated.CompoundIcons
 import io.element.android.libraries.androidutils.ui.showKeyboard
 import io.element.android.libraries.designsystem.components.media.WaveFormSamples
-import io.element.android.libraries.designsystem.preview.DAY_MODE_NAME
 import io.element.android.libraries.designsystem.preview.ElementPreview
-import io.element.android.libraries.designsystem.preview.NIGHT_MODE_NAME
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
 import io.element.android.libraries.designsystem.theme.components.CircularProgressIndicator
 import io.element.android.libraries.designsystem.theme.components.HorizontalDivider
@@ -382,7 +379,6 @@ fun TextComposer(
         val endButtonParams = rememberEndButtonParamsFormatting()
         TextFormattingLayout(
             modifier = layoutModifier,
-            isRoomEncrypted = state.isRoomEncrypted,
             textInput = textInput,
             dismissTextFormattingButton = {
                 IconColorButton(
@@ -399,7 +395,6 @@ fun TextComposer(
         StandardLayout(
             composerMode = composerMode,
             voiceMessageState = voiceMessageState,
-            isRoomEncrypted = state.isRoomEncrypted,
             modifier = layoutModifier,
             textInput = textInput,
             endButtonParams = endButtonParams,
@@ -450,7 +445,6 @@ private data class EndButtonParams(
 private fun StandardLayout(
     composerMode: MessageComposerMode,
     voiceMessageState: VoiceMessageState,
-    isRoomEncrypted: Boolean?,
     textInput: @Composable () -> Unit,
     voiceRecording: @Composable () -> Unit,
     endButtonParams: EndButtonParams,
@@ -461,11 +455,6 @@ private fun StandardLayout(
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier) {
-        if (isRoomEncrypted == false) {
-            Spacer(Modifier.height(16.dp))
-            NotEncryptedBadge()
-            Spacer(Modifier.height(4.dp))
-        }
         Row(verticalAlignment = Alignment.Bottom) {
             when (composerMode) {
                 is MessageComposerMode.Attachment -> {
@@ -554,30 +543,7 @@ private fun StandardLayout(
 }
 
 @Composable
-private fun NotEncryptedBadge() {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.Center,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Icon(
-            modifier = Modifier.size(16.dp),
-            imageVector = CompoundIcons.LockOff(),
-            contentDescription = null,
-            tint = ElementTheme.colors.iconInfoPrimary,
-        )
-        Spacer(Modifier.width(4.dp))
-        Text(
-            text = stringResource(CommonStrings.common_not_encrypted),
-            style = ElementTheme.typography.fontBodySmRegular,
-            color = ElementTheme.colors.textSecondary,
-        )
-    }
-}
-
-@Composable
 private fun TextFormattingLayout(
-    isRoomEncrypted: Boolean?,
     textInput: @Composable () -> Unit,
     dismissTextFormattingButton: @Composable () -> Unit,
     textFormatting: @Composable () -> Unit,
@@ -588,10 +554,6 @@ private fun TextFormattingLayout(
         modifier = modifier.padding(vertical = 4.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        if (isRoomEncrypted == false) {
-            NotEncryptedBadge()
-            Spacer(Modifier.height(8.dp))
-        }
         Box(
             modifier = Modifier
                 .weight(1f)
@@ -697,26 +659,24 @@ private fun VoiceMessageState.endButtonKey() = when (this) {
     is VoiceMessageState.Recording -> "Recording"
 }
 
-private fun aTextEditorStateMarkdownList(isRoomEncrypted: Boolean? = null) = persistentListOf(
-    aTextEditorStateMarkdown(initialText = "", initialFocus = true, isRoomEncrypted = isRoomEncrypted),
-    aTextEditorStateMarkdown(initialText = "A message", initialFocus = true, isRoomEncrypted = isRoomEncrypted),
+private fun aTextEditorStateMarkdownList() = persistentListOf(
+    aTextEditorStateMarkdown(initialText = "", initialFocus = true),
+    aTextEditorStateMarkdown(initialText = "A message", initialFocus = true),
     aTextEditorStateMarkdown(
         initialText = "A message\nWith several lines\nTo preview larger textfields and long lines with overflow",
         initialFocus = true,
-        isRoomEncrypted = isRoomEncrypted,
     ),
-    aTextEditorStateMarkdown(initialText = "A message without focus", initialFocus = false, isRoomEncrypted = isRoomEncrypted),
+    aTextEditorStateMarkdown(initialText = "A message without focus", initialFocus = false),
 )
 
-private fun aTextEditorStateRichList(isRoomEncrypted: Boolean? = null) = persistentListOf(
-    aTextEditorStateRich(initialFocus = true, isRoomEncrypted = isRoomEncrypted),
-    aTextEditorStateRich(initialText = "A message", initialFocus = true, isRoomEncrypted = isRoomEncrypted),
+private fun aTextEditorStateRichList() = persistentListOf(
+    aTextEditorStateRich(initialFocus = true),
+    aTextEditorStateRich(initialText = "A message", initialFocus = true),
     aTextEditorStateRich(
         initialText = "A message\nWith several lines\nTo preview larger textfields and long lines with overflow",
         initialFocus = true,
-        isRoomEncrypted = isRoomEncrypted,
     ),
-    aTextEditorStateRich(initialText = "A message without focus", initialFocus = false, isRoomEncrypted = isRoomEncrypted),
+    aTextEditorStateRich(initialText = "A message without focus", initialFocus = false),
 )
 
 @PreviewsDayNight
@@ -724,20 +684,6 @@ private fun aTextEditorStateRichList(isRoomEncrypted: Boolean? = null) = persist
 internal fun TextComposerSimplePreview() = ElementPreview {
     PreviewColumn(
         items = aTextEditorStateMarkdownList()
-    ) { textEditorState ->
-        ATextComposer(
-            state = textEditorState,
-            voiceMessageState = VoiceMessageState.Idle,
-            composerMode = MessageComposerMode.Normal,
-        )
-    }
-}
-
-@PreviewsDayNight
-@Composable
-internal fun TextComposerSimpleNotEncryptedPreview() = ElementPreview {
-    PreviewColumn(
-        items = aTextEditorStateMarkdownList(isRoomEncrypted = false),
     ) { textEditorState ->
         ATextComposer(
             state = textEditorState,
@@ -764,38 +710,9 @@ internal fun TextComposerFormattingPreview() = ElementPreview {
 
 @PreviewsDayNight
 @Composable
-internal fun TextComposerFormattingNotEncryptedPreview() = ElementPreview {
-    PreviewColumn(
-        items = aTextEditorStateRichList(isRoomEncrypted = false)
-    ) { textEditorState ->
-        ATextComposer(
-            state = textEditorState,
-            voiceMessageState = VoiceMessageState.Idle,
-            showTextFormatting = true,
-            composerMode = MessageComposerMode.Normal,
-        )
-    }
-}
-
-@PreviewsDayNight
-@Composable
 internal fun TextComposerEditPreview() = ElementPreview {
     PreviewColumn(
         items = aTextEditorStateRichList()
-    ) { textEditorState ->
-        ATextComposer(
-            state = textEditorState,
-            voiceMessageState = VoiceMessageState.Idle,
-            composerMode = aMessageComposerModeEdit(),
-        )
-    }
-}
-
-@PreviewsDayNight
-@Composable
-internal fun TextComposerEditNotEncryptedPreview() = ElementPreview {
-    PreviewColumn(
-        items = aTextEditorStateRichList(isRoomEncrypted = false)
     ) { textEditorState ->
         ATextComposer(
             state = textEditorState,
@@ -869,30 +786,6 @@ internal fun TextComposerReplyPreview(@PreviewParameter(InReplyToDetailsProvider
     }
 }
 
-@Preview(
-    name = DAY_MODE_NAME,
-    heightDp = 800,
-)
-@Preview(
-    name = NIGHT_MODE_NAME,
-    uiMode = Configuration.UI_MODE_NIGHT_YES,
-    heightDp = 800,
-)
-@Composable
-internal fun TextComposerReplyNotEncryptedPreview(@PreviewParameter(InReplyToDetailsProvider::class) inReplyToDetails: InReplyToDetails) = ElementPreview {
-    PreviewColumn(
-        items = aTextEditorStateRichList(isRoomEncrypted = false)
-    ) { textEditorState ->
-        ATextComposer(
-            state = textEditorState,
-            voiceMessageState = VoiceMessageState.Idle,
-            composerMode = aMessageComposerModeReply(
-                replyToDetails = inReplyToDetails,
-            ),
-        )
-    }
-}
-
 @PreviewsDayNight
 @Composable
 internal fun TextComposerCaptionPreview() = ElementPreview {
@@ -945,49 +838,6 @@ internal fun TextComposerVoicePreview() = ElementPreview {
     ) { voiceMessageState ->
         ATextComposer(
             state = aTextEditorStateRich(initialFocus = true),
-            voiceMessageState = voiceMessageState,
-            composerMode = MessageComposerMode.Normal,
-        )
-    }
-}
-
-@PreviewsDayNight
-@Composable
-internal fun TextComposerVoiceNotEncryptedPreview() = ElementPreview {
-    PreviewColumn(
-        items = persistentListOf(
-            VoiceMessageState.Recording(
-                duration = 61.seconds,
-                levels = WaveFormSamples.realisticWaveForm,
-            ),
-            VoiceMessageState.Preview(
-                isSending = false,
-                isPlaying = false,
-                showCursor = false,
-                waveform = WaveFormSamples.realisticWaveForm,
-                time = 0.seconds,
-                playbackProgress = 0.0f
-            ),
-            VoiceMessageState.Preview(
-                isSending = false,
-                isPlaying = true,
-                showCursor = true,
-                waveform = WaveFormSamples.realisticWaveForm,
-                time = 3.seconds,
-                playbackProgress = 0.2f
-            ),
-            VoiceMessageState.Preview(
-                isSending = true,
-                isPlaying = false,
-                showCursor = false,
-                waveform = WaveFormSamples.realisticWaveForm,
-                time = 61.seconds,
-                playbackProgress = 0.0f
-            ),
-        )
-    ) { voiceMessageState ->
-        ATextComposer(
-            state = aTextEditorStateRich(initialFocus = true, isRoomEncrypted = false),
             voiceMessageState = voiceMessageState,
             composerMode = MessageComposerMode.Normal,
         )

@@ -15,7 +15,6 @@ import io.element.android.libraries.matrix.test.AN_EXCEPTION
 import io.element.android.libraries.matrix.test.A_ROOM_ID
 import io.element.android.libraries.matrix.test.notificationsettings.FakeNotificationSettingsService
 import io.element.android.libraries.matrix.test.room.FakeJoinedRoom
-import io.element.android.tests.testutils.awaitLastSequentialItem
 import io.element.android.tests.testutils.consumeItemsUntilPredicate
 import io.element.android.tests.testutils.test
 import kotlinx.coroutines.test.runTest
@@ -139,26 +138,16 @@ class RoomNotificationSettingsPresenterTest {
     }
 
     @Test
-    fun `present - display mentions only warning for a room if homeserver does not support it and it's encrypted`() = runTest {
+    fun `present - do not display mentions only warning`() = runTest {
         val notificationService = FakeNotificationSettingsService().apply {
             givenCanHomeServerPushEncryptedEventsToDeviceResult(Result.success(false))
         }
         val room = aJoinedRoom(notificationSettingsService = notificationService, isEncrypted = true)
         val presenter = createRoomNotificationSettingsPresenter(notificationService, room)
         presenter.test {
-            assertThat(awaitLastSequentialItem().displayMentionsOnlyDisclaimer).isTrue()
-        }
-    }
-
-    @Test
-    fun `present - do not display mentions only warning for a room it's not encrypted`() = runTest {
-        val notificationService = FakeNotificationSettingsService().apply {
-            givenCanHomeServerPushEncryptedEventsToDeviceResult(Result.success(false))
-        }
-        val room = aJoinedRoom(notificationSettingsService = notificationService, isEncrypted = false)
-        val presenter = createRoomNotificationSettingsPresenter(notificationService, room)
-        presenter.test {
-            assertThat(awaitLastSequentialItem().displayMentionsOnlyDisclaimer).isFalse()
+            val loadedState = consumeItemsUntilPredicate { it.roomNotificationSettings.isSuccess() }.last()
+            assertThat(loadedState.displayMentionsOnlyDisclaimer).isFalse()
+            cancelAndIgnoreRemainingEvents()
         }
     }
 

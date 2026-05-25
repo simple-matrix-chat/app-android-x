@@ -1,8 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
-  <string name="crypto_history_sharing_room_info_hidden_badge_content">"Nowi członkowie nie widzą historii"</string>
-  <string name="crypto_history_sharing_room_info_shared_badge_content">"Nowi członkowie widzą historię"</string>
-  <string name="crypto_history_sharing_room_info_world_readable_badge_content">"Każdy może przeglądać historię"</string>
   <string name="screen_edit_room_address_room_address_section_footer">"Aby pokój był widoczny w katalogu pokoi publicznych, potrzebny jest adres pokoju."</string>
   <string name="screen_edit_room_address_title">"Edytuj adres"</string>
   <string name="screen_notification_settings_edit_failed_updating_default_mode">"Wystąpił błąd podczas aktualizacji ustawienia powiadomień."</string>
@@ -42,8 +39,6 @@
   <string name="screen_room_change_role_unsaved_changes_description">"Masz niezapisane zmiany."</string>
   <string name="screen_room_change_role_unsaved_changes_title">"Zapisać zmiany?"</string>
   <string name="screen_room_details_add_topic_title">"Dodaj temat"</string>
-  <string name="screen_room_details_badge_encrypted">"Szyfrowany"</string>
-  <string name="screen_room_details_badge_not_encrypted">"Nieszyfrowany"</string>
   <string name="screen_room_details_badge_public">"Pokój publiczny"</string>
   <string name="screen_room_details_edit_room_title">"Edytuj szczegóły"</string>
   <string name="screen_room_details_edition_error">"Wystąpił nieznany błąd i nie można było zmienić informacji."</string>

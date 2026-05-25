@@ -10,33 +10,22 @@ package io.element.android.features.roomdetails.impl.members.details
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import dev.zacsweers.metro.Assisted
 import dev.zacsweers.metro.AssistedInject
 import io.element.android.features.userprofile.api.UserProfileEvents
 import io.element.android.features.userprofile.api.UserProfilePresenterFactory
 import io.element.android.features.userprofile.api.UserProfileState
-import io.element.android.features.userprofile.api.UserProfileVerificationState
 import io.element.android.libraries.androidutils.clipboard.ClipboardHelper
 import io.element.android.libraries.architecture.Presenter
 import io.element.android.libraries.designsystem.utils.snackbar.LocalSnackbarDispatcher
 import io.element.android.libraries.designsystem.utils.snackbar.SnackbarMessage
 import io.element.android.libraries.designsystem.utils.snackbar.collectSnackbarMessageAsState
 import io.element.android.libraries.matrix.api.core.UserId
-import io.element.android.libraries.matrix.api.encryption.EncryptionService
-import io.element.android.libraries.matrix.api.encryption.identity.IdentityState
-import io.element.android.libraries.matrix.api.encryption.identity.IdentityStateChange
 import io.element.android.libraries.matrix.api.room.JoinedRoom
 import io.element.android.libraries.matrix.ui.room.getRoomMemberAsState
-import io.element.android.libraries.matrix.ui.room.roomMemberIdentityStateChange
 import io.element.android.libraries.ui.strings.CommonStrings
-import kotlinx.coroutines.flow.filterNotNull
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.launch
 
 /**
  * Presenter for room member details screen.
@@ -46,7 +35,6 @@ import kotlinx.coroutines.launch
 class RoomMemberDetailsPresenter(
     @Assisted private val roomMemberId: UserId,
     private val room: JoinedRoom,
-    private val encryptionService: EncryptionService,
     private val clipboardHelper: ClipboardHelper,
     userProfilePresenterFactory: UserProfilePresenterFactory,
 ) : Presenter<UserProfileState> {
@@ -58,8 +46,6 @@ class RoomMemberDetailsPresenter(
 
     @Composable
     override fun present(): UserProfileState {
-        val coroutineScope = rememberCoroutineScope()
-
         val snackbarDispatcher = LocalSnackbarDispatcher.current
         val snackbarMessage by snackbarDispatcher.collectSnackbarMessageAsState()
         val roomMember by room.getRoomMemberAsState(roomMemberId)
@@ -85,38 +71,9 @@ class RoomMemberDetailsPresenter(
 
         val userProfileState = userProfilePresenter.present()
 
-        val identityStateChanges = produceState<IdentityStateChange?>(initialValue = null) {
-            // Fetch the initial identity state manually
-            val identityState = encryptionService.getUserIdentity(roomMemberId).getOrNull()
-            value = identityState?.let { IdentityStateChange(roomMemberId, it) }
-
-            // Subscribe to the identity changes
-            room.roomMemberIdentityStateChange(waitForEncryption = false)
-                .map { it.find { it.identityRoomMember.userId == roomMemberId } }
-                .map { roomMemberIdentityStateChange ->
-                    // If we didn't receive any info, manually fetch it
-                    roomMemberIdentityStateChange?.identityState ?: encryptionService.getUserIdentity(roomMemberId).getOrNull()
-                }
-                .filterNotNull()
-                .collect { value = IdentityStateChange(roomMemberId, it) }
-        }
-
-        val verificationState by remember {
-            derivedStateOf {
-                when (identityStateChanges.value?.identityState) {
-                    IdentityState.VerificationViolation -> UserProfileVerificationState.VERIFICATION_VIOLATION
-                    IdentityState.Verified -> UserProfileVerificationState.VERIFIED
-                    IdentityState.Pinned, IdentityState.PinViolation -> UserProfileVerificationState.UNVERIFIED
-                    else -> UserProfileVerificationState.UNKNOWN
-                }
-            }
-        }
-
         fun handleEvent(event: UserProfileEvents) {
             when (event) {
-                UserProfileEvents.WithdrawVerification -> coroutineScope.launch {
-                    encryptionService.withdrawVerification(roomMemberId)
-                }
+                UserProfileEvents.WithdrawVerification -> Unit
                 is UserProfileEvents.CopyToClipboard -> {
                     clipboardHelper.copyPlainText(event.text)
                     snackbarDispatcher.post(SnackbarMessage(CommonStrings.common_copied_to_clipboard))
@@ -128,7 +85,6 @@ class RoomMemberDetailsPresenter(
         return userProfileState.copy(
             userName = roomUserName ?: userProfileState.userName,
             avatarUrl = roomUserAvatar ?: userProfileState.avatarUrl,
-            verificationState = verificationState,
             snackbarMessage = snackbarMessage,
             eventSink = ::handleEvent,
         )

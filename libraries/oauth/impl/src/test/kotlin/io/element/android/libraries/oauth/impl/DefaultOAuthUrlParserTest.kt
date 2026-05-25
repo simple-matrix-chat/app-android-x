@@ -42,6 +42,20 @@ class DefaultOAuthUrlParserTest {
     }
 
     @Test
+    fun `test login token success url`() {
+        val sut = createDefaultOAuthUrlParser()
+        val aSuccessUrl = "$FAKE_REDIRECT_URL?loginToken=aLoginToken"
+        assertThat(sut.parse(aSuccessUrl)).isEqualTo(OAuthAction.Success(aSuccessUrl))
+    }
+
+    @Test
+    fun `test provider error url`() {
+        val sut = createDefaultOAuthUrlParser()
+        val anErrorUrl = "$FAKE_REDIRECT_URL?error=server_error&error_description=failed"
+        assertThat(sut.parse(anErrorUrl)).isEqualTo(OAuthAction.Success(anErrorUrl))
+    }
+
+    @Test
     fun `test unknown url`() {
         val sut = createDefaultOAuthUrlParser()
         val anUnknownUrl = "$FAKE_REDIRECT_URL?state=IFF1UETGye2ZA8pO&goat=y6X1GZeqA3xxOWcTeShgv8nkgFJXyzWB"
