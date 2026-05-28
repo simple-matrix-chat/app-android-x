@@ -32,7 +32,6 @@ import io.element.android.compound.theme.ElementTheme
 import io.element.android.features.login.api.LoginEntryPoint
 import io.element.android.features.login.impl.accountprovider.AccountProviderDataSource
 import io.element.android.features.login.impl.classic.ElementClassicConnection
-import io.element.android.features.login.impl.qrcode.QrCodeLoginFlowNode
 import io.element.android.features.login.impl.screens.changeaccountprovider.ChangeAccountProviderNode
 import io.element.android.features.login.impl.screens.chooseaccountprovider.ChooseAccountProviderNode
 import io.element.android.features.login.impl.screens.classic.ClassicFlowNode
@@ -117,9 +116,6 @@ class LoginFlowNode(
         ) : NavTarget
 
         @Parcelize
-        data object QrCode : NavTarget
-
-        @Parcelize
         data object AppDeveloperSettings : NavTarget
 
         @Parcelize
@@ -189,10 +185,6 @@ class LoginFlowNode(
                         )
                     }
 
-                    override fun navigateToQrCode() {
-                        backstack.push(NavTarget.QrCode)
-                    }
-
                     override fun navigateToBugReport() {
                         callback.navigateToBugReport()
                     }
@@ -256,14 +248,6 @@ class LoginFlowNode(
                     }
                 }
                 createNode<ChooseAccountProviderNode>(buildContext, listOf(callback))
-            }
-            NavTarget.QrCode -> {
-                val callback = object : QrCodeLoginFlowNode.Callback {
-                    override fun navigateBack() {
-                        backstack.pop()
-                    }
-                }
-                createNode<QrCodeLoginFlowNode>(buildContext, listOf(callback))
             }
             is NavTarget.ConfirmAccountProvider -> {
                 val inputs = ConfirmAccountProviderNode.Inputs(

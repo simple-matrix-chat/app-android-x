@@ -53,7 +53,6 @@ fun SpaceSettingsView(
     onSpaceInfoClick: () -> Unit,
     onMembersClick: () -> Unit,
     onRolesAndPermissionsClick: () -> Unit,
-    onSecurityAndPrivacyClick: () -> Unit,
     onLeaveSpaceClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -76,11 +75,6 @@ fun SpaceSettingsView(
                 canEditDetails = state.canEditDetails,
                 onSpaceInfoClick = onSpaceInfoClick,
             )
-            Section(isVisible = state.showSecurityAndPrivacy, content = {
-                SecurityAndPrivacyItem(
-                    onClick = onSecurityAndPrivacyClick
-                )
-            })
             Section(content = {
                 MembersItem(state.memberCount, onClick = onMembersClick)
                 if (state.showRolesAndPermissions) {
@@ -160,19 +154,6 @@ private fun SpaceSettingsTopBar(
 }
 
 @Composable
-private fun SecurityAndPrivacyItem(
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    ListItem(
-        headlineContent = { Text(stringResource(R.string.screen_space_settings_security_and_privacy)) },
-        leadingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.Lock())),
-        onClick = onClick,
-        modifier = modifier,
-    )
-}
-
-@Composable
 private fun MembersItem(
     memberCount: Long,
     onClick: () -> Unit,
@@ -227,7 +208,6 @@ internal fun SpaceSettingsViewPreview(
         onSpaceInfoClick = {},
         onMembersClick = {},
         onRolesAndPermissionsClick = {},
-        onSecurityAndPrivacyClick = {},
         onLeaveSpaceClick = {},
         modifier = Modifier,
     )

@@ -40,18 +40,15 @@ import io.element.android.libraries.fullscreenintent.api.aFullScreenIntentPermis
 import io.element.android.libraries.matrix.api.MatrixClient
 import io.element.android.libraries.matrix.api.core.RoomId
 import io.element.android.libraries.matrix.api.core.SessionId
-import io.element.android.libraries.matrix.api.encryption.RecoveryState
 import io.element.android.libraries.matrix.api.room.CurrentUserMembership
 import io.element.android.libraries.matrix.api.room.RoomNotificationMode
 import io.element.android.libraries.matrix.api.roomlist.RoomList
-import io.element.android.libraries.matrix.api.sync.SyncState
 import io.element.android.libraries.matrix.api.timeline.ReceiptType
 import io.element.android.libraries.matrix.test.A_ROOM_ID
 import io.element.android.libraries.matrix.test.A_ROOM_ID_2
 import io.element.android.libraries.matrix.test.A_ROOM_ID_3
 import io.element.android.libraries.matrix.test.A_SESSION_ID
 import io.element.android.libraries.matrix.test.FakeMatrixClient
-import io.element.android.libraries.matrix.test.encryption.FakeEncryptionService
 import io.element.android.libraries.matrix.test.notificationsettings.FakeNotificationSettingsService
 import io.element.android.libraries.matrix.test.room.FakeBaseRoom
 import io.element.android.libraries.matrix.test.room.aRoomInfo
@@ -59,8 +56,6 @@ import io.element.android.libraries.matrix.test.room.aRoomMember
 import io.element.android.libraries.matrix.test.room.aRoomSummary
 import io.element.android.libraries.matrix.test.roomlist.FakeDynamicRoomList
 import io.element.android.libraries.matrix.test.roomlist.FakeRoomListService
-import io.element.android.libraries.matrix.test.sync.FakeSyncService
-import io.element.android.libraries.matrix.test.verification.FakeSessionVerificationService
 import io.element.android.libraries.preferences.api.store.AppPreferencesStore
 import io.element.android.libraries.preferences.api.store.SessionPreferencesStore
 import io.element.android.libraries.preferences.test.InMemoryAppPreferencesStore
@@ -130,79 +125,6 @@ class RoomListPresenterTest {
             )
             assertThat(withRoomsState.contentAsRooms().seenRoomInvites).containsExactly(A_ROOM_ID, A_ROOM_ID_2, A_ROOM_ID_3)
             cancelAndIgnoreRemainingEvents()
-        }
-    }
-
-    @Test
-    fun `present - handle DismissRequestVerificationPrompt`() = runTest {
-        val roomList = FakeDynamicRoomList(
-            loadingState = MutableStateFlow(RoomList.LoadingState.Loaded(1))
-        )
-        val roomListService = FakeRoomListService(
-            createRoomListLambda = { roomList }
-        )
-        val encryptionService = FakeEncryptionService().apply {
-            emitRecoveryState(RecoveryState.INCOMPLETE)
-        }
-        val syncService = FakeSyncService(initialSyncState = SyncState.Running)
-        val presenter = createRoomListPresenter(
-            client = FakeMatrixClient(roomListService = roomListService, encryptionService = encryptionService, syncService = syncService),
-        )
-        presenter.test {
-            val eventWithContentAsRooms = consumeItemsUntilPredicate {
-                it.contentState is RoomListContentState.Rooms
-            }.last()
-            val eventSink = eventWithContentAsRooms.eventSink
-            assertThat(eventWithContentAsRooms.contentAsRooms().securityBannerState).isEqualTo(SecurityBannerState.RecoveryKeyConfirmation)
-            eventSink(RoomListEvent.DismissRequestVerificationPrompt)
-            assertThat(awaitItem().contentAsRooms().securityBannerState).isEqualTo(SecurityBannerState.None)
-        }
-    }
-
-    @Test
-    fun `present - handle DismissRecoveryKeyPrompt`() = runTest {
-        val encryptionService = FakeEncryptionService().apply {
-            recoveryStateStateFlow.emit(RecoveryState.DISABLED)
-        }
-        val roomList = FakeDynamicRoomList(
-            loadingState = MutableStateFlow(RoomList.LoadingState.Loaded(1))
-        )
-        val roomListService = FakeRoomListService(
-            createRoomListLambda = { roomList }
-        )
-        val matrixClient = FakeMatrixClient(
-            roomListService = roomListService,
-            encryptionService = encryptionService,
-            sessionVerificationService = FakeSessionVerificationService().apply {
-                emitNeedsSessionVerification(false)
-            },
-            syncService = FakeSyncService(initialSyncState = SyncState.Running),
-        )
-        val presenter = createRoomListPresenter(
-            client = matrixClient,
-        )
-        presenter.test {
-            val initialState = consumeItemsUntilPredicate {
-                it.contentState is RoomListContentState.Rooms
-            }.last()
-            assertThat(initialState.contentAsRooms().securityBannerState).isEqualTo(SecurityBannerState.SetUpRecovery)
-            encryptionService.emitRecoveryState(RecoveryState.INCOMPLETE)
-            val nextState = awaitItem()
-            assertThat(nextState.contentAsRooms().securityBannerState).isEqualTo(SecurityBannerState.RecoveryKeyConfirmation)
-            // Also check other states
-            encryptionService.emitRecoveryState(RecoveryState.DISABLED)
-            assertThat(awaitItem().contentAsRooms().securityBannerState).isEqualTo(SecurityBannerState.SetUpRecovery)
-            encryptionService.emitRecoveryState(RecoveryState.WAITING_FOR_SYNC)
-            assertThat(awaitItem().contentAsRooms().securityBannerState).isEqualTo(SecurityBannerState.None)
-            encryptionService.emitRecoveryState(RecoveryState.DISABLED)
-            assertThat(awaitItem().contentAsRooms().securityBannerState).isEqualTo(SecurityBannerState.SetUpRecovery)
-            encryptionService.emitRecoveryState(RecoveryState.ENABLED)
-            assertThat(awaitItem().contentAsRooms().securityBannerState).isEqualTo(SecurityBannerState.None)
-            encryptionService.emitRecoveryState(RecoveryState.DISABLED)
-            assertThat(awaitItem().contentAsRooms().securityBannerState).isEqualTo(SecurityBannerState.SetUpRecovery)
-            nextState.eventSink(RoomListEvent.DismissBanner)
-            val finalState = awaitItem()
-            assertThat(finalState.contentAsRooms().securityBannerState).isEqualTo(SecurityBannerState.None)
         }
     }
 

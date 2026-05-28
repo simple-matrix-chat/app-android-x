@@ -21,7 +21,6 @@ import dev.zacsweers.metro.AssistedInject
 import io.element.android.annotations.ContributesNode
 import io.element.android.features.rolesandpermissions.api.RolesAndPermissionsEntryPoint
 import io.element.android.features.roomdetailsedit.api.RoomDetailsEditEntryPoint
-import io.element.android.features.securityandprivacy.api.SecurityAndPrivacyEntryPoint
 import io.element.android.features.space.impl.di.SpaceFlowScope
 import io.element.android.libraries.architecture.BackstackView
 import io.element.android.libraries.architecture.BaseFlowNode
@@ -34,7 +33,6 @@ import kotlinx.parcelize.Parcelize
 class SpaceSettingsFlowNode(
     @Assisted buildContext: BuildContext,
     @Assisted plugins: List<Plugin>,
-    private val securityAndPrivacyEntryPoint: SecurityAndPrivacyEntryPoint,
     private val rolesAndPermissionsEntryPoint: RolesAndPermissionsEntryPoint,
     private val roomDetailsEditEntryPoint: RoomDetailsEditEntryPoint
 ) : BaseFlowNode<SpaceSettingsFlowNode.NavTarget>(
@@ -58,9 +56,6 @@ class SpaceSettingsFlowNode(
 
         @Parcelize
         data object EditDetails : NavTarget
-
-        @Parcelize
-        data object SecurityAndPrivacy : NavTarget
 
         @Parcelize
         data object RolesAndPermissions : NavTarget
@@ -88,10 +83,6 @@ class SpaceSettingsFlowNode(
                         backstack.push(NavTarget.RolesAndPermissions)
                     }
 
-                    override fun navigateToSecurityAndPrivacy() {
-                        backstack.push(NavTarget.SecurityAndPrivacy)
-                    }
-
                     override fun startLeaveSpaceFlow() {
                         callback.startLeaveSpaceFlow()
                     }
@@ -99,18 +90,6 @@ class SpaceSettingsFlowNode(
                 createNode<SpaceSettingsNode>(
                     buildContext = buildContext,
                     plugins = listOf(callback),
-                )
-            }
-            is NavTarget.SecurityAndPrivacy -> {
-                val callback = object : SecurityAndPrivacyEntryPoint.Callback {
-                    override fun onDone() {
-                        backstack.pop()
-                    }
-                }
-                securityAndPrivacyEntryPoint.createNode(
-                    parentNode = this,
-                    buildContext = buildContext,
-                    callback = callback,
                 )
             }
             is NavTarget.RolesAndPermissions -> {

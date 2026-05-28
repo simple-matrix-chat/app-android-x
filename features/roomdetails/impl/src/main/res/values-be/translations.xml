@@ -31,8 +31,6 @@
   <string name="screen_room_change_role_unsaved_changes_description">"У вас ёсць незахаваныя змены."</string>
   <string name="screen_room_change_role_unsaved_changes_title">"Захаваць змены?"</string>
   <string name="screen_room_details_add_topic_title">"Дадаць тэму"</string>
-  <string name="screen_room_details_badge_encrypted">"Зашыфраваны"</string>
-  <string name="screen_room_details_badge_not_encrypted">"Не зашыфраваны"</string>
   <string name="screen_room_details_badge_public">"Публічны пакой"</string>
   <string name="screen_room_details_edit_room_title">"Рэдагаваць пакой"</string>
   <string name="screen_room_details_edition_error">"Адбылася невядомая памылка, і інфармацыю нельга было змяніць."</string>

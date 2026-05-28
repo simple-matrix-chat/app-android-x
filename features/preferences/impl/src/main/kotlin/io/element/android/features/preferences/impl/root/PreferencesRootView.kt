@@ -48,10 +48,7 @@ fun PreferencesRootView(
     state: PreferencesRootState,
     onBackClick: () -> Unit,
     onAddAccountClick: () -> Unit,
-    onSecureBackupClick: () -> Unit,
     onManageAccountClick: (url: String) -> Unit,
-    onLinkNewDeviceClick: () -> Unit,
-    onOpenAnalytics: () -> Unit,
     onOpenRageShake: () -> Unit,
     onOpenLockScreenSettings: () -> Unit,
     onOpenAbout: () -> Unit,
@@ -93,7 +90,6 @@ fun PreferencesRootView(
         ManageAccountSection(
             state = state,
             onManageAccountClick = onManageAccountClick,
-            onLinkNewDeviceClick = onLinkNewDeviceClick,
             onOpenBlockedUsers = onOpenBlockedUsers
         )
         // 'Manage my app' section
@@ -101,14 +97,12 @@ fun PreferencesRootView(
             state = state,
             onOpenNotificationSettings = onOpenNotificationSettings,
             onOpenLockScreenSettings = onOpenLockScreenSettings,
-            onSecureBackupClick = onSecureBackupClick,
         )
 
         // General section
         GeneralSection(
             state = state,
             onOpenAbout = onOpenAbout,
-            onOpenAnalytics = onOpenAnalytics,
             onOpenRageShake = onOpenRageShake,
             onOpenAdvancedSettings = onOpenAdvancedSettings,
             onOpenDeveloperSettings = onOpenDeveloperSettings,
@@ -165,10 +159,9 @@ private fun ColumnScope.MultiAccountSection(
 
 @Composable
 private fun ColumnScope.ManageAppSection(
-    state: PreferencesRootState,
+    @Suppress("UNUSED_PARAMETER") state: PreferencesRootState,
     onOpenNotificationSettings: () -> Unit,
     onOpenLockScreenSettings: () -> Unit,
-    onSecureBackupClick: () -> Unit,
 ) {
     ListItem(
         headlineContent = { Text(stringResource(id = R.string.screen_notification_settings_title)) },
@@ -180,14 +173,6 @@ private fun ColumnScope.ManageAppSection(
         leadingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.Lock())),
         onClick = onOpenLockScreenSettings,
     )
-    if (state.showSecureBackup) {
-        ListItem(
-            headlineContent = { Text(stringResource(id = CommonStrings.common_encryption)) },
-            leadingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.Key())),
-            trailingContent = ListItemContent.Badge.takeIf { state.showSecureBackupBadge },
-            onClick = onSecureBackupClick,
-        )
-    }
     HorizontalDivider()
 }
 
@@ -195,7 +180,6 @@ private fun ColumnScope.ManageAppSection(
 private fun ColumnScope.ManageAccountSection(
     state: PreferencesRootState,
     onManageAccountClick: (url: String) -> Unit,
-    onLinkNewDeviceClick: () -> Unit,
     onOpenBlockedUsers: () -> Unit,
 ) {
     state.accountManagementUrl?.let { url ->
@@ -206,13 +190,6 @@ private fun ColumnScope.ManageAccountSection(
             onClick = { onManageAccountClick(url) },
         )
     }
-    if (state.showLinkNewDevice) {
-        ListItem(
-            headlineContent = { Text(stringResource(id = CommonStrings.common_link_new_device)) },
-            leadingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.Devices())),
-            onClick = onLinkNewDeviceClick,
-        )
-    }
     if (state.showBlockedUsersItem) {
         ListItem(
             headlineContent = { Text(stringResource(id = CommonStrings.common_blocked_users)) },
@@ -221,7 +198,7 @@ private fun ColumnScope.ManageAccountSection(
             trailingContent = ListItemContent.Text(state.nbOfBlockedUsers.toString()),
         )
     }
-    if (state.accountManagementUrl != null || state.showLinkNewDevice || state.showBlockedUsersItem) {
+    if (state.accountManagementUrl != null || state.showBlockedUsersItem) {
         HorizontalDivider()
     }
 }
@@ -230,7 +207,6 @@ private fun ColumnScope.ManageAccountSection(
 private fun ColumnScope.GeneralSection(
     state: PreferencesRootState,
     onOpenAbout: () -> Unit,
-    onOpenAnalytics: () -> Unit,
     onOpenRageShake: () -> Unit,
     onOpenAdvancedSettings: () -> Unit,
     onOpenLabs: () -> Unit,
@@ -260,13 +236,6 @@ private fun ColumnScope.GeneralSection(
             headlineContent = { Text(stringResource(id = CommonStrings.common_report_a_problem)) },
             leadingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.ChatProblem())),
             onClick = onOpenRageShake
-        )
-    }
-    if (state.showAnalyticsSettings) {
-        ListItem(
-            headlineContent = { Text(stringResource(id = CommonStrings.common_analytics)) },
-            leadingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.Chart())),
-            onClick = onOpenAnalytics,
         )
     }
     HorizontalDivider()
@@ -347,15 +316,12 @@ private fun ContentToPreview(state: PreferencesRootState) {
         state = state,
         onBackClick = {},
         onAddAccountClick = {},
-        onOpenAnalytics = {},
         onOpenRageShake = {},
         onOpenDeveloperSettings = {},
         onOpenAdvancedSettings = {},
         onOpenLabs = {},
         onOpenAbout = {},
-        onSecureBackupClick = {},
         onManageAccountClick = {},
-        onLinkNewDeviceClick = {},
         onOpenNotificationSettings = {},
         onOpenLockScreenSettings = {},
         onOpenUserProfile = {},

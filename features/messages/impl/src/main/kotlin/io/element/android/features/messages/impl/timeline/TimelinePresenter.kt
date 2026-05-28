@@ -28,7 +28,6 @@ import io.element.android.features.messages.impl.MessagesNavigator
 import io.element.android.features.messages.impl.UserEventPermissions
 import io.element.android.features.messages.impl.crypto.sendfailure.resolve.ResolveVerifiedUserSendFailureEvent
 import io.element.android.features.messages.impl.crypto.sendfailure.resolve.ResolveVerifiedUserSendFailureState
-import io.element.android.features.messages.impl.timeline.components.MessageShieldData
 import io.element.android.features.messages.impl.timeline.factories.TimelineItemsFactory
 import io.element.android.features.messages.impl.timeline.factories.TimelineItemsFactoryConfig
 import io.element.android.features.messages.impl.timeline.model.NewEventState
@@ -134,7 +133,6 @@ class TimelinePresenter(
         val prevMostRecentItemId = rememberSaveable { mutableStateOf<UniqueId?>(null) }
 
         val newEventState = remember { mutableStateOf(NewEventState.None) }
-        val messageShieldDialogData: MutableState<MessageShieldData?> = remember { mutableStateOf(null) }
 
         val resolveVerifiedUserSendFailureState = resolveVerifiedUserSendFailurePresenter.present()
         val isSendPublicReadReceiptsEnabled by remember {
@@ -222,8 +220,6 @@ class TimelinePresenter(
                 is TimelineEvent.JumpToLive -> {
                     timelineController.focusOnLive()
                 }
-                TimelineEvent.HideShieldDialog -> messageShieldDialogData.value = null
-                is TimelineEvent.ShowShieldDialog -> messageShieldDialogData.value = event.messageShieldData
                 is TimelineEvent.ComputeVerifiedUserSendFailure -> {
                     resolveVerifiedUserSendFailureState.eventSink(ResolveVerifiedUserSendFailureEvent.ComputeForMessage(event.event))
                 }
@@ -319,7 +315,6 @@ class TimelinePresenter(
             newEventState = newEventState.value,
             isLive = isLive,
             focusRequestState = focusRequestState.value,
-            messageShieldDialogData = messageShieldDialogData.value,
             resolveVerifiedUserSendFailureState = resolveVerifiedUserSendFailureState,
             displayThreadSummaries = displayThreadSummaries,
             displayFloatingDateBadge = displayFloatingDateBadge,

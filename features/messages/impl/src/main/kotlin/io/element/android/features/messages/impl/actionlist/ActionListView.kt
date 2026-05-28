@@ -61,10 +61,8 @@ import io.element.android.features.messages.impl.crypto.sendfailure.VerifiedUser
 import io.element.android.features.messages.impl.crypto.sendfailure.VerifiedUserSendFailure.None
 import io.element.android.features.messages.impl.crypto.sendfailure.VerifiedUserSendFailure.UnsignedDevice
 import io.element.android.features.messages.impl.timeline.a11y.a11yReactionAction
-import io.element.android.features.messages.impl.timeline.components.MessageShieldView
 import io.element.android.features.messages.impl.timeline.model.TimelineItem
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemAudioContent
-import io.element.android.features.messages.impl.timeline.model.event.TimelineItemEncryptedContent
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemFileContent
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemImageContent
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemLegacyCallInviteContent
@@ -203,14 +201,7 @@ private fun ActionListViewContent(
                                 .padding(horizontal = 16.dp)
                                 .clearAndSetSemantics {},
                         )
-                        if (target.event.messageShield != null) {
-                            MessageShieldView(
-                                shield = target.event.messageShield,
-                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
-                            )
-                        } else {
-                            Spacer(modifier = Modifier.height(14.dp))
-                        }
+                        Spacer(modifier = Modifier.height(14.dp))
                         HorizontalDivider()
                     }
                 }
@@ -286,7 +277,6 @@ private fun MessageSummary(
     when (event.content) {
         is TimelineItemTextBasedContent,
         is TimelineItemStateContent,
-        is TimelineItemEncryptedContent,
         is TimelineItemRedactedContent,
         is TimelineItemUnknownContent -> content = { ContentForBody(textContent) }
         is TimelineItemLocationContent -> {

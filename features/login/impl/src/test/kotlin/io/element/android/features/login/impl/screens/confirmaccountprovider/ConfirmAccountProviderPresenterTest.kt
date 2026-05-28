@@ -13,12 +13,17 @@ import io.element.android.appconfig.AuthenticationConfig
 import io.element.android.features.enterprise.test.FakeEnterpriseService
 import io.element.android.features.login.impl.accountprovider.AccountProviderDataSource
 import io.element.android.features.login.impl.login.LoginMode
+import io.element.android.features.login.impl.moment.FakeMomentAuthenticationService
+import io.element.android.features.login.impl.moment.MomentAuthenticationService
 import io.element.android.features.login.impl.screens.createaccount.AccountCreationNotSupported
 import io.element.android.features.login.impl.screens.onboarding.createLoginHelper
 import io.element.android.features.login.impl.web.FakeWebClientUrlForAuthenticationRetriever
 import io.element.android.features.login.impl.web.WebClientUrlForAuthenticationRetriever
 import io.element.android.libraries.architecture.AsyncData
 import io.element.android.libraries.matrix.api.auth.MatrixAuthenticationService
+import io.element.android.libraries.matrix.api.auth.OAuthDetails
+import io.element.android.libraries.matrix.api.auth.external.ExternalSession
+import io.element.android.libraries.matrix.test.A_SESSION_ID
 import io.element.android.libraries.matrix.test.AN_EXCEPTION
 import io.element.android.libraries.matrix.test.auth.FakeMatrixAuthenticationService
 import io.element.android.libraries.matrix.test.auth.aMatrixHomeServerDetails
@@ -27,6 +32,7 @@ import io.element.android.libraries.oauth.api.OAuthActionFlow
 import io.element.android.libraries.oauth.test.customtab.FakeOAuthActionFlow
 import io.element.android.tests.testutils.WarmUpRule
 import io.element.android.tests.testutils.test
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Rule
 import org.junit.Test
@@ -90,6 +96,73 @@ class ConfirmAccountProviderPresenterTest {
             assertThat(successState.submitEnabled).isFalse()
             assertThat(successState.loginMode).isInstanceOf(AsyncData.Success::class.java)
             assertThat(successState.loginMode.dataOrNull()).isInstanceOf(LoginMode.OAuth::class.java)
+        }
+    }
+
+    @Test
+    fun `present - continue Moment auth uses BFF OAuth`() = runTest {
+        val authenticationService = FakeMatrixAuthenticationService(
+            setHomeserverResult = {
+                Result.success(aMatrixHomeServerDetails(supportsPasswordLogin = true))
+            },
+        )
+        val momentAuthenticationService = FakeMomentAuthenticationService(
+            isMomentHomeserverResult = { it == AuthenticationConfig.DEFAULT_HOMESERVER_URL },
+        )
+        val presenter = createConfirmAccountProviderPresenter(
+            matrixAuthenticationService = authenticationService,
+            momentAuthenticationService = momentAuthenticationService,
+        )
+        presenter.test {
+            val initialState = awaitItem()
+            initialState.eventSink.invoke(ConfirmAccountProviderEvents.Continue)
+            val loadingState = awaitItem()
+            assertThat(loadingState.loginMode).isInstanceOf(AsyncData.Loading::class.java)
+            val successState = awaitItem()
+            assertThat(successState.loginMode.dataOrNull()).isEqualTo(LoginMode.OAuth(OAuthDetails("moment-auth-url")))
+        }
+    }
+
+    @Test
+    fun `present - Moment OAuth callback imports external session`() = runTest {
+        val externalSession = ExternalSession(
+            userId = "@alice:unmoment.app",
+            deviceId = "DEVICE",
+            accessToken = "matrix-access-token",
+            refreshToken = null,
+            homeserverUrl = AuthenticationConfig.DEFAULT_HOMESERVER_URL,
+        )
+        var importedSession: ExternalSession? = null
+        val authenticationService = FakeMatrixAuthenticationService(
+            setHomeserverResult = {
+                Result.success(aMatrixHomeServerDetails(supportsPasswordLogin = true))
+            },
+            importCreatedSessionLambda = {
+                importedSession = it
+                Result.success(A_SESSION_ID)
+            },
+        )
+        val momentAuthenticationService = FakeMomentAuthenticationService(
+            isMomentHomeserverResult = { it == AuthenticationConfig.DEFAULT_HOMESERVER_URL },
+            isMomentCallbackUrlResult = { it.startsWith(AuthenticationConfig.WBID_REDIRECT_URI) },
+            getExternalSessionResult = { Result.success(externalSession) },
+        )
+        val defaultOAuthActionFlow = FakeOAuthActionFlow()
+        val presenter = createConfirmAccountProviderPresenter(
+            matrixAuthenticationService = authenticationService,
+            momentAuthenticationService = momentAuthenticationService,
+            defaultOAuthActionFlow = defaultOAuthActionFlow,
+        )
+        presenter.test {
+            val initialState = awaitItem()
+            initialState.eventSink.invoke(ConfirmAccountProviderEvents.Continue)
+            skipItems(1) // Loading
+            awaitItem() // OAuth details
+            defaultOAuthActionFlow.post(OAuthAction.Success("${AuthenticationConfig.WBID_REDIRECT_URI}?code=code&state=state"))
+            val callbackLoadingState = awaitItem()
+            assertThat(callbackLoadingState.loginMode).isInstanceOf(AsyncData.Loading::class.java)
+            advanceUntilIdle()
+            assertThat(importedSession).isEqualTo(externalSession)
         }
     }
 
@@ -380,6 +453,7 @@ class ConfirmAccountProviderPresenterTest {
         params: ConfirmAccountProviderPresenter.Params = ConfirmAccountProviderPresenter.Params(isAccountCreation = false),
         accountProviderDataSource: AccountProviderDataSource = AccountProviderDataSource(FakeEnterpriseService()),
         matrixAuthenticationService: MatrixAuthenticationService = FakeMatrixAuthenticationService(),
+        momentAuthenticationService: MomentAuthenticationService = FakeMomentAuthenticationService(),
         defaultOAuthActionFlow: OAuthActionFlow = FakeOAuthActionFlow(),
         webClientUrlForAuthenticationRetriever: WebClientUrlForAuthenticationRetriever = FakeWebClientUrlForAuthenticationRetriever(),
     ) = ConfirmAccountProviderPresenter(
@@ -387,6 +461,7 @@ class ConfirmAccountProviderPresenterTest {
         accountProviderDataSource = accountProviderDataSource,
         loginHelper = createLoginHelper(
             authenticationService = matrixAuthenticationService,
+            momentAuthenticationService = momentAuthenticationService,
             oAuthActionFlow = defaultOAuthActionFlow,
             webClientUrlForAuthenticationRetriever = webClientUrlForAuthenticationRetriever,
         ),

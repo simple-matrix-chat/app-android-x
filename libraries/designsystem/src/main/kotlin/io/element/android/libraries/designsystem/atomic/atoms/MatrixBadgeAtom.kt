@@ -127,8 +127,8 @@ internal fun MatrixBadgeAtomNeutralWrappingPreview() = ElementPreview {
 internal fun MatrixBadgeAtomInfoPreview() = ElementPreview {
     MatrixBadgeAtom.View(
         MatrixBadgeAtom.MatrixBadgeData(
-            text = "Not encrypted",
-            icon = CompoundIcons.LockOff(),
+            text = "Info",
+            icon = CompoundIcons.InfoSolid(),
             type = MatrixBadgeAtom.Type.Info,
         )
     )

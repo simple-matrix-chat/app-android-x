@@ -205,44 +205,6 @@ class NotificationSettingsViewTest {
 
     @Config(qualifiers = "h1024dp")
     @Test
-    fun `with invalid configuration, clicking on continue emits the expected events`() = runAndroidComposeUiTest {
-        val eventsRecorder = EventsRecorder<NotificationSettingsEvents>()
-        setNotificationSettingsView(
-            state = aInvalidNotificationSettingsState(
-                fixFailed = false,
-                eventSink = eventsRecorder
-            ),
-        )
-        clickOn(CommonStrings.action_continue)
-        eventsRecorder.assertList(
-            listOf(
-                NotificationSettingsEvents.RefreshSystemNotificationsEnabled,
-                NotificationSettingsEvents.FixConfigurationMismatch
-            )
-        )
-    }
-
-    @Config(qualifiers = "h1024dp")
-    @Test
-    fun `with invalid configuration and error, clicking on OK emits the expected events`() = runAndroidComposeUiTest {
-        val eventsRecorder = EventsRecorder<NotificationSettingsEvents>()
-        setNotificationSettingsView(
-            state = aInvalidNotificationSettingsState(
-                fixFailed = true,
-                eventSink = eventsRecorder
-            ),
-        )
-        clickOn(CommonStrings.action_ok)
-        eventsRecorder.assertList(
-            listOf(
-                NotificationSettingsEvents.RefreshSystemNotificationsEnabled,
-                NotificationSettingsEvents.ClearConfigurationMismatchError
-            )
-        )
-    }
-
-    @Config(qualifiers = "h1024dp")
-    @Test
     fun `clicking on Push notification provider emits the expected event`() = runAndroidComposeUiTest {
         val eventsRecorder = EventsRecorder<NotificationSettingsEvents>()
         setNotificationSettingsView(

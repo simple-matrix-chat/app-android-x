@@ -85,19 +85,11 @@ class RoomNotificationSettingsPresenter(
             room.roomInfoFlow.collect { value = it.name }
         }
 
-        val isRoomEncrypted by produceState(room.info().isEncrypted) {
-            room.roomInfoFlow.collect { value = it.isEncrypted }
-        }
-
         LaunchedEffect(Unit) {
             getDefaultRoomNotificationMode(defaultRoomNotificationMode)
             fetchNotificationSettings(pendingRoomNotificationMode, roomNotificationSettings)
             observeNotificationSettings(pendingRoomNotificationMode, roomNotificationSettings)
-        }
-
-        LaunchedEffect(isRoomEncrypted) {
-            shouldDisplayMentionsOnlyDisclaimer = isRoomEncrypted == true &&
-                !notificationSettingsService.canHomeServerPushEncryptedEventsToDevice().getOrDefault(true)
+            shouldDisplayMentionsOnlyDisclaimer = false
         }
 
         fun handleEvent(event: RoomNotificationSettingsEvent) {
@@ -158,18 +150,16 @@ class RoomNotificationSettingsPresenter(
         roomNotificationSettings: MutableState<AsyncData<RoomNotificationSettings>>
     ) = launch {
         suspend {
-            val isEncrypted = room.info().isEncrypted ?: room.getUpdatedIsEncrypted().getOrThrow()
             pendingModeState.value = null
-            notificationSettingsService.getRoomNotificationSettings(room.roomId, isEncrypted, room.isDm()).getOrThrow()
+            notificationSettingsService.getRoomNotificationSettings(room.roomId, isEncrypted = false, room.isDm()).getOrThrow()
         }.runCatchingUpdatingState(roomNotificationSettings)
     }
 
     private fun CoroutineScope.getDefaultRoomNotificationMode(
         defaultRoomNotificationMode: MutableState<RoomNotificationMode?>
     ) = launch {
-        val isEncrypted = room.info().isEncrypted ?: room.getUpdatedIsEncrypted().getOrThrow()
         defaultRoomNotificationMode.value = notificationSettingsService.getDefaultRoomNotificationMode(
-            isEncrypted,
+            isEncrypted = false,
             room.isDm()
         ).getOrThrow()
     }

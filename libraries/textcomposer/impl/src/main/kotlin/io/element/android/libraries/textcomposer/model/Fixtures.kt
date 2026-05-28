@@ -13,14 +13,12 @@ import io.element.android.wysiwyg.compose.RichTextEditorState
 fun aTextEditorStateMarkdown(
     initialText: String? = "",
     initialFocus: Boolean = false,
-    isRoomEncrypted: Boolean? = null,
 ): TextEditorState {
     return TextEditorState.Markdown(
         aMarkdownTextEditorState(
             initialText = initialText,
             initialFocus = initialFocus,
-        ),
-        isRoomEncrypted = isRoomEncrypted,
+        )
     )
 }
 
@@ -39,7 +37,6 @@ fun aTextEditorStateRich(
     initialHtml: String = initialText,
     initialMarkdown: String = initialText,
     initialFocus: Boolean = false,
-    isRoomEncrypted: Boolean? = null,
 ): TextEditorState {
     return TextEditorState.Rich(
         aRichTextEditorState(
@@ -47,8 +44,7 @@ fun aTextEditorStateRich(
             initialHtml = initialHtml,
             initialMarkdown = initialMarkdown,
             initialFocus = initialFocus,
-        ),
-        isRoomEncrypted = isRoomEncrypted,
+        )
     )
 }
 

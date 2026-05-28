@@ -1,8 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
-  <string name="crypto_history_sharing_room_info_hidden_badge_content">"新成員無法檢視歷史"</string>
-  <string name="crypto_history_sharing_room_info_shared_badge_content">"新成員可以檢視歷史"</string>
-  <string name="crypto_history_sharing_room_info_world_readable_badge_content">"任何人都可以檢視歷史"</string>
   <string name="screen_edit_room_address_room_address_section_footer">"您需要地址才能在公開目錄中顯示。"</string>
   <string name="screen_edit_room_address_title">"編輯地址"</string>
   <string name="screen_notification_settings_edit_failed_updating_default_mode">"更新通知設定時發生錯誤。"</string>
@@ -42,8 +39,6 @@
   <string name="screen_room_change_role_unsaved_changes_description">"您有尚未儲存的變更"</string>
   <string name="screen_room_change_role_unsaved_changes_title">"是否儲存變更？"</string>
   <string name="screen_room_details_add_topic_title">"新增主題"</string>
-  <string name="screen_room_details_badge_encrypted">"已加密"</string>
-  <string name="screen_room_details_badge_not_encrypted">"未加密"</string>
   <string name="screen_room_details_badge_public">"公開的聊天室"</string>
   <string name="screen_room_details_edit_room_title">"編輯詳細資訊"</string>
   <string name="screen_room_details_edition_error">"發生未知錯誤，無法變更資訊。"</string>

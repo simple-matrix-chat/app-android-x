@@ -50,7 +50,6 @@ import io.element.android.libraries.designsystem.theme.components.SegmentedButto
 import io.element.android.libraries.designsystem.theme.components.Text
 import io.element.android.libraries.designsystem.theme.components.TextButton
 import io.element.android.libraries.designsystem.theme.components.TopAppBar
-import io.element.android.libraries.matrix.api.encryption.identity.IdentityState
 import io.element.android.libraries.matrix.api.room.RoomMember
 import io.element.android.libraries.matrix.api.room.getBestName
 import io.element.android.libraries.matrix.api.room.toMatrixUser
@@ -243,13 +242,13 @@ private fun LazyListScope.roomMemberListSectionHeader(
 }
 
 private fun LazyListScope.roomMemberListSectionItems(
-    members: ImmutableList<RoomMemberWithIdentityState>?,
+    members: ImmutableList<RoomMemberListMember>?,
     onMemberSelected: (RoomMember) -> Unit,
 ) {
     items(members.orEmpty()) { matrixUser ->
         RoomMemberListItem(
             modifier = Modifier.fillMaxWidth(),
-            roomMemberWithIdentity = matrixUser,
+            roomMemberListMember = matrixUser,
             onClick = { onMemberSelected(matrixUser.roomMember) }
         )
     }
@@ -273,11 +272,11 @@ private fun LazyListScope.emptySearchItem(searchQuery: String) {
 
 @Composable
 private fun RoomMemberListItem(
-    roomMemberWithIdentity: RoomMemberWithIdentityState,
+    roomMemberListMember: RoomMemberListMember,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val member = roomMemberWithIdentity.roomMember
+    val member = roomMemberListMember.roomMember
     val roleText = when (member.role) {
         RoomMember.Role.Admin -> stringResource(R.string.screen_room_member_list_role_administrator)
         RoomMember.Role.Moderator -> stringResource(R.string.screen_room_member_list_role_moderator)
@@ -287,36 +286,13 @@ private fun RoomMemberListItem(
 
     MatrixUserRow(
         modifier = modifier.clickable(onClick = onClick),
-        matrixUser = roomMemberWithIdentity.roomMember.toMatrixUser(),
+        matrixUser = roomMemberListMember.roomMember.toMatrixUser(),
         avatarSize = AvatarSize.UserListItem,
         trailingContent = {
             Row(
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                when (roomMemberWithIdentity.identityState) {
-                    IdentityState.Verified -> {
-                        Icon(
-                            modifier = Modifier.size(20.dp),
-                            imageVector = CompoundIcons.Verified(),
-                            contentDescription = stringResource(CommonStrings.common_verified),
-                            tint = ElementTheme.colors.iconSuccessPrimary
-                        )
-                    }
-                    IdentityState.VerificationViolation -> {
-                        Icon(
-                            modifier = Modifier.size(20.dp),
-                            imageVector = CompoundIcons.ErrorSolid(),
-                            contentDescription = stringResource(
-                                CommonStrings.crypto_identity_change_profile_pin_violation,
-                                roomMemberWithIdentity.roomMember.getBestName()
-                            ),
-                            tint = ElementTheme.colors.iconCriticalPrimary
-                        )
-                    }
-                    else -> Unit
-                }
-
                 roleText?.let {
                     Text(
                         text = it,

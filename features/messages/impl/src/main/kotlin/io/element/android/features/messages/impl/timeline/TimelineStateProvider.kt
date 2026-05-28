@@ -10,7 +10,6 @@ package io.element.android.features.messages.impl.timeline
 
 import io.element.android.features.messages.impl.crypto.sendfailure.resolve.ResolveVerifiedUserSendFailureState
 import io.element.android.features.messages.impl.crypto.sendfailure.resolve.aResolveVerifiedUserSendFailureState
-import io.element.android.features.messages.impl.timeline.components.MessageShieldData
 import io.element.android.features.messages.impl.timeline.components.receipt.aReadReceiptData
 import io.element.android.features.messages.impl.timeline.model.NewEventState
 import io.element.android.features.messages.impl.timeline.model.ReadReceiptData
@@ -39,7 +38,6 @@ import io.element.android.libraries.matrix.api.room.tombstone.PredecessorRoom
 import io.element.android.libraries.matrix.api.timeline.Timeline
 import io.element.android.libraries.matrix.api.timeline.item.TimelineItemDebugInfo
 import io.element.android.libraries.matrix.api.timeline.item.event.LocalEventSendState
-import io.element.android.libraries.matrix.api.timeline.item.event.MessageShield
 import io.element.android.libraries.matrix.ui.messages.reply.InReplyToDetails
 import io.element.android.libraries.matrix.ui.messages.reply.aProfileDetailsReady
 import kotlinx.collections.immutable.ImmutableList
@@ -55,7 +53,6 @@ fun aTimelineState(
     timelineRoomInfo: TimelineRoomInfo = aTimelineRoomInfo(),
     focusedEventIndex: Int = -1,
     isLive: Boolean = true,
-    messageShield: MessageShield? = null,
     resolveVerifiedUserSendFailureState: ResolveVerifiedUserSendFailureState = aResolveVerifiedUserSendFailureState(),
     displayThreadSummaries: Boolean = false,
     displayFloatingDateBadge: Boolean = false,
@@ -75,7 +72,6 @@ fun aTimelineState(
         newEventState = NewEventState.None,
         isLive = isLive,
         focusRequestState = focusRequestState,
-        messageShieldDialogData = messageShield?.let { MessageShieldData(it) },
         resolveVerifiedUserSendFailureState = resolveVerifiedUserSendFailureState,
         displayThreadSummaries = displayThreadSummaries,
         displayFloatingDateBadge = displayFloatingDateBadge,
@@ -155,7 +151,6 @@ internal fun aTimelineItemEvent(
     debugInfo: TimelineItemDebugInfo = aTimelineItemDebugInfo(),
     timelineItemReactions: TimelineItemReactions = aTimelineItemReactions(),
     readReceiptState: TimelineItemReadReceipts = aTimelineItemReadReceipts(),
-    messageShield: MessageShield? = null,
 ): TimelineItem.Event {
     return TimelineItem.Event(
         id = UniqueId(UUID.randomUUID().toString()),
@@ -180,7 +175,7 @@ internal fun aTimelineItemEvent(
         threadInfo = threadInfo,
         origin = null,
         timelineItemDebugInfoProvider = { debugInfo },
-        messageShieldProvider = { messageShield },
+        messageShieldProvider = { null },
         sendHandleProvider = { null },
         forwarder = null,
         forwarderProfile = null,

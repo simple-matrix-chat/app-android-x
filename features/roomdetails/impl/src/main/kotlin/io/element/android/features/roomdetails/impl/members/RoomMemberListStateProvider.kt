@@ -25,7 +25,6 @@ import io.element.android.libraries.designsystem.preview.USER_NAME_SUSIE
 import io.element.android.libraries.designsystem.preview.USER_NAME_VICTOR
 import io.element.android.libraries.designsystem.preview.USER_NAME_WALTER
 import io.element.android.libraries.matrix.api.core.UserId
-import io.element.android.libraries.matrix.api.encryption.identity.IdentityState
 import io.element.android.libraries.matrix.api.room.RoomMember
 import io.element.android.libraries.matrix.api.room.RoomMembershipState
 import kotlinx.collections.immutable.persistentListOf
@@ -71,19 +70,19 @@ internal class RoomMemberListStateProvider : PreviewParameterProvider<RoomMember
 private fun aLoadedRoomMembers() = AsyncData.Success(
     RoomMembers(
         invited = persistentListOf(
-            anInvitedVictor().withIdentity(),
-            anInvitedWalter().withIdentity(),
+            anInvitedVictor().toRoomMemberListMember(),
+            anInvitedWalter().toRoomMemberListMember(),
         ),
         joined = persistentListOf(
-            anAlice().withIdentity(identityState = IdentityState.Verified),
-            aBob().withIdentity(identityState = IdentityState.PinViolation),
-            aCarol().withIdentity(),
-            aDavid().withIdentity(),
-            anEve().withIdentity(identityState = IdentityState.VerificationViolation)
+            anAlice().toRoomMemberListMember(),
+            aBob().toRoomMemberListMember(),
+            aCarol().toRoomMemberListMember(),
+            aDavid().toRoomMemberListMember(),
+            anEve().toRoomMemberListMember()
         ),
         banned = persistentListOf(
-            aBannedMallory().withIdentity(),
-            aBannedSusie().withIdentity()
+            aBannedMallory().toRoomMemberListMember(),
+            aBannedSusie().toRoomMemberListMember()
         ),
     )
 )
@@ -171,4 +170,4 @@ fun aBannedSusie(): RoomMember = aRoomMember(UserId("@susie:server.org"), USER_N
 
 fun aBannedMallory(): RoomMember = aRoomMember(UserId("@mallory:server.org"), USER_NAME_MALLORY, membership = RoomMembershipState.BAN)
 
-private fun RoomMember.withIdentity(identityState: IdentityState? = null) = RoomMemberWithIdentityState(this, identityState)
+private fun RoomMember.toRoomMemberListMember() = RoomMemberListMember(this)

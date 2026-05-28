@@ -19,7 +19,6 @@ data class OnBoardingState(
     val productionApplicationName: String,
     val defaultAccountProvider: String?,
     val mustChooseAccountProvider: Boolean,
-    val canLoginWithQrCode: Boolean,
     val canCreateAccount: Boolean,
     val canReportBug: Boolean,
     val version: String,

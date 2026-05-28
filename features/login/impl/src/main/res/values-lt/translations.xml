@@ -39,7 +39,6 @@
   <string name="screen_onboarding_app_version">"%1$s versija"</string>
   <string name="screen_onboarding_sign_in_manually">"Prisijungti rankiniu būdu"</string>
   <string name="screen_onboarding_sign_in_to">"Prisijungti prie %1$s"</string>
-  <string name="screen_onboarding_sign_in_with_qr_code">"Prisijungti su QR kodu"</string>
   <string name="screen_onboarding_sign_up">"Kurti paskyrą"</string>
   <string name="screen_onboarding_welcome_back">"Sveiki sugrįžę"</string>
   <string name="screen_onboarding_welcome_message">"Sveiki atvykę į sparčiausią „%1$s“ kada nors. Pagerintas spartai ir paprastumui."</string>

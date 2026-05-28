@@ -21,7 +21,6 @@ import io.element.android.features.logout.api.direct.aDirectLogoutState
 import io.element.android.libraries.designsystem.utils.snackbar.SnackbarMessage
 import io.element.android.libraries.matrix.api.core.UserId
 import io.element.android.libraries.matrix.api.user.MatrixUser
-import io.element.android.libraries.ui.strings.CommonStrings
 import kotlinx.collections.immutable.toImmutableList
 
 open class HomeStateProvider : PreviewParameterProvider<HomeState> {
@@ -29,7 +28,6 @@ open class HomeStateProvider : PreviewParameterProvider<HomeState> {
         get() = sequenceOf(
             aHomeState(),
             aHomeState(hasNetworkConnection = false),
-            aHomeState(snackbarMessage = SnackbarMessage(CommonStrings.common_verification_complete)),
             aHomeState(
                 roomListState = aRoomListState(
                     // Add more rooms to see the blur effect under the NavigationBar

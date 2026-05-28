@@ -1,8 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
-  <string name="crypto_history_sharing_room_info_hidden_badge_content">"Nye medlemmer kan ikke se historikken"</string>
-  <string name="crypto_history_sharing_room_info_shared_badge_content">"Nye medlemmer ser historik"</string>
-  <string name="crypto_history_sharing_room_info_world_readable_badge_content">"Alle kan se historikken"</string>
   <string name="screen_edit_room_address_room_address_section_footer">"Du skal bruge en adresse for at gøre det synligt i det offentlige register."</string>
   <string name="screen_edit_room_address_title">"Redigér adresse"</string>
   <string name="screen_notification_settings_edit_failed_updating_default_mode">"Der opstod en fejl under opdatering af notifikationsindstillingen."</string>
@@ -42,8 +39,6 @@
   <string name="screen_room_change_role_unsaved_changes_description">"Du har ændringer, der ikke er gemt."</string>
   <string name="screen_room_change_role_unsaved_changes_title">"Gem ændringer?"</string>
   <string name="screen_room_details_add_topic_title">"Tilføj emne"</string>
-  <string name="screen_room_details_badge_encrypted">"Krypteret"</string>
-  <string name="screen_room_details_badge_not_encrypted">"Ikke krypteret"</string>
   <string name="screen_room_details_badge_public">"Offentligt rum"</string>
   <string name="screen_room_details_edit_room_title">"Redigér detaljer"</string>
   <string name="screen_room_details_edition_error">"Der opstod en ukendt fejl, og oplysningerne kunne ikke ændres."</string>

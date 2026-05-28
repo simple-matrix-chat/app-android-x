@@ -217,16 +217,14 @@ class HomeFlowNode(
                 loadingJoinedRoomJob.value = AsyncData.Loading(job)
             }
 
-            HomeView(
-                homeState = state,
-                onRoomClick = ::navigateToRoom,
-                onSettingsClick = callback::navigateToSettings,
-                onStartChatClick = callback::navigateToCreateRoom,
-                onCreateSpaceClick = callback::navigateToCreateSpace,
-                onSetUpRecoveryClick = callback::navigateToSetUpRecovery,
-                onConfirmRecoveryKeyClick = callback::navigateToEnterRecoveryKey,
-                onRoomSettingsClick = callback::navigateToRoomSettings,
-                onMenuActionClick = { onMenuActionClick(activity, it) },
+                HomeView(
+                    homeState = state,
+                    onRoomClick = ::navigateToRoom,
+                    onSettingsClick = callback::navigateToSettings,
+                    onStartChatClick = callback::navigateToCreateRoom,
+                    onCreateSpaceClick = callback::navigateToCreateSpace,
+                    onRoomSettingsClick = callback::navigateToRoomSettings,
+                    onMenuActionClick = { onMenuActionClick(activity, it) },
                 onReportRoomClick = ::navigateToReportRoom,
                 onDeclineInviteAndBlockUser = ::navigateToDeclineInviteAndBlockUser,
                 modifier = modifier,

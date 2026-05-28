@@ -19,7 +19,6 @@ import io.element.android.libraries.matrix.test.notificationsettings.FakeNotific
 import io.element.android.libraries.matrix.test.room.aRoomSummary
 import io.element.android.libraries.matrix.test.roomlist.FakeDynamicRoomList
 import io.element.android.libraries.matrix.test.roomlist.FakeRoomListService
-import io.element.android.tests.testutils.awaitLastSequentialItem
 import io.element.android.tests.testutils.consumeItemsUntilPredicate
 import io.element.android.tests.testutils.test
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -176,19 +175,6 @@ class EditDefaultNotificationSettingsPresenterTest {
                 it.changeNotificationSettingAction.isUninitialized()
             }.last()
             assertThat(clearErrorState.changeNotificationSettingAction.isUninitialized()).isTrue()
-        }
-    }
-
-    @Test
-    fun `present - display mentions only warning if homeserver does not support it`() = runTest {
-        val notificationSettingsService = FakeNotificationSettingsService(
-            getRoomsWithUserDefinedRulesResult = { Result.success(emptyList()) },
-        ).apply {
-            givenCanHomeServerPushEncryptedEventsToDeviceResult(Result.success(false))
-        }
-        val presenter = createEditDefaultNotificationSettingPresenter(notificationSettingsService)
-        presenter.test {
-            assertThat(awaitLastSequentialItem().displayMentionsOnlyDisclaimer).isTrue()
         }
     }
 

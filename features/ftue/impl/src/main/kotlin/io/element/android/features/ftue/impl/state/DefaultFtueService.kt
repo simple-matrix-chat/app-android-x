@@ -18,19 +18,11 @@ import io.element.android.features.lockscreen.api.LockScreenService
 import io.element.android.libraries.core.coroutine.mapState
 import io.element.android.libraries.di.SessionScope
 import io.element.android.libraries.di.annotations.SessionCoroutineScope
-import io.element.android.libraries.matrix.api.verification.SessionVerificationService
-import io.element.android.libraries.matrix.api.verification.SessionVerifiedStatus
 import io.element.android.libraries.permissions.api.PermissionStateProvider
-import io.element.android.libraries.preferences.api.store.SessionPreferencesStore
-import io.element.android.services.analytics.api.AnalyticsService
 import io.element.android.services.toolbox.api.sdk.BuildVersionSdkIntProvider
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.launchIn
-import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 
 @ContributesBinding(SessionScope::class)
@@ -38,14 +30,9 @@ import kotlinx.coroutines.launch
 class DefaultFtueService(
     private val sdkVersionProvider: BuildVersionSdkIntProvider,
     @SessionCoroutineScope private val sessionCoroutineScope: CoroutineScope,
-    private val analyticsService: AnalyticsService,
     private val permissionStateProvider: PermissionStateProvider,
     private val lockScreenService: LockScreenService,
-    private val sessionVerificationService: SessionVerificationService,
-    private val sessionPreferencesStore: SessionPreferencesStore,
 ) : FtueService {
-    private val userNeedsToConfirmSessionVerificationSuccess = MutableStateFlow(false)
-
     val ftueStepStateFlow = MutableStateFlow<InternalFtueState>(InternalFtueState.Unknown)
 
     override val state = ftueStepStateFlow
@@ -55,22 +42,10 @@ class DefaultFtueService(
                 is InternalFtueState.Incomplete -> FtueState.Incomplete
                 is InternalFtueState.Complete -> FtueState.Complete
             }
-        }
+    }
 
     init {
-        combine(
-            sessionVerificationService.sessionVerifiedStatus.onEach { sessionVerifiedStatus ->
-                if (sessionVerifiedStatus == SessionVerifiedStatus.NotVerified) {
-                    // Ensure we wait for the user to confirm the session verified screen before going further
-                    userNeedsToConfirmSessionVerificationSuccess.value = true
-                }
-            },
-            userNeedsToConfirmSessionVerificationSuccess,
-            analyticsService.didAskUserConsentFlow.distinctUntilChanged(),
-        ) {
-            updateFtueStep()
-        }
-            .launchIn(sessionCoroutineScope)
+        updateFtueStep()
     }
 
     fun updateFtueStep() = sessionCoroutineScope.launch {
@@ -83,17 +58,8 @@ class DefaultFtueService(
 
     private suspend fun getNextStep(completedStep: FtueStep? = null): FtueStep? =
         when (completedStep) {
-            null -> if (!isSessionVerificationStateReady()) {
-                FtueStep.WaitingForInitialState
-            } else {
-                getNextStep(FtueStep.WaitingForInitialState)
-            }
-            FtueStep.WaitingForInitialState -> if (isSessionNotVerified() || userNeedsToConfirmSessionVerificationSuccess.value) {
-                FtueStep.SessionVerification
-            } else {
-                getNextStep(FtueStep.SessionVerification)
-            }
-            FtueStep.SessionVerification -> if (shouldAskNotificationPermissions()) {
+            null -> getNextStep(FtueStep.WaitingForInitialState)
+            FtueStep.WaitingForInitialState -> if (shouldAskNotificationPermissions()) {
                 FtueStep.NotificationsOptIn
             } else {
                 getNextStep(FtueStep.NotificationsOptIn)
@@ -103,29 +69,8 @@ class DefaultFtueService(
             } else {
                 getNextStep(FtueStep.LockscreenSetup)
             }
-            FtueStep.LockscreenSetup -> if (needsAnalyticsOptIn()) {
-                FtueStep.AnalyticsOptIn
-            } else {
-                getNextStep(FtueStep.AnalyticsOptIn)
-            }
-            FtueStep.AnalyticsOptIn -> null
+            FtueStep.LockscreenSetup -> null
         }
-
-    private fun isSessionVerificationStateReady(): Boolean {
-        return sessionVerificationService.sessionVerifiedStatus.value != SessionVerifiedStatus.Unknown
-    }
-
-    private suspend fun isSessionNotVerified(): Boolean {
-        return sessionVerificationService.sessionVerifiedStatus.value == SessionVerifiedStatus.NotVerified && !canSkipVerification()
-    }
-
-    private suspend fun canSkipVerification(): Boolean {
-        return sessionPreferencesStore.isSessionVerificationSkipped().first()
-    }
-
-    private suspend fun needsAnalyticsOptIn(): Boolean {
-        return analyticsService.didAskUserConsentFlow.first().not()
-    }
 
     private suspend fun shouldAskNotificationPermissions(): Boolean {
         return if (sdkVersionProvider.isAtLeast(Build.VERSION_CODES.TIRAMISU)) {
@@ -141,16 +86,10 @@ class DefaultFtueService(
     private suspend fun shouldDisplayLockscreenSetup(): Boolean {
         return lockScreenService.isSetupRequired().first()
     }
-
-    fun onUserCompletedSessionVerification() {
-        userNeedsToConfirmSessionVerificationSuccess.value = false
-    }
 }
 
 sealed interface FtueStep {
     data object WaitingForInitialState : FtueStep
-    data object SessionVerification : FtueStep
     data object NotificationsOptIn : FtueStep
-    data object AnalyticsOptIn : FtueStep
     data object LockscreenSetup : FtueStep
 }

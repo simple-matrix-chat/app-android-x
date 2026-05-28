@@ -36,7 +36,9 @@ class DefaultOAuthUrlParser(
     override fun parse(url: String): OAuthAction? {
         if (url.startsWith(oAuthRedirectUrlProvider.provide()).not()) return null
         if (url.contains("error=access_denied")) return OAuthAction.GoBack()
-        if (url.contains("code=")) return OAuthAction.Success(url)
+        if (url.contains("code=") || url.contains("loginToken=") || url.contains("error=")) {
+            return OAuthAction.Success(url)
+        }
 
         // Other case not supported, let's crash the app for now
         error("Not supported: $url")

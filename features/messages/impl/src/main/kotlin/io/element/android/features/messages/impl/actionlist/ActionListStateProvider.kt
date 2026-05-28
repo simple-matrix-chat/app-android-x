@@ -23,7 +23,6 @@ import io.element.android.features.messages.impl.timeline.model.event.aTimelineI
 import io.element.android.features.messages.impl.timeline.model.event.aTimelineItemPollContent
 import io.element.android.features.messages.impl.timeline.model.event.aTimelineItemVideoContent
 import io.element.android.features.messages.impl.timeline.model.event.aTimelineItemVoiceContent
-import io.element.android.libraries.matrix.api.timeline.item.event.MessageShield
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
@@ -163,19 +162,6 @@ open class ActionListStateProvider : PreviewParameterProvider<ActionListState> {
                         actions = aTimelineItemPollActionList(),
                         recentEmojis = suggestedEmojis,
                     ),
-                ),
-                anActionListState(
-                    target = ActionListState.Target.Success(
-                        event = aTimelineItemEvent(
-                            timelineItemReactions = reactionsState,
-                            messageShield = MessageShield.UnknownDevice(isCritical = true)
-                        ),
-                        sentTimeFull = "January 1, 1970 at 12:00 AM",
-                        displayEmojiReactions = true,
-                        verifiedUserSendFailure = VerifiedUserSendFailure.None,
-                        actions = aTimelineItemActionList(),
-                        recentEmojis = suggestedEmojis,
-                    )
                 ),
                 anActionListState(
                     target = ActionListState.Target.Success(

@@ -10,7 +10,6 @@ package io.element.android.features.messages.impl.timeline
 
 import androidx.compose.runtime.Immutable
 import io.element.android.features.messages.impl.crypto.sendfailure.resolve.ResolveVerifiedUserSendFailureState
-import io.element.android.features.messages.impl.timeline.components.MessageShieldData
 import io.element.android.features.messages.impl.timeline.model.NewEventState
 import io.element.android.features.messages.impl.timeline.model.TimelineItem
 import io.element.android.features.messages.impl.typing.TypingNotificationState
@@ -30,8 +29,6 @@ data class TimelineState(
     val newEventState: NewEventState,
     val isLive: Boolean,
     val focusRequestState: FocusRequestState,
-    // If not null, info will be rendered in a dialog
-    val messageShieldDialogData: MessageShieldData?,
     val resolveVerifiedUserSendFailureState: ResolveVerifiedUserSendFailureState,
     val displayThreadSummaries: Boolean,
     val displayFloatingDateBadge: Boolean,

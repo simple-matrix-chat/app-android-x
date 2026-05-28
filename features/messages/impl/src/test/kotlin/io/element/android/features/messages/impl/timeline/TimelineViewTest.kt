@@ -19,8 +19,6 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.v2.runAndroidComposeUiTest
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import io.element.android.features.messages.impl.timeline.components.MessageShieldData
-import io.element.android.features.messages.impl.timeline.components.aCriticalShield
 import io.element.android.features.messages.impl.timeline.model.TimelineItem
 import io.element.android.features.messages.impl.timeline.model.event.aTimelineItemImageContent
 import io.element.android.features.messages.impl.timeline.model.event.aTimelineItemUnknownContent
@@ -30,13 +28,11 @@ import io.element.android.features.messages.impl.timeline.protection.aTimelinePr
 import io.element.android.libraries.matrix.api.core.EventId
 import io.element.android.libraries.matrix.api.core.UniqueId
 import io.element.android.libraries.matrix.api.timeline.Timeline
-import io.element.android.libraries.matrix.api.timeline.item.event.MessageShield
 import io.element.android.libraries.matrix.api.user.MatrixUser
 import io.element.android.libraries.ui.strings.CommonStrings
 import io.element.android.tests.testutils.EnsureNeverCalledWithParam
 import io.element.android.tests.testutils.EnsureNeverCalledWithTwoParams
 import io.element.android.tests.testutils.EventsRecorder
-import io.element.android.tests.testutils.clickOn
 import io.element.android.tests.testutils.setSafeContent
 import io.element.android.wysiwyg.link.Link
 import kotlinx.collections.immutable.persistentListOf
@@ -125,49 +121,6 @@ class TimelineViewTest {
         )
 
         eventsRecorder.assertSingle(TimelineEvent.LoadMore(Timeline.PaginationDirection.BACKWARDS))
-    }
-
-    @Test
-    fun `show shield dialog`() = runAndroidComposeUiTest {
-        val eventsRecorder = EventsRecorder<TimelineEvent>()
-        setTimelineView(
-            state = aTimelineState(
-                timelineItems = persistentListOf<TimelineItem>(
-                    aTimelineItemEvent(
-                        // Do not use a Text because EditorStyledText cannot be used in UI test.
-                        content = aTimelineItemImageContent(),
-                        messageShield = MessageShield.UnverifiedIdentity(true),
-                    ),
-                ),
-                eventSink = eventsRecorder,
-            ),
-        )
-        val contentDescription = activity!!.getString(CommonStrings.a11y_encryption_details)
-        onNodeWithContentDescription(contentDescription).performClick()
-        eventsRecorder.assertList(
-            listOf(
-                TimelineEvent.OnScrollFinished(0),
-                TimelineEvent.ShowShieldDialog(MessageShieldData(MessageShield.UnverifiedIdentity(true))),
-            )
-        )
-    }
-
-    @Test
-    fun `hide shield dialog`() = runAndroidComposeUiTest {
-        val eventsRecorder = EventsRecorder<TimelineEvent>()
-        setTimelineView(
-            state = aTimelineState(
-                timelineItems = persistentListOf(aTimelineItemEvent(content = aTimelineItemImageContent())),
-                isLive = false,
-                eventSink = eventsRecorder,
-                messageShield = aCriticalShield(),
-            ),
-        )
-        eventsRecorder.assertSingle(TimelineEvent.OnScrollFinished(firstIndex = 0))
-        eventsRecorder.clear()
-
-        clickOn(CommonStrings.action_ok)
-        eventsRecorder.assertSingle(TimelineEvent.HideShieldDialog)
     }
 
     @Ignore(

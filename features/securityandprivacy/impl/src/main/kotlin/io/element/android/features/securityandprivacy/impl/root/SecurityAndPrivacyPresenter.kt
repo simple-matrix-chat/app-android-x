@@ -22,6 +22,7 @@ import androidx.compose.runtime.setValue
 import dev.zacsweers.metro.Assisted
 import dev.zacsweers.metro.AssistedFactory
 import dev.zacsweers.metro.AssistedInject
+import io.element.android.appconfig.MatrixE2EEConfig
 import io.element.android.features.securityandprivacy.api.SecurityAndPrivacyPermissions
 import io.element.android.features.securityandprivacy.api.securityAndPrivacyPermissions
 import io.element.android.features.securityandprivacy.impl.SecurityAndPrivacyNavigator
@@ -170,10 +171,12 @@ class SecurityAndPrivacyPresenter(
                     editedRoomAccess.value = event.roomAccess
                 }
                 is SecurityAndPrivacyEvent.ToggleEncryptionState -> {
-                    if (editedIsEncrypted) {
-                        editedIsEncrypted = false
-                    } else {
-                        showEnableEncryptionConfirmation = true
+                    if (MatrixE2EEConfig.ENABLED) {
+                        if (editedIsEncrypted) {
+                            editedIsEncrypted = false
+                        } else {
+                            showEnableEncryptionConfirmation = true
+                        }
                     }
                 }
                 is SecurityAndPrivacyEvent.ChangeHistoryVisibility -> {
@@ -190,8 +193,10 @@ class SecurityAndPrivacyPresenter(
                     showEnableEncryptionConfirmation = false
                 }
                 SecurityAndPrivacyEvent.ConfirmEnableEncryption -> {
-                    showEnableEncryptionConfirmation = false
-                    editedIsEncrypted = true
+                    if (MatrixE2EEConfig.ENABLED) {
+                        showEnableEncryptionConfirmation = false
+                        editedIsEncrypted = true
+                    }
                 }
                 SecurityAndPrivacyEvent.DismissSaveError -> {
                     saveAction.value = AsyncAction.Uninitialized
@@ -388,7 +393,7 @@ class SecurityAndPrivacyPresenter(
     ) = launch {
         suspend {
             val enableEncryption = async {
-                if (editedSettings.isEncrypted && !savedSettings.isEncrypted) {
+                if (MatrixE2EEConfig.ENABLED && editedSettings.isEncrypted && !savedSettings.isEncrypted) {
                     room.enableEncryption()
                 } else {
                     Result.success(Unit)

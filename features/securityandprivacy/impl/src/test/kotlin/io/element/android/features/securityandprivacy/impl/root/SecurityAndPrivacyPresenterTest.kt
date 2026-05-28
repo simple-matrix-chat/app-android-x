@@ -33,6 +33,7 @@ import io.element.android.libraries.matrix.test.room.aRoomInfo
 import io.element.android.libraries.matrix.test.room.powerlevels.FakeRoomPermissions
 import io.element.android.libraries.matrix.test.spaces.FakeSpaceService
 import io.element.android.libraries.previewutils.room.aSpaceRoom
+import io.element.android.tests.testutils.consumeItemsUntilPredicate
 import io.element.android.tests.testutils.lambda.assert
 import io.element.android.tests.testutils.lambda.lambdaError
 import io.element.android.tests.testutils.lambda.lambdaRecorder
@@ -66,7 +67,7 @@ class SecurityAndPrivacyPresenterTest {
                 assertThat(showRoomAccessSection).isTrue()
                 assertThat(showRoomVisibilitySections).isFalse()
                 assertThat(showHistoryVisibilitySection).isTrue()
-                assertThat(showEncryptionSection).isTrue()
+                assertThat(showEncryptionSection).isFalse()
             }
         }
     }
@@ -143,38 +144,18 @@ class SecurityAndPrivacyPresenterTest {
     }
 
     @Test
-    fun `present - enable encryption`() = runTest {
+    fun `present - encryption events are ignored when Matrix E2EE is disabled`() = runTest {
         val presenter = createSecurityAndPrivacyPresenter()
         presenter.test {
             skipItems(1)
             with(awaitItem()) {
+                assertThat(showEncryptionSection).isFalse()
                 assertThat(editedSettings.isEncrypted).isFalse()
                 eventSink(SecurityAndPrivacyEvent.ToggleEncryptionState)
-            }
-            with(awaitItem()) {
-                assertThat(showEnableEncryptionConfirmation).isTrue()
-                eventSink(SecurityAndPrivacyEvent.CancelEnableEncryption)
-            }
-            with(awaitItem()) {
-                assertThat(showEnableEncryptionConfirmation).isFalse()
-                eventSink(SecurityAndPrivacyEvent.ToggleEncryptionState)
-            }
-            with(awaitItem()) {
-                assertThat(showEnableEncryptionConfirmation).isTrue()
                 eventSink(SecurityAndPrivacyEvent.ConfirmEnableEncryption)
             }
-            skipItems(1)
-            with(awaitItem()) {
-                assertThat(editedSettings.isEncrypted).isTrue()
-                assertThat(showEnableEncryptionConfirmation).isFalse()
-                assertThat(canBeSaved).isTrue()
-                eventSink(SecurityAndPrivacyEvent.ToggleEncryptionState)
-            }
-            skipItems(1)
-            with(awaitItem()) {
-                assertThat(editedSettings.isEncrypted).isFalse()
-                assertThat(canBeSaved).isFalse()
-            }
+            expectNoEvents()
+            cancelAndIgnoreRemainingEvents()
         }
     }
 
@@ -255,22 +236,20 @@ class SecurityAndPrivacyPresenterTest {
                 assertThat(editedSettings.roomAccess).isEqualTo(SecurityAndPrivacyRoomAccess.InviteOnly)
                 eventSink(SecurityAndPrivacyEvent.ChangeRoomAccess(SecurityAndPrivacyRoomAccess.Anyone))
             }
-            with(awaitItem()) {
-                eventSink(SecurityAndPrivacyEvent.ChangeHistoryVisibility(SecurityAndPrivacyHistoryVisibility.WorldReadable))
-            }
-            with(awaitItem()) {
-                assertThat(editedSettings.historyVisibility).isEqualTo(SecurityAndPrivacyHistoryVisibility.WorldReadable)
-                eventSink(SecurityAndPrivacyEvent.ConfirmEnableEncryption)
-            }
-            skipItems(1)
-            with(awaitItem()) {
-                assertThat(editedSettings.isEncrypted).isTrue()
-                eventSink(SecurityAndPrivacyEvent.ToggleRoomVisibility)
-            }
-            with(awaitItem()) {
-                assertThat(editedSettings.isVisibleInRoomDirectory).isEqualTo(AsyncData.Success(true))
-                eventSink(SecurityAndPrivacyEvent.Save)
-            }
+            val stateWithVisibility = consumeItemsUntilPredicate {
+                it.editedSettings.roomAccess == SecurityAndPrivacyRoomAccess.Anyone &&
+                    it.editedSettings.isVisibleInRoomDirectory == AsyncData.Success(false)
+            }.last()
+            stateWithVisibility.eventSink(SecurityAndPrivacyEvent.ChangeHistoryVisibility(SecurityAndPrivacyHistoryVisibility.WorldReadable))
+            val stateWithHistoryVisibility = consumeItemsUntilPredicate {
+                it.editedSettings.historyVisibility == SecurityAndPrivacyHistoryVisibility.WorldReadable &&
+                    it.editedSettings.isVisibleInRoomDirectory == AsyncData.Success(false)
+            }.last()
+            stateWithHistoryVisibility.eventSink(SecurityAndPrivacyEvent.ToggleRoomVisibility)
+            val stateWithRoomVisibility = consumeItemsUntilPredicate {
+                it.editedSettings.isVisibleInRoomDirectory == AsyncData.Success(true)
+            }.last()
+            stateWithRoomVisibility.eventSink(SecurityAndPrivacyEvent.Save)
             with(awaitItem()) {
                 assertThat(saveAction).isEqualTo(AsyncAction.Loading)
             }
@@ -279,17 +258,17 @@ class SecurityAndPrivacyPresenterTest {
                 aRoomInfo(
                     joinRule = JoinRule.Public,
                     historyVisibility = RoomHistoryVisibility.WorldReadable,
-                    isEncrypted = true,
                 )
             )
-            // Saved settings are updated 2 times to match the edited settings
-            skipItems(2)
-            with(awaitItem()) {
+            val successState = consumeItemsUntilPredicate {
+                it.saveAction == AsyncAction.Success(Unit)
+            }.last()
+            with(successState) {
                 assertThat(saveAction).isEqualTo(AsyncAction.Success(Unit))
                 assertThat(savedSettings).isEqualTo(editedSettings)
                 assertThat(canBeSaved).isFalse()
             }
-            assert(enableEncryptionLambda).isCalledOnce()
+            assert(enableEncryptionLambda).isNeverCalled()
             assert(updateJoinRuleLambda).isCalledOnce()
             assert(updateRoomVisibilityLambda).isCalledOnce()
             assert(updateRoomHistoryVisibilityLambda).isCalledOnce()
@@ -323,22 +302,20 @@ class SecurityAndPrivacyPresenterTest {
                 assertThat(editedSettings.roomAccess).isEqualTo(SecurityAndPrivacyRoomAccess.InviteOnly)
                 eventSink(SecurityAndPrivacyEvent.ChangeRoomAccess(SecurityAndPrivacyRoomAccess.Anyone))
             }
-            with(awaitItem()) {
-                eventSink(SecurityAndPrivacyEvent.ChangeHistoryVisibility(SecurityAndPrivacyHistoryVisibility.WorldReadable))
-            }
-            with(awaitItem()) {
-                assertThat(editedSettings.historyVisibility).isEqualTo(SecurityAndPrivacyHistoryVisibility.WorldReadable)
-                eventSink(SecurityAndPrivacyEvent.ConfirmEnableEncryption)
-            }
-            skipItems(1)
-            with(awaitItem()) {
-                assertThat(editedSettings.isEncrypted).isTrue()
-                eventSink(SecurityAndPrivacyEvent.ToggleRoomVisibility)
-            }
-            with(awaitItem()) {
-                assertThat(editedSettings.isVisibleInRoomDirectory).isEqualTo(AsyncData.Success(true))
-                eventSink(SecurityAndPrivacyEvent.Save)
-            }
+            val stateWithVisibility = consumeItemsUntilPredicate {
+                it.editedSettings.roomAccess == SecurityAndPrivacyRoomAccess.Anyone &&
+                    it.editedSettings.isVisibleInRoomDirectory == AsyncData.Success(false)
+            }.last()
+            stateWithVisibility.eventSink(SecurityAndPrivacyEvent.ChangeHistoryVisibility(SecurityAndPrivacyHistoryVisibility.WorldReadable))
+            val stateWithHistoryVisibility = consumeItemsUntilPredicate {
+                it.editedSettings.historyVisibility == SecurityAndPrivacyHistoryVisibility.WorldReadable &&
+                    it.editedSettings.isVisibleInRoomDirectory == AsyncData.Success(false)
+            }.last()
+            stateWithHistoryVisibility.eventSink(SecurityAndPrivacyEvent.ToggleRoomVisibility)
+            val stateWithRoomVisibility = consumeItemsUntilPredicate {
+                it.editedSettings.isVisibleInRoomDirectory == AsyncData.Success(true)
+            }.last()
+            stateWithRoomVisibility.eventSink(SecurityAndPrivacyEvent.Save)
             with(awaitItem()) {
                 assertThat(saveAction).isEqualTo(AsyncAction.Loading)
             }
@@ -349,15 +326,15 @@ class SecurityAndPrivacyPresenterTest {
                     historyVisibility = RoomHistoryVisibility.WorldReadable,
                 )
             )
-            // Saved settings are updated 2 times to match the edited settings
-            skipItems(2)
-            val state = awaitItem()
+            val state = consumeItemsUntilPredicate {
+                it.saveAction is AsyncAction.Failure
+            }.last()
             with(state) {
                 assertThat(saveAction).isInstanceOf(AsyncAction.Failure::class.java)
                 assertThat(savedSettings.isVisibleInRoomDirectory).isNotEqualTo(editedSettings.isVisibleInRoomDirectory)
                 assertThat(canBeSaved).isTrue()
             }
-            assert(enableEncryptionLambda).isCalledOnce()
+            assert(enableEncryptionLambda).isNeverCalled()
             assert(updateJoinRuleLambda).isCalledOnce()
             assert(updateRoomVisibilityLambda).isCalledOnce()
             assert(updateRoomHistoryVisibilityLambda).isCalledOnce()

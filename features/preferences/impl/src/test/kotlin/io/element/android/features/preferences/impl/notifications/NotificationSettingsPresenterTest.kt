@@ -30,7 +30,6 @@ import io.element.android.tests.testutils.test
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
 import org.junit.Test
-import kotlin.time.Duration.Companion.milliseconds
 
 class NotificationSettingsPresenterTest {
     @Test
@@ -61,7 +60,6 @@ class NotificationSettingsPresenterTest {
         val notificationSettingsService = FakeNotificationSettingsService()
         val presenter = createNotificationSettingsPresenter(notificationSettingsService)
         presenter.test {
-            notificationSettingsService.setDefaultRoomNotificationMode(isEncrypted = true, isDM = false, mode = RoomNotificationMode.ALL_MESSAGES)
             notificationSettingsService.setDefaultRoomNotificationMode(isEncrypted = false, isDM = false, mode = RoomNotificationMode.ALL_MESSAGES)
             val updatedState = consumeItemsUntilPredicate {
                 (it.matrixSettings as? NotificationSettingsState.MatrixSettings.Valid)
@@ -69,49 +67,6 @@ class NotificationSettingsPresenterTest {
             }.last()
             val valid = updatedState.matrixSettings as? NotificationSettingsState.MatrixSettings.Valid
             assertThat(valid?.defaultGroupNotificationMode).isEqualTo(RoomNotificationMode.ALL_MESSAGES)
-        }
-    }
-
-    @Test
-    fun `present - notification settings mismatched`() = runTest {
-        val notificationSettingsService = FakeNotificationSettingsService()
-        val presenter = createNotificationSettingsPresenter(notificationSettingsService)
-        presenter.test {
-            notificationSettingsService.setDefaultRoomNotificationMode(
-                isEncrypted = true,
-                isDM = false,
-                mode = RoomNotificationMode.ALL_MESSAGES
-            )
-            notificationSettingsService.setDefaultRoomNotificationMode(
-                isEncrypted = false,
-                isDM = false,
-                mode = RoomNotificationMode.MENTIONS_AND_KEYWORDS_ONLY
-            )
-            val updatedState = consumeItemsUntilPredicate {
-                it.matrixSettings is NotificationSettingsState.MatrixSettings.Invalid
-            }.last()
-            assertThat(updatedState.matrixSettings).isEqualTo(NotificationSettingsState.MatrixSettings.Invalid(fixFailed = false))
-        }
-    }
-
-    @Test
-    fun `present - fix notification settings mismatched`() = runTest {
-        // Start with a mismatched configuration
-        val notificationSettingsService = FakeNotificationSettingsService(
-            initialEncryptedGroupDefaultMode = RoomNotificationMode.ALL_MESSAGES,
-            initialGroupDefaultMode = RoomNotificationMode.MENTIONS_AND_KEYWORDS_ONLY,
-            initialEncryptedOneToOneDefaultMode = RoomNotificationMode.ALL_MESSAGES,
-            initialOneToOneDefaultMode = RoomNotificationMode.MENTIONS_AND_KEYWORDS_ONLY
-        )
-        val presenter = createNotificationSettingsPresenter(notificationSettingsService)
-        presenter.test {
-            val initialState = awaitItem()
-            initialState.eventSink(NotificationSettingsEvents.FixConfigurationMismatch)
-            val fixedState = consumeItemsUntilPredicate(timeout = 2000.milliseconds) {
-                it.matrixSettings is NotificationSettingsState.MatrixSettings.Valid
-            }.last()
-            val fixedMatrixState = fixedState.matrixSettings as? NotificationSettingsState.MatrixSettings.Valid
-            assertThat(fixedMatrixState?.defaultGroupNotificationMode).isEqualTo(RoomNotificationMode.ALL_MESSAGES)
         }
     }
 

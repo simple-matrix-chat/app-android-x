@@ -21,7 +21,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.lifecycle.compose.LifecycleResumeEffect
 import dev.zacsweers.metro.Assisted
 import dev.zacsweers.metro.AssistedFactory
 import dev.zacsweers.metro.AssistedInject
@@ -33,7 +32,6 @@ import io.element.android.features.messages.api.timeline.HtmlConverterProvider
 import io.element.android.features.messages.impl.MessagesState.Threads
 import io.element.android.features.messages.impl.actionlist.ActionListState
 import io.element.android.features.messages.impl.actionlist.model.TimelineItemAction
-import io.element.android.features.messages.impl.crypto.identity.IdentityChangeState
 import io.element.android.features.messages.impl.link.LinkState
 import io.element.android.features.messages.impl.messagecomposer.MessageComposerEvent
 import io.element.android.features.messages.impl.messagecomposer.MessageComposerState
@@ -72,19 +70,15 @@ import io.element.android.libraries.di.annotations.SessionCoroutineScope
 import io.element.android.libraries.featureflag.api.FeatureFlagService
 import io.element.android.libraries.featureflag.api.FeatureFlags
 import io.element.android.libraries.matrix.api.core.toThreadId
-import io.element.android.libraries.matrix.api.encryption.EncryptionService
-import io.element.android.libraries.matrix.api.encryption.identity.IdentityState
 import io.element.android.libraries.matrix.api.permalink.PermalinkParser
 import io.element.android.libraries.matrix.api.room.JoinedRoom
 import io.element.android.libraries.matrix.api.room.RoomInfo
 import io.element.android.libraries.matrix.api.room.RoomMembersState
-import io.element.android.libraries.matrix.api.room.history.RoomHistoryVisibility
 import io.element.android.libraries.matrix.api.room.powerlevels.permissionsAsState
 import io.element.android.libraries.matrix.api.timeline.Timeline
 import io.element.android.libraries.matrix.api.timeline.item.event.EventOrTransactionId
 import io.element.android.libraries.matrix.ui.messages.reply.map
 import io.element.android.libraries.matrix.ui.model.getAvatarData
-import io.element.android.libraries.matrix.ui.room.getDirectRoomMember
 import io.element.android.libraries.recentemojis.api.AddRecentEmoji
 import io.element.android.libraries.textcomposer.model.MessageComposerMode
 import io.element.android.libraries.ui.strings.CommonStrings
@@ -107,7 +101,6 @@ class MessagesPresenter(
     voiceMessageComposerPresenterFactory: DefaultVoiceMessageComposerPresenter.Factory,
     @Assisted private val timelinePresenter: Presenter<TimelineState>,
     private val timelineProtectionPresenter: Presenter<TimelineProtectionState>,
-    private val identityChangeStatePresenter: Presenter<IdentityChangeState>,
     private val linkPresenter: Presenter<LinkState>,
     @Assisted private val actionListPresenter: Presenter<ActionListState>,
     private val customReactionPresenter: Presenter<CustomReactionState>,
@@ -124,7 +117,6 @@ class MessagesPresenter(
     @Assisted private val timelineController: TimelineController,
     private val permalinkParser: PermalinkParser,
     private val analyticsService: AnalyticsService,
-    private val encryptionService: EncryptionService,
     private val featureFlagService: FeatureFlagService,
     private val addRecentEmoji: AddRecentEmoji,
     private val markAsFullyRead: MarkAsFullyRead,
@@ -159,7 +151,6 @@ class MessagesPresenter(
         val voiceMessageComposerState = voiceMessageComposerPresenter.present()
         val timelineState = timelinePresenter.present()
         val timelineProtectionState = timelineProtectionPresenter.present()
-        val identityChangeState = identityChangeStatePresenter.present()
         val actionListState = actionListPresenter.present()
         val linkState = linkPresenter.present()
         val customReactionState = customReactionPresenter.present()
@@ -196,11 +187,6 @@ class MessagesPresenter(
             // as those will be handled by the timeline.
             withContext(dispatchers.io) {
                 room.setUnreadFlag(isUnread = false)
-
-                // If for some reason the encryption state is unknown, fetch it
-                if (roomInfo.isEncrypted == null) {
-                    room.getUpdatedIsEncrypted()
-                }
             }
         }
 
@@ -214,30 +200,6 @@ class MessagesPresenter(
         }
 
         val snackbarMessage by snackbarDispatcher.collectSnackbarMessageAsState()
-
-        var dmUserVerificationState by remember { mutableStateOf<IdentityState?>(null) }
-
-        val membersState by room.membersStateFlow.collectAsState()
-        val dmRoomMember by room.getDirectRoomMember(membersState)
-        val roomMemberIdentityStateChanges = identityChangeState.roomMemberIdentityStateChanges
-
-        // The top bar should show a "history" icon if:
-        //   * The room is encrypted, and:
-        //   * The room's history_visibility allows future users to see content.
-        val topBarSharedHistoryIcon = roomInfo.sharedHistoryIcon()
-
-        LifecycleResumeEffect(dmRoomMember, roomInfo.isEncrypted) {
-            if (roomInfo.isEncrypted == true) {
-                val dmRoomMemberId = dmRoomMember?.userId
-                localCoroutineScope.launch {
-                    dmRoomMemberId?.let { userId ->
-                        dmUserVerificationState = roomMemberIdentityStateChanges.find { it.identityRoomMember.userId == userId }?.identityState
-                            ?: encryptionService.getUserIdentity(userId).getOrNull()
-                    }
-                }
-            }
-            onPauseOrDispose {}
-        }
 
         fun handleEvent(event: MessagesEvent) {
             when (event) {
@@ -305,7 +267,6 @@ class MessagesPresenter(
             voiceMessageComposerState = voiceMessageComposerState,
             timelineState = timelineState,
             timelineProtectionState = timelineProtectionState,
-            identityChangeState = identityChangeState,
             linkState = linkState,
             actionListState = actionListState,
             customReactionState = customReactionState,
@@ -318,9 +279,7 @@ class MessagesPresenter(
             roomCallState = roomCallState,
             appName = buildMeta.applicationName,
             pinnedMessagesBannerState = pinnedMessagesBannerState,
-            dmUserVerificationState = dmUserVerificationState,
             roomMemberModerationState = roomMemberModerationState,
-            topBarSharedHistoryIcon = topBarSharedHistoryIcon,
             successorRoom = roomInfo.successorRoom,
             threads = Threads(
                 hasThreads = canOpenThreadList && threadsList.isNotEmpty(),
@@ -330,18 +289,6 @@ class MessagesPresenter(
             showLiveLocationShareBanner = isCurrentlySharingLiveLocationInRoom && timelineState.timelineMode !is Timeline.Mode.Thread,
             eventSink = ::handleEvent,
         )
-    }
-
-    private fun RoomInfo.sharedHistoryIcon(): SharedHistoryIcon {
-        if (isEncrypted == true) {
-            if (historyVisibility == RoomHistoryVisibility.Shared) {
-                return SharedHistoryIcon.SHARED
-            } else if (historyVisibility == RoomHistoryVisibility.WorldReadable) {
-                return SharedHistoryIcon.WORLD_READABLE
-            }
-        }
-
-        return SharedHistoryIcon.NONE
     }
 
     private fun RoomInfo.avatarData(): AvatarData {

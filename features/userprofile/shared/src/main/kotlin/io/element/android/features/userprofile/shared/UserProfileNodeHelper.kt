@@ -26,7 +26,6 @@ class UserProfileNodeHelper(
         fun navigateToAvatarPreview(username: String, avatarUrl: String)
         fun navigateToRoom(roomId: RoomId)
         fun startCall(dmRoomId: RoomId, callIntent: CallIntent)
-        fun startVerifyUserFlow(userId: UserId)
     }
 
     fun onShareUser(

@@ -37,15 +37,12 @@ class PreferencesRootNode(
     interface Callback : Plugin {
         fun navigateToAddAccount()
         fun navigateToBugReport()
-        fun navigateToSecureBackup()
-        fun navigateToAnalyticsSettings()
         fun navigateToAbout()
         fun navigateToDeveloperSettings()
         fun navigateToNotificationSettings()
         fun navigateToLockScreenSettings()
         fun navigateToAdvancedSettings()
         fun navigateToLabs()
-        fun navigateToLinkNewDevice()
         fun navigateToUserProfile(matrixUser: MatrixUser)
         fun navigateToBlockedUsers()
         fun startSignOutFlow()
@@ -79,13 +76,10 @@ class PreferencesRootNode(
             onBackClick = this::navigateUp,
             onAddAccountClick = callback::navigateToAddAccount,
             onOpenRageShake = callback::navigateToBugReport,
-            onOpenAnalytics = callback::navigateToAnalyticsSettings,
             onOpenAbout = callback::navigateToAbout,
-            onSecureBackupClick = callback::navigateToSecureBackup,
             onOpenDeveloperSettings = callback::navigateToDeveloperSettings,
             onOpenAdvancedSettings = callback::navigateToAdvancedSettings,
             onOpenLabs = callback::navigateToLabs,
-            onLinkNewDeviceClick = callback::navigateToLinkNewDevice,
             onManageAccountClick = { onManageAccountClick(activity, it, isDark) },
             onOpenNotificationSettings = callback::navigateToNotificationSettings,
             onOpenLockScreenSettings = callback::navigateToLockScreenSettings,

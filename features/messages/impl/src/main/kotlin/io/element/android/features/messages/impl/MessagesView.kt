@@ -61,7 +61,6 @@ import io.element.android.features.messages.api.timeline.voicemessages.composer.
 import io.element.android.features.messages.impl.actionlist.ActionListEvent
 import io.element.android.features.messages.impl.actionlist.ActionListView
 import io.element.android.features.messages.impl.actionlist.model.TimelineItemAction
-import io.element.android.features.messages.impl.crypto.identity.IdentityChangeStateView
 import io.element.android.features.messages.impl.link.LinkEvent
 import io.element.android.features.messages.impl.link.LinkView
 import io.element.android.features.messages.impl.messagecomposer.AttachmentsBottomSheet
@@ -117,12 +116,10 @@ import io.element.android.libraries.designsystem.utils.snackbar.rememberSnackbar
 import io.element.android.libraries.matrix.api.core.EventId
 import io.element.android.libraries.matrix.api.core.RoomId
 import io.element.android.libraries.matrix.api.core.UserId
-import io.element.android.libraries.matrix.api.encryption.identity.IdentityState
 import io.element.android.libraries.matrix.api.room.tombstone.SuccessorRoom
 import io.element.android.libraries.matrix.api.timeline.Timeline
 import io.element.android.libraries.matrix.api.timeline.item.event.LocalEventSendState
 import io.element.android.libraries.matrix.api.user.MatrixUser
-import io.element.android.libraries.textcomposer.model.TextEditorState
 import io.element.android.libraries.ui.strings.CommonStrings
 import io.element.android.wysiwyg.link.Link
 import kotlinx.collections.immutable.persistentListOf
@@ -233,8 +230,6 @@ fun MessagesView(
                             roomAvatar = state.roomAvatar,
                             isTombstoned = state.isTombstoned,
                             heroes = state.heroes,
-                            dmUserIdentityState = state.dmUserVerificationState,
-                            sharedHistoryIcon = state.topBarSharedHistoryIcon,
                             onBackClick = { hidingKeyboard { onBackClick() } },
                             onRoomDetailsClick = { hidingKeyboard { onRoomDetailsClick() } },
                             menuActions = {
@@ -565,26 +560,11 @@ private fun MessagesViewComposerBottomSheetContents(
         }
         state.userEventPermissions.canSendMessage -> {
             Column(modifier = Modifier.fillMaxWidth()) {
-                // Do not show the identity change if user is composing a Rich message or is seeing suggestion(s).
-                if (state.composerState.suggestions.isEmpty() &&
-                    state.composerState.textEditorState is TextEditorState.Markdown) {
-                    IdentityChangeStateView(
-                        state = state.identityChangeState,
-                        onLinkClick = onLinkClick,
-                    )
-                }
-                val verificationViolation = state.identityChangeState.roomMemberIdentityStateChanges.firstOrNull {
-                    it.identityState == IdentityState.VerificationViolation
-                }
-                if (verificationViolation != null) {
-                    DisabledComposerView(modifier = Modifier.fillMaxWidth())
-                } else {
-                    MessageComposerView(
-                        state = state.composerState,
-                        voiceMessageState = state.voiceMessageComposerState,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                }
+                MessageComposerView(
+                    state = state.composerState,
+                    voiceMessageState = state.voiceMessageComposerState,
+                    modifier = Modifier.fillMaxWidth(),
+                )
             }
         }
         else -> {
@@ -657,7 +637,6 @@ internal fun MessagesViewA11yPreview() = ElementPreview {
     MessagesView(
         state = aMessagesState(
             roomName = "A DM with a very looong name",
-            dmUserVerificationState = IdentityState.VerificationViolation,
             timelineState = aTimelineState(
                 timelineItems = persistentListOf(
                     // 1 items with isMine = false

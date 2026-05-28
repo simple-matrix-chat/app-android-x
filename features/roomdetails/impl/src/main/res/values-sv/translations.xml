@@ -39,8 +39,6 @@
   <string name="screen_room_change_role_unsaved_changes_description">"Du har osparade ändringar."</string>
   <string name="screen_room_change_role_unsaved_changes_title">"Spara ändringar?"</string>
   <string name="screen_room_details_add_topic_title">"Lägg till ämne"</string>
-  <string name="screen_room_details_badge_encrypted">"Krypterat"</string>
-  <string name="screen_room_details_badge_not_encrypted">"Inte krypterat"</string>
   <string name="screen_room_details_badge_public">"Offentligt rum"</string>
   <string name="screen_room_details_edit_room_title">"Redigera detaljer"</string>
   <string name="screen_room_details_edition_error">"Ett okänt fel uppstod och informationen kunde inte ändras."</string>

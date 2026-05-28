@@ -110,33 +110,6 @@ class PreferencesRootViewTest {
     }
 
     @Test
-    fun `click on Encryption invokes the expected callback`() = runAndroidComposeUiTest {
-        val eventsRecorder = EventsRecorder<PreferencesRootEvent>(expectEvents = false)
-        ensureCalledOnce { callback ->
-            setView(
-                aPreferencesRootState(
-                    showSecureBackup = true,
-                    eventSink = eventsRecorder,
-                ),
-                onSecureBackupClick = callback,
-            )
-            clickOn(CommonStrings.common_encryption)
-        }
-    }
-
-    @Test
-    fun `when showSecureBackup is false, item is not shown`() = runAndroidComposeUiTest {
-        val eventsRecorder = EventsRecorder<PreferencesRootEvent>(expectEvents = false)
-        setView(
-            aPreferencesRootState(
-                showSecureBackup = false,
-                eventSink = eventsRecorder,
-            ),
-        )
-        onNodeWithText(activity!!.getString(CommonStrings.common_encryption)).assertDoesNotExist()
-    }
-
-    @Test
     fun `click on Manage account invokes the expected callback`() = runAndroidComposeUiTest {
         val eventsRecorder = EventsRecorder<PreferencesRootEvent>(expectEvents = false)
         ensureCalledOnceWithParam("aUrl") { callback ->
@@ -164,26 +137,10 @@ class PreferencesRootViewTest {
     }
 
     @Test
-    fun `click on Link new devices invokes the expected callback`() = runAndroidComposeUiTest {
-        val eventsRecorder = EventsRecorder<PreferencesRootEvent>(expectEvents = false)
-        ensureCalledOnce { callback ->
-            setView(
-                aPreferencesRootState(
-                    showLinkNewDevice = true,
-                    eventSink = eventsRecorder,
-                ),
-                onLinkNewDeviceClick = callback,
-            )
-            clickOn(CommonStrings.common_link_new_device)
-        }
-    }
-
-    @Test
-    fun `when showLinkNewDevice is false, item is not shown`() = runAndroidComposeUiTest {
+    fun `link new device item is not shown`() = runAndroidComposeUiTest {
         val eventsRecorder = EventsRecorder<PreferencesRootEvent>(expectEvents = false)
         setView(
             aPreferencesRootState(
-                showLinkNewDevice = false,
                 eventSink = eventsRecorder,
             ),
         )
@@ -191,26 +148,10 @@ class PreferencesRootViewTest {
     }
 
     @Test
-    fun `click on Analytics invokes the expected callback`() = runAndroidComposeUiTest {
-        val eventsRecorder = EventsRecorder<PreferencesRootEvent>(expectEvents = false)
-        ensureCalledOnce { callback ->
-            setView(
-                aPreferencesRootState(
-                    showAnalyticsSettings = true,
-                    eventSink = eventsRecorder,
-                ),
-                onOpenAnalytics = callback,
-            )
-            clickOn(CommonStrings.common_analytics)
-        }
-    }
-
-    @Test
-    fun `when showAnalyticsSettings is false, item is not shown`() = runAndroidComposeUiTest {
+    fun `analytics item is not shown`() = runAndroidComposeUiTest {
         val eventsRecorder = EventsRecorder<PreferencesRootEvent>(expectEvents = false)
         setView(
             aPreferencesRootState(
-                showAnalyticsSettings = false,
                 eventSink = eventsRecorder,
             ),
         )
@@ -441,10 +382,7 @@ private fun AndroidComposeUiTest<ComponentActivity>.setView(
     state: PreferencesRootState,
     onBackClick: () -> Unit = EnsureNeverCalled(),
     onAddAccountClick: () -> Unit = EnsureNeverCalled(),
-    onSecureBackupClick: () -> Unit = EnsureNeverCalled(),
     onManageAccountClick: (url: String) -> Unit = EnsureNeverCalledWithParam(),
-    onLinkNewDeviceClick: () -> Unit = EnsureNeverCalled(),
-    onOpenAnalytics: () -> Unit = EnsureNeverCalled(),
     onOpenRageShake: () -> Unit = EnsureNeverCalled(),
     onOpenLockScreenSettings: () -> Unit = EnsureNeverCalled(),
     onOpenAbout: () -> Unit = EnsureNeverCalled(),
@@ -462,10 +400,7 @@ private fun AndroidComposeUiTest<ComponentActivity>.setView(
             state = state,
             onBackClick = onBackClick,
             onAddAccountClick = onAddAccountClick,
-            onSecureBackupClick = onSecureBackupClick,
             onManageAccountClick = onManageAccountClick,
-            onLinkNewDeviceClick = onLinkNewDeviceClick,
-            onOpenAnalytics = onOpenAnalytics,
             onOpenRageShake = onOpenRageShake,
             onOpenLockScreenSettings = onOpenLockScreenSettings,
             onOpenAbout = onOpenAbout,

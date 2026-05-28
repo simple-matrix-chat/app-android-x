@@ -17,13 +17,10 @@ import com.bumble.appyx.core.node.Node
 import com.bumble.appyx.core.plugin.Plugin
 import com.bumble.appyx.navmodel.backstack.BackStack
 import com.bumble.appyx.navmodel.backstack.operation.newRoot
-import com.bumble.appyx.navmodel.backstack.operation.replace
 import dev.zacsweers.metro.Assisted
 import dev.zacsweers.metro.AssistedInject
 import io.element.android.annotations.ContributesNode
-import io.element.android.features.analytics.api.AnalyticsEntryPoint
 import io.element.android.features.ftue.impl.notifications.NotificationsOptInNode
-import io.element.android.features.ftue.impl.sessionverification.FtueSessionVerificationFlowNode
 import io.element.android.features.ftue.impl.state.DefaultFtueService
 import io.element.android.features.ftue.impl.state.FtueStep
 import io.element.android.features.ftue.impl.state.InternalFtueState
@@ -44,7 +41,6 @@ class FtueFlowNode(
     @Assisted buildContext: BuildContext,
     @Assisted plugins: List<Plugin>,
     private val defaultFtueService: DefaultFtueService,
-    private val analyticsEntryPoint: AnalyticsEntryPoint,
     private val lockScreenEntryPoint: LockScreenEntryPoint,
 ) : BaseFlowNode<FtueFlowNode.NavTarget>(
     backstack = BackStack(
@@ -59,13 +55,7 @@ class FtueFlowNode(
         data object Placeholder : NavTarget
 
         @Parcelize
-        data object SessionVerification : NavTarget
-
-        @Parcelize
         data object NotificationsOptIn : NavTarget
-
-        @Parcelize
-        data object AnalyticsOptIn : NavTarget
 
         @Parcelize
         data object LockScreenSetup : NavTarget
@@ -86,14 +76,6 @@ class FtueFlowNode(
             NavTarget.Placeholder -> {
                 emptyNode(buildContext)
             }
-            is NavTarget.SessionVerification -> {
-                val callback = object : FtueSessionVerificationFlowNode.Callback {
-                    override fun onDone() {
-                        defaultFtueService.onUserCompletedSessionVerification()
-                    }
-                }
-                createNode<FtueSessionVerificationFlowNode>(buildContext, listOf(callback))
-            }
             NavTarget.NotificationsOptIn -> {
                 val callback = object : NotificationsOptInNode.Callback {
                     override fun onNotificationsOptInFinished() {
@@ -101,9 +83,6 @@ class FtueFlowNode(
                     }
                 }
                 createNode<NotificationsOptInNode>(buildContext, listOf(callback))
-            }
-            NavTarget.AnalyticsOptIn -> {
-                analyticsEntryPoint.createNode(this, buildContext)
             }
             NavTarget.LockScreenSetup -> {
                 val callback = object : LockScreenEntryPoint.Callback {
@@ -126,14 +105,8 @@ class FtueFlowNode(
             FtueStep.WaitingForInitialState -> {
                 backstack.newRoot(NavTarget.Placeholder)
             }
-            FtueStep.SessionVerification -> {
-                backstack.newRoot(NavTarget.SessionVerification)
-            }
             FtueStep.NotificationsOptIn -> {
                 backstack.newRoot(NavTarget.NotificationsOptIn)
-            }
-            FtueStep.AnalyticsOptIn -> {
-                backstack.replace(NavTarget.AnalyticsOptIn)
             }
             FtueStep.LockscreenSetup -> {
                 backstack.newRoot(NavTarget.LockScreenSetup)

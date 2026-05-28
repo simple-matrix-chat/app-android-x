@@ -11,8 +11,6 @@ package io.element.android.libraries.matrix.api.auth
 import io.element.android.libraries.matrix.api.MatrixClient
 import io.element.android.libraries.matrix.api.MatrixClientProvider
 import io.element.android.libraries.matrix.api.auth.external.ExternalSession
-import io.element.android.libraries.matrix.api.auth.qrlogin.MatrixQrCodeLoginData
-import io.element.android.libraries.matrix.api.auth.qrlogin.QrCodeLoginStep
 import io.element.android.libraries.matrix.api.core.SessionId
 import io.element.android.libraries.matrix.api.core.UserId
 
@@ -71,8 +69,6 @@ interface MatrixAuthenticationService {
      * Attempt to log in using the [callbackUrl] provided by the OAuth page.
      */
     suspend fun loginWithOAuth(callbackUrl: String): Result<SessionId>
-
-    suspend fun loginWithQrCode(qrCodeData: MatrixQrCodeLoginData, progress: (QrCodeLoginStep) -> Unit): Result<SessionId>
 
     /** Listen to new Matrix clients being created on authentication. */
     fun listenToNewMatrixClients(lambda: (MatrixClient) -> Unit)

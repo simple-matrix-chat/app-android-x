@@ -45,7 +45,6 @@ data class RoomDetailsState(
     val snackbarMessage: SnackbarMessage?,
     val canShowKnockRequests: Boolean,
     val knockRequestsCount: Int?,
-    val canShowSecurityAndPrivacy: Boolean,
     val hasMemberVerificationViolations: Boolean,
     val canReportRoom: Boolean,
     val isTombstoned: Boolean,
@@ -55,21 +54,8 @@ data class RoomDetailsState(
     val eventSink: (RoomDetailsEvent) -> Unit
 ) {
     val roomBadges = buildList {
-        if (isEncrypted) {
-            add(RoomBadge.ENCRYPTED)
-        } else {
-            add(RoomBadge.NOT_ENCRYPTED)
-        }
         if (isPublic) {
             add(RoomBadge.PUBLIC)
-        }
-        if (isEncrypted) {
-            when (roomHistoryVisibility) {
-                RoomHistoryVisibility.Invited, RoomHistoryVisibility.Joined -> add(RoomBadge.SHARED_HISTORY_HIDDEN)
-                RoomHistoryVisibility.Shared -> add(RoomBadge.SHARED_HISTORY_SHARED)
-                RoomHistoryVisibility.WorldReadable -> add(RoomBadge.SHARED_HISTORY_WORLD_READABLE)
-                else -> {}
-            }
         }
     }.toImmutableList()
 }
@@ -88,10 +74,5 @@ sealed interface RoomTopicState {
 }
 
 enum class RoomBadge {
-    ENCRYPTED,
-    NOT_ENCRYPTED,
     PUBLIC,
-    SHARED_HISTORY_HIDDEN,
-    SHARED_HISTORY_SHARED,
-    SHARED_HISTORY_WORLD_READABLE
 }

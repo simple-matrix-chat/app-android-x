@@ -73,7 +73,7 @@ class EditDefaultNotificationSettingPresenter(
             fetchSettings(mode)
             observeNotificationSettings(mode, changeNotificationSettingAction)
             observeRoomSummaries(roomsWithUserDefinedMode)
-            displayMentionsOnlyDisclaimer = !notificationSettingsService.canHomeServerPushEncryptedEventsToDevice().getOrDefault(true)
+            displayMentionsOnlyDisclaimer = false
         }
 
         fun handleEvent(event: EditDefaultNotificationSettingStateEvents) {
@@ -96,7 +96,7 @@ class EditDefaultNotificationSettingPresenter(
     }
 
     private fun CoroutineScope.fetchSettings(mode: MutableState<RoomNotificationMode?>) = launch {
-        mode.value = notificationSettingsService.getDefaultRoomNotificationMode(isEncrypted = true, isOneToOne = isDm).getOrThrow()
+        mode.value = notificationSettingsService.getDefaultRoomNotificationMode(isEncrypted = false, isOneToOne = isDm).getOrThrow()
     }
 
     @OptIn(FlowPreview::class)
@@ -153,11 +153,7 @@ class EditDefaultNotificationSettingPresenter(
 
     private fun CoroutineScope.setDefaultNotificationMode(mode: RoomNotificationMode, action: MutableState<AsyncAction<Unit>>) = launch {
         action.runUpdatingStateNoSuccess {
-            // On modern clients, we don't have different settings for encrypted and non-encrypted rooms (Legacy clients did).
-            notificationSettingsService.setDefaultRoomNotificationMode(isEncrypted = true, mode = mode, isDM = isDm)
-                .map {
-                    notificationSettingsService.setDefaultRoomNotificationMode(isEncrypted = false, mode = mode, isDM = isDm)
-                }
+            notificationSettingsService.setDefaultRoomNotificationMode(isEncrypted = false, mode = mode, isDM = isDm)
         }
     }
 }

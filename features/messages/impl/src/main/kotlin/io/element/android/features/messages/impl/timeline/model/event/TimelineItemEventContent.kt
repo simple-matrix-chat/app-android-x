@@ -71,7 +71,6 @@ fun TimelineItemEventContent.canReact(): Boolean =
     when (this) {
         is TimelineItemTextBasedContent,
         is TimelineItemAudioContent,
-        is TimelineItemEncryptedContent,
         is TimelineItemFileContent,
         is TimelineItemImageContent,
         is TimelineItemStickerContent,
