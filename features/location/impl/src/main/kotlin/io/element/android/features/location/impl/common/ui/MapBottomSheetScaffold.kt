@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.BottomSheetScaffoldState
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -42,6 +43,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.max
+import io.element.android.compound.theme.ElementTheme
 import io.element.android.features.location.api.internal.rememberTileStyleUrl
 import io.element.android.features.location.impl.common.MapDefaults
 import io.element.android.libraries.core.data.tryOrNull
@@ -114,6 +116,8 @@ fun MapBottomSheetScaffold(
         BottomSheetScaffold(
             modifier = Modifier,
             sheetPeekHeight = sheetPeekHeight,
+            sheetShape = RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp),
+            sheetContainerColor = ElementTheme.colors.bgCanvasDefault,
             sheetContent = {
                 val maxContentHeight = (layoutHeightPx * 0.5f).roundToInt().toDp()
                 Column(modifier = Modifier.heightIn(max = maxContentHeight)) {
@@ -126,6 +130,7 @@ fun MapBottomSheetScaffold(
             sheetSwipeEnabled = sheetSwipeEnabled,
             snackbarHost = snackbarHost,
             topBar = topBar,
+            containerColor = ElementTheme.colors.bgSubtleSecondary,
         ) {
             val ornamentOptions = mapOptions.ornamentOptions.copy(padding = sheetPadding)
             val mapOptions = mapOptions.copy(ornamentOptions = ornamentOptions)

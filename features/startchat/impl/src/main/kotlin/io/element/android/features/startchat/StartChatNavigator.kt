@@ -16,10 +16,11 @@ import io.element.android.libraries.architecture.overlay.Overlay
 import io.element.android.libraries.architecture.overlay.operation.hide
 import io.element.android.libraries.architecture.overlay.operation.show
 import io.element.android.libraries.matrix.api.core.RoomIdOrAlias
+import io.element.android.libraries.matrix.api.createroom.MomentRoomKind
 
 interface StartChatNavigator : Plugin {
     fun onRoomCreated(roomIdOrAlias: RoomIdOrAlias, serverNames: List<String>)
-    fun onCreateNewRoom()
+    fun onCreateNewRoom(momentRoomKind: MomentRoomKind?)
     fun onShowJoinRoomByAddress()
     fun onDismissJoinRoomByAddress()
     fun onOpenRoomDirectory()
@@ -36,8 +37,8 @@ class DefaultStartChatNavigator(
 
     override fun onOpenRoomDirectory() = openRoomDirectory()
 
-    override fun onCreateNewRoom() {
-        backstack.push(NavTarget.NewRoom)
+    override fun onCreateNewRoom(momentRoomKind: MomentRoomKind?) {
+        backstack.push(NavTarget.NewRoom(momentRoomKind))
     }
 
     override fun onShowJoinRoomByAddress() {

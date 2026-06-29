@@ -42,6 +42,11 @@ open class NotificationSettingsStateProvider : PreviewParameterProvider<Notifica
             aValidNotificationSettingsState(currentPushDistributor = AsyncData.Failure(Exception("Failed to change distributor"))),
             aValidNotificationSettingsState(fullScreenIntentPermissionsState = aFullScreenIntentPermissionsState(permissionGranted = false)),
             aValidNotificationSettingsState(appNotificationEnabled = false),
+            aValidNotificationSettingsState(
+                inconsistentSettings = listOf(
+                    NotificationSettingsState.InconsistentSetting(isOneToOne = false, isEncrypted = true)
+                )
+            ),
         )
 }
 
@@ -59,6 +64,7 @@ fun aValidNotificationSettingsState(
     ),
     showChangePushProviderDialog: Boolean = false,
     fullScreenIntentPermissionsState: FullScreenIntentPermissionsState = aFullScreenIntentPermissionsState(),
+    inconsistentSettings: List<NotificationSettingsState.InconsistentSetting> = emptyList(),
     eventSink: (NotificationSettingsEvents) -> Unit = {},
 ) = NotificationSettingsState(
     matrixSettings = NotificationSettingsState.MatrixSettings.Valid(
@@ -67,6 +73,7 @@ fun aValidNotificationSettingsState(
         inviteForMeNotificationsEnabled = inviteForMeNotificationsEnabled,
         defaultGroupNotificationMode = RoomNotificationMode.MENTIONS_AND_KEYWORDS_ONLY,
         defaultOneToOneNotificationMode = RoomNotificationMode.ALL_MESSAGES,
+        inconsistentSettings = inconsistentSettings.toImmutableList(),
     ),
     appSettings = NotificationSettingsState.AppSettings(
         systemNotificationsEnabled = systemNotificationsEnabled,

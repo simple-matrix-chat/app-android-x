@@ -16,6 +16,7 @@ import kotlinx.collections.immutable.ImmutableList
 
 data class PreferencesRootState(
     val myUser: MatrixUser,
+    val profileStatus: String,
     val version: String,
     val deviceId: DeviceId?,
     val isMultiAccountEnabled: Boolean,
@@ -26,9 +27,22 @@ data class PreferencesRootState(
     val canDeactivateAccount: Boolean,
     val nbOfBlockedUsers: Int,
     val showLabsItem: Boolean,
+    val momentPrivacySummary: MomentPrivacySummary,
+    val momentNotificationsSummary: MomentNotificationsSummary?,
     val directLogoutState: DirectLogoutState,
     val snackbarMessage: SnackbarMessage?,
     val eventSink: (PreferencesRootEvent) -> Unit,
 ) {
     val showBlockedUsersItem = nbOfBlockedUsers > 0
+}
+
+enum class MomentPrivacySummary {
+    Everyone,
+    ContactsOnly,
+    Custom,
+}
+
+enum class MomentNotificationsSummary {
+    Enabled,
+    Disabled,
 }

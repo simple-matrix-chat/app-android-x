@@ -17,6 +17,7 @@ import io.element.android.libraries.matrix.api.room.RoomNotificationMode
 @Composable
 fun RoomNotificationSettingsOptions(
     selected: RoomNotificationMode?,
+    pending: RoomNotificationMode?,
     enabled: Boolean,
     onSelectOption: (RoomNotificationSettingsItem) -> Unit,
     displayMentionsOnlyDisclaimer: Boolean,
@@ -24,14 +25,18 @@ fun RoomNotificationSettingsOptions(
 ) {
     val items = roomNotificationSettingsItems()
     Column(modifier = modifier.selectableGroup()) {
-        items.forEach { item ->
-            RoomNotificationSettingsOption(
-                roomNotificationSettingsItem = item,
-                isSelected = selected == item.mode,
-                onSelectOption = onSelectOption,
+        items.forEachIndexed { index, item ->
+            MomentRoomNotificationModeRow(
+                item = item,
+                selected = selected == item.mode && pending == null,
+                loading = pending == item.mode,
+                enabled = enabled && pending == null,
+                onSelect = onSelectOption,
                 displayMentionsOnlyDisclaimer = displayMentionsOnlyDisclaimer,
-                enabled = enabled
             )
+            if (index != items.lastIndex) {
+                MomentRoomNotificationDivider()
+            }
         }
     }
 }

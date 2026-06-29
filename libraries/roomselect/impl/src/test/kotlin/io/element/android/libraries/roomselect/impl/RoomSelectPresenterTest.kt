@@ -47,6 +47,7 @@ class RoomSelectPresenterTest {
             assertThat(initialState.selectedRooms).isEmpty()
             assertThat(initialState.resultState).isInstanceOf(SearchBarResultState.Initial::class.java)
             assertThat(initialState.isSearchActive).isFalse()
+            assertThat(initialState.forwardComment).isEmpty()
         }
     }
 
@@ -97,6 +98,18 @@ class RoomSelectPresenterTest {
                 emptyList()
             )
             assertThat(awaitItem().resultState).isInstanceOf(SearchBarResultState.NoResultsFound::class.java)
+        }
+    }
+
+    @Test
+    fun `present - update forward comment`() = runTest {
+        val presenter = createRoomSelectPresenter()
+        moleculeFlow(RecompositionMode.Immediate) {
+            presenter.present()
+        }.test {
+            val initialState = awaitItem()
+            initialState.eventSink(RoomSelectEvents.UpdateForwardComment("Forwarding note"))
+            assertThat(awaitItem().forwardComment).isEqualTo("Forwarding note")
         }
     }
 

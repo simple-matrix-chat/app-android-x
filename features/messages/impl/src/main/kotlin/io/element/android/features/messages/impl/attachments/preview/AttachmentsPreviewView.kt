@@ -9,8 +9,10 @@
 package io.element.android.features.messages.impl.attachments.preview
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
@@ -21,7 +23,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -35,7 +38,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
 import io.element.android.compound.theme.ElementTheme
-import io.element.android.compound.tokens.generated.CompoundIcons
 import io.element.android.features.messages.impl.R
 import io.element.android.features.messages.impl.attachments.Attachment
 import io.element.android.features.messages.impl.attachments.preview.error.sendAttachmentError
@@ -47,7 +49,6 @@ import io.element.android.libraries.core.mimetype.MimeTypes.isMimeTypeImage
 import io.element.android.libraries.core.mimetype.MimeTypes.isMimeTypeVideo
 import io.element.android.libraries.designsystem.components.ProgressDialog
 import io.element.android.libraries.designsystem.components.ProgressDialogType
-import io.element.android.libraries.designsystem.components.button.BackButton
 import io.element.android.libraries.designsystem.components.dialogs.AlertDialog
 import io.element.android.libraries.designsystem.components.dialogs.ListDialog
 import io.element.android.libraries.designsystem.components.dialogs.RetryDialog
@@ -57,10 +58,10 @@ import io.element.android.libraries.designsystem.preview.ElementPreview
 import io.element.android.libraries.designsystem.preview.ElementPreviewDark
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
 import io.element.android.libraries.designsystem.theme.components.ListItem
-import io.element.android.libraries.designsystem.theme.components.Scaffold
+import io.element.android.libraries.designsystem.theme.components.Surface
 import io.element.android.libraries.designsystem.theme.components.Switch
 import io.element.android.libraries.designsystem.theme.components.Text
-import io.element.android.libraries.designsystem.theme.components.TopAppBar
+import io.element.android.libraries.designsystem.theme.components.TextButton
 import io.element.android.libraries.designsystem.utils.CommonDrawables
 import io.element.android.libraries.mediaviewer.api.local.LocalMedia
 import io.element.android.libraries.mediaviewer.api.local.LocalMediaRenderer
@@ -74,7 +75,6 @@ import io.element.android.wysiwyg.display.TextDisplay
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AttachmentsPreviewView(
     state: AttachmentsPreviewState,
@@ -97,25 +97,22 @@ fun AttachmentsPreviewView(
         postCancel()
     }
 
-    Scaffold(
-        modifier = modifier,
-        topBar = {
-            TopAppBar(
-                navigationIcon = {
-                    BackButton(
-                        imageVector = CompoundIcons.Close(),
-                        onClick = ::postCancel,
-                    )
-                },
-                title = {},
-            )
-        }
-    ) { paddingValues ->
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .background(ElementTheme.colors.bgCanvasDefault),
+    ) {
         AttachmentPreviewContent(
-            modifier = Modifier.padding(paddingValues),
+            modifier = Modifier.fillMaxSize(),
             state = state,
             localMediaRenderer = localMediaRenderer,
             onSendClick = ::postSendAttachment,
+        )
+        MomentAttachmentsPreviewTopBar(
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .fillMaxWidth(),
+            onCancelClick = ::postCancel,
         )
     }
     AttachmentSendStateView(
@@ -184,12 +181,6 @@ private fun AttachmentPreviewContent(
                 }
             }
         }
-        val mimeType = (state.attachment as? Attachment.Media)?.localMedia?.info?.mimeType
-        if (mimeType?.isMimeTypeImage() == true) {
-            ImageOptimizationSelector(state.mediaOptimizationSelectorState)
-        } else if (mimeType?.isMimeTypeVideo() == true) {
-            VideoPresetSelector(state = state.mediaOptimizationSelectorState)
-        }
 
         val sizeFormatter = rememberFileSizeFormatter()
         if (state.displayFileTooLargeError) {
@@ -204,40 +195,91 @@ private fun AttachmentPreviewContent(
             }
         }
 
-        AttachmentsPreviewBottomActions(
-            state = state,
-            onSendClick = onSendClick,
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(ElementTheme.colors.bgCanvasDefault)
-                .height(IntrinsicSize.Min)
                 .imePadding(),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            val mimeType = (state.attachment as? Attachment.Media)?.localMedia?.info?.mimeType
+            if (mimeType?.isMimeTypeImage() == true) {
+                ImageOptimizationSelector(
+                    state = state.mediaOptimizationSelectorState,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp),
+                )
+            } else if (mimeType?.isMimeTypeVideo() == true) {
+                VideoPresetSelector(
+                    state = state.mediaOptimizationSelectorState,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp),
+                )
+            }
+
+            AttachmentsPreviewBottomActions(
+                state = state,
+                onSendClick = onSendClick,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(IntrinsicSize.Min),
+            )
+        }
+    }
+}
+
+@Composable
+private fun MomentAttachmentsPreviewTopBar(
+    onCancelClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier
+            .statusBarsPadding()
+            .height(56.dp)
+            .padding(horizontal = 12.dp),
+    ) {
+        TextButton(
+            modifier = Modifier.align(Alignment.CenterStart),
+            text = stringResource(CommonStrings.action_cancel),
+            onClick = onCancelClick,
         )
     }
 }
 
 @Composable
-private fun ImageOptimizationSelector(state: MediaOptimizationSelectorState) {
+private fun ImageOptimizationSelector(
+    state: MediaOptimizationSelectorState,
+    modifier: Modifier = Modifier,
+) {
     if (state.displayMediaSelectorViews == true) {
-        Row(
-            modifier = Modifier.fillMaxWidth()
-                .niceClickable {
-                    state.isImageOptimizationEnabled?.let { value ->
-                        state.eventSink(MediaOptimizationSelectorEvent.SelectImageOptimization(!value))
+        MomentAttachmentPreviewOptionCard(modifier = modifier) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .niceClickable {
+                        state.isImageOptimizationEnabled?.let { value ->
+                            state.eventSink(MediaOptimizationSelectorEvent.SelectImageOptimization(!value))
+                        }
                     }
-                }
-                .padding(horizontal = 16.dp, vertical = 16.dp)
-        ) {
-            Text(
-                modifier = Modifier.weight(1f).align(Alignment.CenterVertically),
-                text = stringResource(R.string.screen_media_upload_preview_optimize_image_quality_title),
-                style = ElementTheme.typography.fontBodyLgRegular,
-            )
-            Switch(
-                modifier = Modifier.height(32.dp),
-                checked = state.isImageOptimizationEnabled.orFalse(),
-                onCheckedChange = { value -> state.eventSink(MediaOptimizationSelectorEvent.SelectImageOptimization(value)) },
-            )
+                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    modifier = Modifier
+                        .weight(1f)
+                        .align(Alignment.CenterVertically),
+                    text = stringResource(R.string.screen_media_upload_preview_optimize_image_quality_title),
+                    style = ElementTheme.typography.fontBodyMdRegular,
+                )
+                Switch(
+                    modifier = Modifier.height(32.dp),
+                    checked = state.isImageOptimizationEnabled.orFalse(),
+                    onCheckedChange = { value -> state.eventSink(MediaOptimizationSelectorEvent.SelectImageOptimization(value)) },
+                )
+            }
         }
     }
 }
@@ -245,6 +287,7 @@ private fun ImageOptimizationSelector(state: MediaOptimizationSelectorState) {
 @Composable
 private fun VideoPresetSelector(
     state: MediaOptimizationSelectorState,
+    modifier: Modifier = Modifier,
 ) {
     val videoPresets = state.videoSizeEstimations.dataOrNull()
     var selectedPreset by remember(state.selectedVideoPreset) { mutableStateOf(state.selectedVideoPreset) }
@@ -254,25 +297,28 @@ private fun VideoPresetSelector(
     val sizeFormatter = rememberFileSizeFormatter()
 
     if (state.displayMediaSelectorViews == true && videoPresets != null && state.selectedVideoPreset != null) {
-        Column(
-            modifier = Modifier.fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 16.dp)
-                .niceClickable { state.eventSink(MediaOptimizationSelectorEvent.OpenVideoPresetSelectorDialog) }
-        ) {
-            val estimation = videoPresets.find { it.preset == selectedPreset }
-            val estimationMb = estimation?.sizeInBytes?.let { sizeFormatter.format(it, true) }
-            val title = buildString {
-                append(state.selectedVideoPreset.title())
-                if (estimationMb != null) {
-                    append(" ($estimationMb)")
+        MomentAttachmentPreviewOptionCard(modifier = modifier) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .niceClickable { state.eventSink(MediaOptimizationSelectorEvent.OpenVideoPresetSelectorDialog) }
+                    .padding(horizontal = 12.dp, vertical = 10.dp),
+            ) {
+                val estimation = videoPresets.find { it.preset == selectedPreset }
+                val estimationMb = estimation?.sizeInBytes?.let { sizeFormatter.format(it, true) }
+                val title = buildString {
+                    append(state.selectedVideoPreset.title())
+                    if (estimationMb != null) {
+                        append(" ($estimationMb)")
+                    }
                 }
+                Text(text = title, style = ElementTheme.typography.fontBodyMdMedium)
+                Text(
+                    text = stringResource(R.string.screen_media_upload_preview_change_video_quality_prompt),
+                    style = ElementTheme.typography.fontBodySmRegular,
+                    color = ElementTheme.colors.textSecondary,
+                )
             }
-            Text(text = title, style = ElementTheme.typography.fontBodyLgMedium)
-            Text(
-                text = stringResource(R.string.screen_media_upload_preview_change_video_quality_prompt),
-                style = ElementTheme.typography.fontBodyLgMedium,
-                color = ElementTheme.colors.textSecondary,
-            )
         }
     }
 
@@ -288,6 +334,20 @@ private fun VideoPresetSelector(
             onDismiss = { state.eventSink(MediaOptimizationSelectorEvent.DismissVideoPresetSelectorDialog) }
         )
     }
+}
+
+@Composable
+private fun MomentAttachmentPreviewOptionCard(
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit,
+) {
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(12.dp),
+        color = ElementTheme.colors.bgSubtleSecondary,
+        border = BorderStroke(1.dp, ElementTheme.colors.borderDisabled),
+        content = content,
+    )
 }
 
 @Composable

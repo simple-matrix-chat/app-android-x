@@ -26,11 +26,12 @@ fun MatrixUserRow(
     modifier: Modifier = Modifier,
     avatarSize: AvatarSize = AvatarSize.UserListItem,
     verticalSpaceWidth: Dp = 12.dp,
+    subtext: String? = if (matrixUser.displayName.isNullOrEmpty()) null else matrixUser.userId.value,
     trailingContent: @Composable (() -> Unit)? = null,
 ) = UserRow(
     avatarData = matrixUser.getAvatarData(avatarSize),
     name = matrixUser.getBestName(),
-    subtext = if (matrixUser.displayName.isNullOrEmpty()) null else matrixUser.userId.value,
+    subtext = subtext,
     modifier = modifier,
     verticalSpaceWidth = verticalSpaceWidth,
     trailingContent = trailingContent,

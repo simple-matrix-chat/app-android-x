@@ -8,8 +8,11 @@
 
 package io.element.android.features.home.impl.search
 
+import io.element.android.libraries.matrix.api.core.RoomId
+
 sealed interface RoomListSearchEvent {
     data object ToggleSearchVisibility : RoomListSearchEvent
     data object ClearQuery : RoomListSearchEvent
     data class UpdateVisibleRange(val range: IntRange) : RoomListSearchEvent
+    data class TrackRecentSearch(val roomId: RoomId) : RoomListSearchEvent
 }

@@ -13,10 +13,16 @@ package io.element.android.features.home.impl.roomlist
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.AndroidComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.v2.runAndroidComposeUiTest
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.element.android.features.home.impl.R
+import io.element.android.features.home.impl.filters.MomentHomeMuteDuration
 import io.element.android.libraries.matrix.api.core.RoomId
+import io.element.android.libraries.matrix.test.A_USER_ID
 import io.element.android.libraries.ui.strings.CommonStrings
 import io.element.android.tests.testutils.EnsureCalledOnceWithParam
 import io.element.android.tests.testutils.EnsureNeverCalledWithParam
@@ -70,7 +76,7 @@ class RoomListContextMenuTest {
             contextMenu = contextMenu,
             eventSink = eventsRecorder,
         )
-        clickOn(CommonStrings.action_leave_room)
+        scrollToAndClickOn(CommonStrings.action_leave_room)
         eventsRecorder.assertList(
             listOf(
                 RoomListEvent.HideContextMenu,
@@ -91,7 +97,7 @@ class RoomListContextMenuTest {
             onRoomSettingsClick = EnsureNeverCalledWithParam(),
             onReportRoomClick = callback,
         )
-        clickOn(CommonStrings.action_report_room)
+        scrollToAndClickOn(CommonStrings.action_report_room)
         eventsRecorder.assertSingle(RoomListEvent.HideContextMenu)
         callback.assertSuccess()
     }
@@ -112,7 +118,7 @@ class RoomListContextMenuTest {
     }
 
     @Test
-    fun `clicking on Favourites generates expected Event`() = runAndroidComposeUiTest {
+    fun `clicking on Pin generates expected Events`() = runAndroidComposeUiTest {
         val eventsRecorder = EventsRecorder<RoomListEvent>()
         val contextMenu = aContextMenuShown(isDm = false, isFavorite = false)
         val callback = EnsureNeverCalledWithParam<RoomId>()
@@ -121,10 +127,174 @@ class RoomListContextMenuTest {
             eventSink = eventsRecorder,
             onRoomSettingsClick = callback,
         )
-        clickOn(CommonStrings.common_favourite)
+        clickOn(CommonStrings.action_pin)
         eventsRecorder.assertList(
             listOf(
+                RoomListEvent.HideContextMenu,
                 RoomListEvent.SetRoomIsFavorite(contextMenu.roomId, true),
+            )
+        )
+    }
+
+    @Test
+    fun `clicking on Unpin generates expected Events`() = runAndroidComposeUiTest {
+        val eventsRecorder = EventsRecorder<RoomListEvent>()
+        val contextMenu = aContextMenuShown(isFavorite = true)
+        setRoomListContextMenu(
+            contextMenu = contextMenu,
+            eventSink = eventsRecorder,
+        )
+        clickOn(CommonStrings.action_unpin)
+        eventsRecorder.assertList(
+            listOf(
+                RoomListEvent.HideContextMenu,
+                RoomListEvent.SetRoomIsFavorite(contextMenu.roomId, false),
+            )
+        )
+    }
+
+    @Test
+    fun `clicking on Archive generates expected Events`() = runAndroidComposeUiTest {
+        val eventsRecorder = EventsRecorder<RoomListEvent>()
+        val contextMenu = aContextMenuShown(isArchived = false)
+        setRoomListContextMenu(
+            contextMenu = contextMenu,
+            eventSink = eventsRecorder,
+        )
+        clickOn(R.string.action_archive)
+        eventsRecorder.assertList(
+            listOf(
+                RoomListEvent.HideContextMenu,
+                RoomListEvent.SetRoomIsArchived(contextMenu.roomId, true),
+            )
+        )
+    }
+
+    @Test
+    fun `clicking on Unarchive generates expected Events`() = runAndroidComposeUiTest {
+        val eventsRecorder = EventsRecorder<RoomListEvent>()
+        val contextMenu = aContextMenuShown(isArchived = true)
+        setRoomListContextMenu(
+            contextMenu = contextMenu,
+            eventSink = eventsRecorder,
+        )
+        clickOn(R.string.action_unarchive)
+        eventsRecorder.assertList(
+            listOf(
+                RoomListEvent.HideContextMenu,
+                RoomListEvent.SetRoomIsArchived(contextMenu.roomId, false),
+            )
+        )
+    }
+
+    @Test
+    fun `clicking on Mute for 8 hours generates expected Events`() = runAndroidComposeUiTest {
+        val eventsRecorder = EventsRecorder<RoomListEvent>()
+        val contextMenu = aContextMenuShown(isMuted = false)
+        setRoomListContextMenu(
+            contextMenu = contextMenu,
+            eventSink = eventsRecorder,
+        )
+        clickOn(R.string.action_mute_for_8_hours)
+        eventsRecorder.assertList(
+            listOf(
+                RoomListEvent.HideContextMenu,
+                RoomListEvent.SetRoomMuteDuration(contextMenu.roomId, MomentHomeMuteDuration.Hours8),
+            )
+        )
+    }
+
+    @Test
+    fun `clicking on Mute for 1 week generates expected Events`() = runAndroidComposeUiTest {
+        val eventsRecorder = EventsRecorder<RoomListEvent>()
+        val contextMenu = aContextMenuShown(isMuted = false)
+        setRoomListContextMenu(
+            contextMenu = contextMenu,
+            eventSink = eventsRecorder,
+        )
+        clickOn(R.string.action_mute_for_1_week)
+        eventsRecorder.assertList(
+            listOf(
+                RoomListEvent.HideContextMenu,
+                RoomListEvent.SetRoomMuteDuration(contextMenu.roomId, MomentHomeMuteDuration.OneWeek),
+            )
+        )
+    }
+
+    @Test
+    fun `clicking on Mute forever generates expected Events`() = runAndroidComposeUiTest {
+        val eventsRecorder = EventsRecorder<RoomListEvent>()
+        val contextMenu = aContextMenuShown(isMuted = false)
+        setRoomListContextMenu(
+            contextMenu = contextMenu,
+            eventSink = eventsRecorder,
+        )
+        clickOn(R.string.action_mute_forever)
+        eventsRecorder.assertList(
+            listOf(
+                RoomListEvent.HideContextMenu,
+                RoomListEvent.SetRoomMuteDuration(contextMenu.roomId, MomentHomeMuteDuration.Forever),
+            )
+        )
+    }
+
+    @Test
+    fun `clicking on Unmute generates expected Events`() = runAndroidComposeUiTest {
+        val eventsRecorder = EventsRecorder<RoomListEvent>()
+        val contextMenu = aContextMenuShown(isMuted = true)
+        setRoomListContextMenu(
+            contextMenu = contextMenu,
+            eventSink = eventsRecorder,
+        )
+        clickOn(CommonStrings.common_unmute)
+        eventsRecorder.assertList(
+            listOf(
+                RoomListEvent.HideContextMenu,
+                RoomListEvent.UnmuteRoom(contextMenu.roomId),
+            )
+        )
+    }
+
+    @Test
+    fun `clicking on Block user generates expected Events`() = runAndroidComposeUiTest {
+        val eventsRecorder = EventsRecorder<RoomListEvent>()
+        val contextMenu = aContextMenuShown(
+            isDm = true,
+            directUserId = A_USER_ID,
+            directUserDisplayName = "Alice",
+            isDirectUserBlocked = false,
+        )
+        setRoomListContextMenu(
+            contextMenu = contextMenu,
+            eventSink = eventsRecorder,
+        )
+        scrollToAndClickOn(R.string.screen_home_direct_user_block_user)
+        eventsRecorder.assertList(
+            listOf(
+                RoomListEvent.HideContextMenu,
+                RoomListEvent.ShowDirectUserBlockConfirmation(A_USER_ID, "Alice", blocked = true),
+            )
+        )
+    }
+
+    @Test
+    fun `clicking on Unblock user generates expected Events`() = runAndroidComposeUiTest {
+        val eventsRecorder = EventsRecorder<RoomListEvent>()
+        val contextMenu = aContextMenuShown(
+            isDm = true,
+            directUserId = A_USER_ID,
+            directUserDisplayName = "Alice",
+            isDirectUserBlocked = true,
+        )
+        setRoomListContextMenu(
+            contextMenu = contextMenu,
+            eventSink = eventsRecorder,
+        )
+        scrollToAndClickOn(R.string.screen_home_direct_user_unblock_user)
+        eventsRecorder.assertList(
+            listOf(
+                RoomListEvent.HideContextMenu,
+                RoomListEvent.ShowDirectUserBlockConfirmation(A_USER_ID, "Alice", blocked = false),
             )
         )
     }
@@ -145,5 +315,12 @@ class RoomListContextMenuTest {
                 eventSink = eventSink,
             )
         }
+    }
+
+    private fun AndroidComposeUiTest<ComponentActivity>.scrollToAndClickOn(@androidx.annotation.StringRes res: Int) {
+        val text = activity!!.getString(res)
+        onNode(hasText(text) and hasClickAction())
+            .performScrollTo()
+            .performClick()
     }
 }

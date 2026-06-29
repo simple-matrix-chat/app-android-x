@@ -30,28 +30,27 @@ data class RoomListFiltersEmptyStateResources(
                     title = R.string.screen_roomlist_filter_mixed_empty_state_title,
                     subtitle = R.string.screen_roomlist_filter_mixed_empty_state_subtitle
                 )
-                selectedFilters.isEmpty() -> null
+                selectedFilters.isEmpty() -> RoomListFiltersEmptyStateResources(
+                    title = R.string.screen_moment_home_empty_all_title,
+                    subtitle = R.string.screen_moment_home_empty_all_message
+                )
                 selectedFilters.size == 1 -> {
                     when (selectedFilters.first()) {
-                        RoomListFilter.Unread -> RoomListFiltersEmptyStateResources(
-                            title = R.string.screen_roomlist_filter_unreads_empty_state_title,
-                            subtitle = R.string.screen_roomlist_filter_mixed_empty_state_subtitle
+                        RoomListFilter.Direct -> RoomListFiltersEmptyStateResources(
+                            title = R.string.screen_moment_home_empty_direct_title,
+                            subtitle = R.string.screen_moment_home_empty_direct_message
                         )
-                        RoomListFilter.People -> RoomListFiltersEmptyStateResources(
-                            title = R.string.screen_roomlist_filter_people_empty_state_title,
-                            subtitle = R.string.screen_roomlist_filter_mixed_empty_state_subtitle
+                        RoomListFilter.Groups -> RoomListFiltersEmptyStateResources(
+                            title = R.string.screen_moment_home_empty_all_title,
+                            subtitle = R.string.screen_moment_home_empty_all_message
                         )
-                        RoomListFilter.Rooms -> RoomListFiltersEmptyStateResources(
-                            title = R.string.screen_roomlist_filter_rooms_empty_state_title,
-                            subtitle = R.string.screen_roomlist_filter_mixed_empty_state_subtitle
+                        RoomListFilter.Channels -> RoomListFiltersEmptyStateResources(
+                            title = R.string.screen_moment_home_empty_channels_title,
+                            subtitle = R.string.screen_moment_home_empty_channels_message
                         )
-                        RoomListFilter.Favourites -> RoomListFiltersEmptyStateResources(
-                            title = R.string.screen_roomlist_filter_favourites_empty_state_title,
-                            subtitle = R.string.screen_roomlist_filter_favourites_empty_state_subtitle
-                        )
-                        RoomListFilter.Invites -> RoomListFiltersEmptyStateResources(
-                            title = R.string.screen_roomlist_filter_invites_empty_state_title,
-                            subtitle = R.string.screen_roomlist_filter_mixed_empty_state_subtitle
+                        RoomListFilter.Archived -> RoomListFiltersEmptyStateResources(
+                            title = R.string.screen_moment_home_empty_archived_title,
+                            subtitle = R.string.screen_moment_home_empty_archived_message
                         )
                     }
                 }

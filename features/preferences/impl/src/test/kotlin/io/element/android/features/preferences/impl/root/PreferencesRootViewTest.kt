@@ -10,15 +10,20 @@
 package io.element.android.features.preferences.impl.root
 
 import androidx.activity.ComponentActivity
+import androidx.annotation.StringRes
 import androidx.compose.ui.test.AndroidComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.v2.runAndroidComposeUiTest
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.element.android.features.preferences.impl.R
 import io.element.android.libraries.matrix.api.user.MatrixUser
-import io.element.android.libraries.matrix.test.A_USER_ID_2
 import io.element.android.libraries.matrix.ui.components.aMatrixUser
 import io.element.android.libraries.ui.strings.CommonStrings
 import io.element.android.tests.testutils.EnsureNeverCalled
@@ -27,14 +32,14 @@ import io.element.android.tests.testutils.EventsRecorder
 import io.element.android.tests.testutils.clickOn
 import io.element.android.tests.testutils.ensureCalledOnce
 import io.element.android.tests.testutils.ensureCalledOnceWithParam
-import io.element.android.tests.testutils.pressBack
+import io.element.android.tests.testutils.pressBackKey
 import org.junit.Test
 import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
 class PreferencesRootViewTest {
     @Test
-    fun `clicking on back invokes back callback`() = runAndroidComposeUiTest {
+    fun `pressing back key invokes back callback`() = runAndroidComposeUiTest {
         val eventsRecorder = EventsRecorder<PreferencesRootEvent>(expectEvents = false)
         ensureCalledOnce { callback ->
             setView(
@@ -43,7 +48,73 @@ class PreferencesRootViewTest {
                 ),
                 onBackClick = callback,
             )
-            pressBack()
+            pressBackKey()
+        }
+    }
+
+    @Test
+    fun `root profile tab chrome is shown`() = runAndroidComposeUiTest<ComponentActivity> {
+        val eventsRecorder = EventsRecorder<PreferencesRootEvent>(expectEvents = false)
+        setView(
+            aPreferencesRootState(
+                eventSink = eventsRecorder,
+            ),
+        )
+
+        onNodeWithContentDescription(activity!!.getString(CommonStrings.action_back)).assertDoesNotExist()
+        onNodeWithText(activity!!.getString(R.string.screen_preferences_root_tab_profile)).assertExists()
+        onNodeWithText(activity!!.getString(CommonStrings.common_settings)).assertDoesNotExist()
+        onNodeWithContentDescription("Profile").assertIsSelected()
+    }
+
+    @Test
+    fun `root user card shows profile status when available`() = runAndroidComposeUiTest {
+        val eventsRecorder = EventsRecorder<PreferencesRootEvent>(expectEvents = false)
+        setView(
+            aPreferencesRootState(
+                profileStatus = "Available",
+                eventSink = eventsRecorder,
+            ),
+        )
+
+        onNodeWithText("Available").assertExists()
+    }
+
+    @Test
+    fun `root moment section summaries match iOS root shape`() = runAndroidComposeUiTest<ComponentActivity> {
+        val eventsRecorder = EventsRecorder<PreferencesRootEvent>(expectEvents = false)
+        setView(
+            aPreferencesRootState(
+                version = "Version: 1.2.3 (123)\nbranch (revision)",
+                showDeveloperSettings = true,
+                momentPrivacySummary = MomentPrivacySummary.ContactsOnly,
+                momentNotificationsSummary = MomentNotificationsSummary.Disabled,
+                eventSink = eventsRecorder,
+            ),
+        )
+
+        onNodeWithText(activity!!.getString(R.string.screen_moment_general_subtitle)).assertExists()
+        onNodeWithText(activity!!.getString(R.string.screen_moment_privacy_summary_contacts_only)).assertExists()
+        onNodeWithText(activity!!.getString(R.string.screen_moment_notifications_summary_disabled)).assertExists()
+        onNodeWithText(activity!!.getString(R.string.screen_moment_about_app_title)).assertExists()
+        onNodeWithText("Version: 1.2.3 (123)").assertExists()
+        onNodeWithText(activity!!.getString(R.string.screen_preferences_root_developer_summary)).assertDoesNotExist()
+        onNodeWithText(activity!!.getString(R.string.screen_preferences_root_privacy_summary)).assertDoesNotExist()
+        onNodeWithText(activity!!.getString(R.string.screen_preferences_root_notifications_summary)).assertDoesNotExist()
+    }
+
+    @Test
+    fun `clicking on chats tab invokes back callback`() = runAndroidComposeUiTest {
+        val eventsRecorder = EventsRecorder<PreferencesRootEvent>(expectEvents = false)
+        ensureCalledOnce { callback ->
+            setView(
+                aPreferencesRootState(
+                    eventSink = eventsRecorder,
+                ),
+                onBackClick = callback,
+            )
+
+            onNodeWithContentDescription("Chats").performClick()
         }
     }
 
@@ -64,41 +135,25 @@ class PreferencesRootViewTest {
     }
 
     @Test
-    fun `clicking on other session sends a SwitchToSession`() = runAndroidComposeUiTest {
-        val eventsRecorder = EventsRecorder<PreferencesRootEvent>()
+    fun `multi account items are not shown on root`() = runAndroidComposeUiTest {
+        val eventsRecorder = EventsRecorder<PreferencesRootEvent>(expectEvents = false)
         setView(
             aPreferencesRootState(
                 isMultiAccountEnabled = true,
                 otherSessions = listOf(
                     aMatrixUser(
-                        id = A_USER_ID_2.value,
                         displayName = "Bob",
                     )
                 ),
                 eventSink = eventsRecorder,
             ),
         )
-        onNodeWithText("Bob").performClick()
-        eventsRecorder.assertSingle(PreferencesRootEvent.SwitchToSession(A_USER_ID_2))
+        onNodeWithText("Bob").assertDoesNotExist()
+        onNodeWithText(activity!!.getString(CommonStrings.common_add_another_account)).assertDoesNotExist()
     }
 
     @Test
-    fun `click on Add account invokes the expected callback`() = runAndroidComposeUiTest {
-        val eventsRecorder = EventsRecorder<PreferencesRootEvent>(expectEvents = false)
-        ensureCalledOnce { callback ->
-            setView(
-                aPreferencesRootState(
-                    isMultiAccountEnabled = true,
-                    eventSink = eventsRecorder,
-                ),
-                onAddAccountClick = callback,
-            )
-            clickOn(CommonStrings.common_add_another_account)
-        }
-    }
-
-    @Test
-    fun `when multi account is not enabled, item is not shown`() = runAndroidComposeUiTest {
+    fun `when multi account is not enabled, add account item is not shown`() = runAndroidComposeUiTest {
         val eventsRecorder = EventsRecorder<PreferencesRootEvent>(expectEvents = false)
         setView(
             aPreferencesRootState(
@@ -110,18 +165,15 @@ class PreferencesRootViewTest {
     }
 
     @Test
-    fun `click on Manage account invokes the expected callback`() = runAndroidComposeUiTest {
+    fun `manage account item is not shown on root`() = runAndroidComposeUiTest {
         val eventsRecorder = EventsRecorder<PreferencesRootEvent>(expectEvents = false)
-        ensureCalledOnceWithParam("aUrl") { callback ->
-            setView(
-                aPreferencesRootState(
-                    accountManagementUrl = "aUrl",
-                    eventSink = eventsRecorder,
-                ),
-                onManageAccountClick = callback,
-            )
-            clickOn(CommonStrings.action_manage_account_and_devices)
-        }
+        setView(
+            aPreferencesRootState(
+                accountManagementUrl = "aUrl",
+                eventSink = eventsRecorder,
+            ),
+        )
+        onNodeWithText(activity!!.getString(CommonStrings.action_manage_account_and_devices)).assertDoesNotExist()
     }
 
     @Test
@@ -159,18 +211,15 @@ class PreferencesRootViewTest {
     }
 
     @Test
-    fun `click on Report a problem invokes the expected callback`() = runAndroidComposeUiTest {
+    fun `report a problem item is not shown on root`() = runAndroidComposeUiTest {
         val eventsRecorder = EventsRecorder<PreferencesRootEvent>(expectEvents = false)
-        ensureCalledOnce { callback ->
-            setView(
-                aPreferencesRootState(
-                    canReportBug = true,
-                    eventSink = eventsRecorder,
-                ),
-                onOpenRageShake = callback,
-            )
-            clickOn(CommonStrings.common_report_a_problem)
-        }
+        setView(
+            aPreferencesRootState(
+                canReportBug = true,
+                eventSink = eventsRecorder,
+            ),
+        )
+        onNodeWithText(activity!!.getString(CommonStrings.common_report_a_problem)).assertDoesNotExist()
     }
 
     @Test
@@ -186,17 +235,14 @@ class PreferencesRootViewTest {
     }
 
     @Test
-    fun `click on Screen lock invokes the expected callback`() = runAndroidComposeUiTest {
+    fun `screen lock item is not shown on root`() = runAndroidComposeUiTest {
         val eventsRecorder = EventsRecorder<PreferencesRootEvent>(expectEvents = false)
-        ensureCalledOnce { callback ->
-            setView(
-                aPreferencesRootState(
-                    eventSink = eventsRecorder,
-                ),
-                onOpenLockScreenSettings = callback,
-            )
-            clickOn(CommonStrings.common_screen_lock)
-        }
+        setView(
+            aPreferencesRootState(
+                eventSink = eventsRecorder,
+            ),
+        )
+        onNodeWithText(activity!!.getString(CommonStrings.common_screen_lock)).assertDoesNotExist()
     }
 
     @Test
@@ -209,7 +255,7 @@ class PreferencesRootViewTest {
                 ),
                 onOpenAbout = callback,
             )
-            clickOn(CommonStrings.common_about)
+            scrollToAndClickOn(R.string.screen_moment_about_app_title)
         }
     }
 
@@ -224,7 +270,7 @@ class PreferencesRootViewTest {
                 ),
                 onOpenDeveloperSettings = callback,
             )
-            clickOn(CommonStrings.common_developer_options)
+            scrollToAndClickOn(CommonStrings.common_developer_options)
         }
     }
 
@@ -241,32 +287,26 @@ class PreferencesRootViewTest {
     }
 
     @Test
-    fun `click on Advanced settings invokes the expected callback`() = runAndroidComposeUiTest {
+    fun `advanced settings item is not shown on root`() = runAndroidComposeUiTest {
         val eventsRecorder = EventsRecorder<PreferencesRootEvent>(expectEvents = false)
-        ensureCalledOnce { callback ->
-            setView(
-                aPreferencesRootState(
-                    eventSink = eventsRecorder,
-                ),
-                onOpenAdvancedSettings = callback,
-            )
-            clickOn(CommonStrings.common_advanced_settings)
-        }
+        setView(
+            aPreferencesRootState(
+                eventSink = eventsRecorder,
+            ),
+        )
+        onNodeWithText(activity!!.getString(CommonStrings.common_advanced_settings)).assertDoesNotExist()
     }
 
     @Test
-    fun `click on Labs invokes the expected callback`() = runAndroidComposeUiTest {
+    fun `when showLabsItem is true, item is still not shown`() = runAndroidComposeUiTest {
         val eventsRecorder = EventsRecorder<PreferencesRootEvent>(expectEvents = false)
-        ensureCalledOnce { callback ->
-            setView(
-                aPreferencesRootState(
-                    showLabsItem = true,
-                    eventSink = eventsRecorder,
-                ),
-                onOpenLabs = callback,
-            )
-            clickOn(R.string.screen_labs_title)
-        }
+        setView(
+            aPreferencesRootState(
+                showLabsItem = true,
+                eventSink = eventsRecorder,
+            ),
+        )
+        onNodeWithText(activity!!.getString(R.string.screen_labs_title)).assertDoesNotExist()
     }
 
     @Test
@@ -296,18 +336,54 @@ class PreferencesRootViewTest {
     }
 
     @Test
-    fun `click on Blocked users invokes the expected callback`() = runAndroidComposeUiTest {
+    fun `click on General settings invokes the expected callback`() = runAndroidComposeUiTest {
         val eventsRecorder = EventsRecorder<PreferencesRootEvent>(expectEvents = false)
         ensureCalledOnce { callback ->
             setView(
                 aPreferencesRootState(
-                    nbOfBlockedUsers = 1,
                     eventSink = eventsRecorder,
                 ),
-                onOpenBlockedUsers = callback,
+                onOpenGeneralSettings = callback,
             )
-            clickOn(CommonStrings.common_blocked_users)
+            clickOn(R.string.screen_moment_general_title)
         }
+    }
+
+    @Test
+    fun `click on Privacy invokes the expected callback`() = runAndroidComposeUiTest {
+        val eventsRecorder = EventsRecorder<PreferencesRootEvent>(expectEvents = false)
+        ensureCalledOnce { callback ->
+            setView(
+                aPreferencesRootState(
+                    eventSink = eventsRecorder,
+                ),
+                onOpenPrivacySettings = callback,
+            )
+            clickOn(R.string.screen_moment_privacy_title)
+        }
+    }
+
+    @Test
+    fun `sessions item is not shown on root`() = runAndroidComposeUiTest {
+        val eventsRecorder = EventsRecorder<PreferencesRootEvent>(expectEvents = false)
+        setView(
+            aPreferencesRootState(
+                eventSink = eventsRecorder,
+            ),
+        )
+        onNodeWithText(activity!!.getString(R.string.screen_moment_sessions_title)).assertDoesNotExist()
+    }
+
+    @Test
+    fun `blocked users item is not shown on root`() = runAndroidComposeUiTest {
+        val eventsRecorder = EventsRecorder<PreferencesRootEvent>(expectEvents = false)
+        setView(
+            aPreferencesRootState(
+                nbOfBlockedUsers = 1,
+                eventSink = eventsRecorder,
+            ),
+        )
+        onNodeWithText(activity!!.getString(CommonStrings.common_blocked_users)).assertDoesNotExist()
     }
 
     @Test
@@ -323,32 +399,26 @@ class PreferencesRootViewTest {
     }
 
     @Test
-    fun `click on Remove this device invokes the expected callback`() = runAndroidComposeUiTest {
+    fun `sign out item is not shown on root`() = runAndroidComposeUiTest {
         val eventsRecorder = EventsRecorder<PreferencesRootEvent>(expectEvents = false)
-        ensureCalledOnce { callback ->
-            setView(
-                aPreferencesRootState(
-                    eventSink = eventsRecorder,
-                ),
-                onSignOutClick = callback,
-            )
-            clickOn(CommonStrings.action_signout)
-        }
+        setView(
+            aPreferencesRootState(
+                eventSink = eventsRecorder,
+            ),
+        )
+        onNodeWithText(activity!!.getString(CommonStrings.action_signout)).assertDoesNotExist()
     }
 
     @Test
-    fun `click on Deactivate invokes the expected callback`() = runAndroidComposeUiTest {
+    fun `delete account item is not shown on root`() = runAndroidComposeUiTest {
         val eventsRecorder = EventsRecorder<PreferencesRootEvent>(expectEvents = false)
-        ensureCalledOnce { callback ->
-            setView(
-                aPreferencesRootState(
-                    canDeactivateAccount = true,
-                    eventSink = eventsRecorder,
-                ),
-                onDeactivateClick = callback,
-            )
-            clickOn(CommonStrings.action_delete_account)
-        }
+        setView(
+            aPreferencesRootState(
+                canDeactivateAccount = true,
+                eventSink = eventsRecorder,
+            ),
+        )
+        onNodeWithText(activity!!.getString(CommonStrings.action_delete_account)).assertDoesNotExist()
     }
 
     @Test
@@ -365,7 +435,7 @@ class PreferencesRootViewTest {
 
     @Test
     fun `clicking on version sends a PreferencesRootEvents`() = runAndroidComposeUiTest {
-        val version = "VERSION"
+        val version = "VERSION\nBRANCH"
         val eventsRecorder = EventsRecorder<PreferencesRootEvent>()
         setView(
             aPreferencesRootState(
@@ -373,45 +443,38 @@ class PreferencesRootViewTest {
                 eventSink = eventsRecorder,
             ),
         )
-        onNodeWithText(version).performClick()
+        onNodeWithText(version).performScrollTo().performClick()
         eventsRecorder.assertSingle(PreferencesRootEvent.OnVersionInfoClick)
     }
+}
+
+private fun AndroidComposeUiTest<ComponentActivity>.scrollToAndClickOn(@StringRes res: Int) {
+    val text = activity!!.getString(res)
+    onNode(hasText(text) and hasClickAction())
+        .performScrollTo()
+        .performClick()
 }
 
 private fun AndroidComposeUiTest<ComponentActivity>.setView(
     state: PreferencesRootState,
     onBackClick: () -> Unit = EnsureNeverCalled(),
-    onAddAccountClick: () -> Unit = EnsureNeverCalled(),
-    onManageAccountClick: (url: String) -> Unit = EnsureNeverCalledWithParam(),
-    onOpenRageShake: () -> Unit = EnsureNeverCalled(),
-    onOpenLockScreenSettings: () -> Unit = EnsureNeverCalled(),
     onOpenAbout: () -> Unit = EnsureNeverCalled(),
     onOpenDeveloperSettings: () -> Unit = EnsureNeverCalled(),
-    onOpenAdvancedSettings: () -> Unit = EnsureNeverCalled(),
-    onOpenLabs: () -> Unit = EnsureNeverCalled(),
+    onOpenGeneralSettings: () -> Unit = EnsureNeverCalled(),
     onOpenNotificationSettings: () -> Unit = EnsureNeverCalled(),
+    onOpenPrivacySettings: () -> Unit = EnsureNeverCalled(),
     onOpenUserProfile: (MatrixUser) -> Unit = EnsureNeverCalledWithParam(),
-    onOpenBlockedUsers: () -> Unit = EnsureNeverCalled(),
-    onSignOutClick: () -> Unit = EnsureNeverCalled(),
-    onDeactivateClick: () -> Unit = EnsureNeverCalled(),
 ) {
     setContent {
         PreferencesRootView(
             state = state,
             onBackClick = onBackClick,
-            onAddAccountClick = onAddAccountClick,
-            onManageAccountClick = onManageAccountClick,
-            onOpenRageShake = onOpenRageShake,
-            onOpenLockScreenSettings = onOpenLockScreenSettings,
             onOpenAbout = onOpenAbout,
             onOpenDeveloperSettings = onOpenDeveloperSettings,
-            onOpenAdvancedSettings = onOpenAdvancedSettings,
-            onOpenLabs = onOpenLabs,
+            onOpenGeneralSettings = onOpenGeneralSettings,
             onOpenNotificationSettings = onOpenNotificationSettings,
+            onOpenPrivacySettings = onOpenPrivacySettings,
             onOpenUserProfile = onOpenUserProfile,
-            onOpenBlockedUsers = onOpenBlockedUsers,
-            onSignOutClick = onSignOutClick,
-            onDeactivateClick = onDeactivateClick,
         )
     }
 }

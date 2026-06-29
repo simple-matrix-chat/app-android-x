@@ -52,7 +52,6 @@ class StartChatNode(
             state = state,
             modifier = modifier,
             onCloseClick = this::navigateUp,
-            onNewRoomClick = navigator::onCreateNewRoom,
             onOpenDM = {
                 navigator.onRoomCreated(roomIdOrAlias = it.toRoomIdOrAlias(), serverNames = emptyList())
             },

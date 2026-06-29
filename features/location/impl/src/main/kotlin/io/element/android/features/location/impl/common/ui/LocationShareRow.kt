@@ -34,6 +34,7 @@ import io.element.android.libraries.designsystem.preview.ElementPreview
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
 import io.element.android.libraries.designsystem.preview.USER_NAME_ALICE
 import io.element.android.libraries.designsystem.preview.USER_NAME_BOB
+import io.element.android.libraries.designsystem.theme.components.HorizontalDivider
 import io.element.android.libraries.designsystem.theme.components.Icon
 import io.element.android.libraries.designsystem.theme.components.IconButton
 import io.element.android.libraries.designsystem.theme.components.Text
@@ -48,81 +49,85 @@ fun LocationShareRow(
     onStopClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Avatar(
-            avatarData = item.avatarData,
-            avatarType = AvatarType.User,
-        )
-        Spacer(modifier = Modifier.width(16.dp))
-        Column(
-            modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(2.dp),
+    Column(modifier = modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(
-                text = item.displayName,
-                style = ElementTheme.typography.fontBodyLgMedium,
-                color = ElementTheme.colors.textPrimary,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
+            Avatar(
+                avatarData = item.avatarData,
+                avatarType = AvatarType.User,
             )
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
+            Spacer(modifier = Modifier.width(16.dp))
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(2.dp),
             ) {
-                if (item.isLive) {
-                    Icon(
-                        imageVector = CompoundIcons.LocationPinSolid(),
-                        contentDescription = null,
-                        tint = ElementTheme.colors.iconAccentPrimary,
-                        modifier = Modifier.size(16.dp),
-                    )
-                } else {
-                    val icon = if (item.assetType == AssetType.PIN) {
-                        CompoundIcons.LocationNavigator()
-                    } else {
-                        CompoundIcons.LocationNavigatorCentred()
-                    }
-                    Icon(
-                        imageVector = icon,
-                        contentDescription = null,
-                        tint = ElementTheme.colors.iconSecondary,
-                        modifier = Modifier.size(16.dp),
-                    )
-                }
                 Text(
-                    text = if (item.isLive) stringResource(CommonStrings.screen_room_live_location_banner) else item.formattedTimestamp,
-                    style = ElementTheme.typography.fontBodySmRegular,
-                    color = if (item.isLive) ElementTheme.colors.textPrimary else ElementTheme.colors.textSecondary,
+                    text = item.displayName,
+                    style = ElementTheme.typography.fontBodyLgMedium,
+                    color = ElementTheme.colors.textPrimary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    if (item.isLive) {
+                        Icon(
+                            imageVector = CompoundIcons.LocationPinSolid(),
+                            contentDescription = null,
+                            tint = ElementTheme.colors.iconAccentPrimary,
+                            modifier = Modifier.size(16.dp),
+                        )
+                    } else {
+                        val icon = if (item.assetType == AssetType.PIN) {
+                            CompoundIcons.LocationNavigator()
+                        } else {
+                            CompoundIcons.LocationNavigatorCentred()
+                        }
+                        Icon(
+                            imageVector = icon,
+                            contentDescription = null,
+                            tint = ElementTheme.colors.iconSecondary,
+                            modifier = Modifier.size(16.dp),
+                        )
+                    }
+                    Text(
+                        text = if (item.isLive) stringResource(CommonStrings.screen_room_live_location_banner) else item.formattedTimestamp,
+                        style = ElementTheme.typography.fontBodySmRegular,
+                        color = if (item.isLive) ElementTheme.colors.textPrimary else ElementTheme.colors.textSecondary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
             }
-        }
-        if (item.canStopSharing) {
-            IconButton(
-                onClick = onStopClick,
-                colors = IconButtonDefaults.iconButtonColors(
-                    containerColor = ElementTheme.colors.bgCriticalPrimary,
-                    contentColor = ElementTheme.colors.iconOnSolidPrimary,
-                )
-            ) {
+            if (item.canStopSharing) {
+                IconButton(
+                    onClick = onStopClick,
+                    colors = IconButtonDefaults.iconButtonColors(
+                        containerColor = ElementTheme.colors.bgCriticalPrimary,
+                        contentColor = ElementTheme.colors.iconOnSolidPrimary,
+                    )
+                ) {
+                    Icon(
+                        imageVector = CompoundIcons.Stop(),
+                        contentDescription = stringResource(CommonStrings.action_stop),
+                    )
+                }
+            }
+            IconButton(onClick = onShareClick) {
                 Icon(
-                    imageVector = CompoundIcons.Stop(),
-                    contentDescription = stringResource(CommonStrings.action_stop),
+                    imageVector = CompoundIcons.ShareAndroid(),
+                    contentDescription = stringResource(CommonStrings.action_share),
                 )
             }
         }
-        IconButton(onClick = onShareClick) {
-            Icon(
-                imageVector = CompoundIcons.ShareAndroid(),
-                contentDescription = stringResource(CommonStrings.action_share),
-            )
-        }
+        HorizontalDivider(
+            modifier = Modifier.padding(start = 72.dp),
+            color = ElementTheme.colors.borderInteractiveSecondary.copy(alpha = 0.45f),
+        )
     }
 }
 

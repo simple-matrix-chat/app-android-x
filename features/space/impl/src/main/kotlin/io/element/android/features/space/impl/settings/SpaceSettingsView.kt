@@ -8,21 +8,28 @@
 
 package io.element.android.features.space.impl.settings
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
 import io.element.android.compound.theme.ElementTheme
@@ -33,14 +40,12 @@ import io.element.android.libraries.designsystem.components.avatar.AvatarData
 import io.element.android.libraries.designsystem.components.avatar.AvatarSize
 import io.element.android.libraries.designsystem.components.avatar.AvatarType
 import io.element.android.libraries.designsystem.components.button.BackButton
-import io.element.android.libraries.designsystem.components.list.ListItemContent
-import io.element.android.libraries.designsystem.components.preferences.PreferenceCategory
 import io.element.android.libraries.designsystem.preview.ElementPreview
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
-import io.element.android.libraries.designsystem.theme.components.IconSource
-import io.element.android.libraries.designsystem.theme.components.ListItem
-import io.element.android.libraries.designsystem.theme.components.ListItemStyle
+import io.element.android.libraries.designsystem.theme.components.HorizontalDivider
+import io.element.android.libraries.designsystem.theme.components.Icon
 import io.element.android.libraries.designsystem.theme.components.Scaffold
+import io.element.android.libraries.designsystem.theme.components.Surface
 import io.element.android.libraries.designsystem.theme.components.Text
 import io.element.android.libraries.designsystem.theme.components.TopAppBar
 import io.element.android.libraries.matrix.api.core.RoomId
@@ -57,7 +62,8 @@ fun SpaceSettingsView(
     modifier: Modifier = Modifier,
 ) {
     Scaffold(
-        modifier = modifier,
+        modifier = modifier.fillMaxSize(),
+        containerColor = ElementTheme.colors.bgSubtleSecondary,
         topBar = {
             SpaceSettingsTopBar(onBackClick = onBackClick)
         },
@@ -66,26 +72,34 @@ fun SpaceSettingsView(
             modifier = Modifier
                 .padding(padding)
                 .verticalScroll(rememberScrollState())
+                .padding(horizontal = 20.dp)
+                .padding(top = 8.dp, bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(24.dp),
         ) {
-            SpaceInfoSection(
-                roomId = state.roomId,
-                name = state.name,
-                avatarUrl = state.avatarUrl,
-                canonicalAlias = state.canonicalAlias?.value,
-                canEditDetails = state.canEditDetails,
-                onSpaceInfoClick = onSpaceInfoClick,
-            )
-            Section(content = {
+            MomentSpaceSettingsCard {
+                SpaceInfoSection(
+                    roomId = state.roomId,
+                    name = state.name,
+                    avatarUrl = state.avatarUrl,
+                    canonicalAlias = state.canonicalAlias?.value,
+                    canEditDetails = state.canEditDetails,
+                    onSpaceInfoClick = onSpaceInfoClick,
+                )
+            }
+            MomentSpaceSettingsCard {
                 MembersItem(state.memberCount, onClick = onMembersClick)
                 if (state.showRolesAndPermissions) {
-                    RolesAndPermissionsItem(onClick = onRolesAndPermissionsClick)
+                    RolesAndPermissionsItem(
+                        onClick = onRolesAndPermissionsClick,
+                        showDivider = false,
+                    )
                 }
-            })
-            Section(content = {
+            }
+            MomentSpaceSettingsCard {
                 LeaveSpaceItem(
                     onClick = onLeaveSpaceClick
                 )
-            })
+            }
         }
     }
 }
@@ -103,40 +117,60 @@ private fun SpaceInfoSection(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(enabled = canEditDetails, onClick = onSpaceInfoClick)
-            .padding(16.dp),
+            .padding(horizontal = 16.dp, vertical = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         Avatar(
             avatarData = AvatarData(roomId.value, name, avatarUrl, AvatarSize.SpaceListItem),
             avatarType = AvatarType.Space(),
             contentDescription = stringResource(CommonStrings.a11y_avatar),
         )
-        Spacer(Modifier.width(16.dp))
-        Column {
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
             Text(
                 text = name,
                 style = ElementTheme.typography.fontHeadingMdRegular,
                 color = ElementTheme.colors.textPrimary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
             if (canonicalAlias != null) {
                 Text(
                     text = canonicalAlias,
                     style = ElementTheme.typography.fontBodyMdRegular,
                     color = ElementTheme.colors.textSecondary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
+        }
+        if (canEditDetails) {
+            Icon(
+                modifier = Modifier.size(18.dp),
+                imageVector = CompoundIcons.ChevronRight(),
+                contentDescription = null,
+                tint = ElementTheme.colors.iconSecondary,
+            )
         }
     }
 }
 
 @Composable
-private fun Section(
+private fun MomentSpaceSettingsCard(
     modifier: Modifier = Modifier,
-    isVisible: Boolean = true,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    if (isVisible) {
-        PreferenceCategory(content = content, modifier = modifier)
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(28.dp),
+        color = ElementTheme.colors.bgCanvasDefault,
+        shadowElevation = 8.dp,
+        border = BorderStroke(1.dp, ElementTheme.colors.borderInteractiveSecondary.copy(alpha = 0.55f)),
+    ) {
+        Column(content = content)
     }
 }
 
@@ -159,10 +193,11 @@ private fun MembersItem(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    ListItem(
-        headlineContent = { Text(stringResource(CommonStrings.common_people)) },
-        leadingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.User())),
-        trailingContent = ListItemContent.Text(memberCount.toString()),
+    MomentSpaceSettingsRow(
+        title = stringResource(CommonStrings.common_people),
+        imageVector = CompoundIcons.User(),
+        trailingText = memberCount.toString(),
+        showDivider = true,
         onClick = onClick,
         modifier = modifier,
     )
@@ -172,10 +207,12 @@ private fun MembersItem(
 private fun RolesAndPermissionsItem(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    showDivider: Boolean = true,
 ) {
-    ListItem(
-        headlineContent = { Text(stringResource(R.string.screen_space_settings_roles_and_permissions)) },
-        leadingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.Admin())),
+    MomentSpaceSettingsRow(
+        title = stringResource(R.string.screen_space_settings_roles_and_permissions),
+        imageVector = CompoundIcons.Admin(),
+        showDivider = showDivider,
         onClick = onClick,
         modifier = modifier,
     )
@@ -186,15 +223,99 @@ private fun LeaveSpaceItem(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    ListItem(
-        headlineContent = {
-            Text(stringResource(CommonStrings.action_leave_space))
-        },
-        leadingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.Leave())),
-        style = ListItemStyle.Destructive,
+    MomentSpaceSettingsRow(
+        title = stringResource(CommonStrings.action_leave_space),
+        imageVector = CompoundIcons.Leave(),
+        isDestructive = true,
+        showChevron = false,
+        showDivider = false,
         onClick = onClick,
         modifier = modifier,
     )
+}
+
+@Composable
+private fun MomentSpaceSettingsRow(
+    title: String,
+    imageVector: ImageVector,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    trailingText: String? = null,
+    isDestructive: Boolean = false,
+    showChevron: Boolean = true,
+    showDivider: Boolean = true,
+) {
+    Column(modifier = modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 60.dp)
+                .clickable(onClick = onClick)
+                .padding(horizontal = 16.dp, vertical = 14.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            MomentSpaceSettingsIconTile(
+                imageVector = imageVector,
+                isDestructive = isDestructive,
+            )
+            Text(
+                modifier = Modifier.weight(1f),
+                text = title,
+                style = ElementTheme.typography.fontBodyLgMedium,
+                color = if (isDestructive) ElementTheme.colors.textCriticalPrimary else ElementTheme.colors.textPrimary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            if (trailingText != null) {
+                Text(
+                    text = trailingText,
+                    style = ElementTheme.typography.fontBodyLgRegular,
+                    color = ElementTheme.colors.textSecondary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            if (showChevron) {
+                Icon(
+                    modifier = Modifier.size(18.dp),
+                    imageVector = CompoundIcons.ChevronRight(),
+                    contentDescription = null,
+                    tint = ElementTheme.colors.iconSecondary,
+                )
+            }
+        }
+        if (showDivider) {
+            HorizontalDivider(modifier = Modifier.padding(start = 60.dp))
+        }
+    }
+}
+
+@Composable
+private fun MomentSpaceSettingsIconTile(
+    imageVector: ImageVector,
+    isDestructive: Boolean,
+) {
+    Box(
+        modifier = Modifier
+            .size(32.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Surface(
+            modifier = Modifier.size(32.dp),
+            shape = RoundedCornerShape(10.dp),
+            color = if (isDestructive) ElementTheme.colors.bgCriticalSubtle else ElementTheme.colors.bgSubtleSecondary,
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(
+                    modifier = Modifier.size(18.dp),
+                    imageVector = imageVector,
+                    contentDescription = null,
+                    tint = if (isDestructive) ElementTheme.colors.iconCriticalPrimary else ElementTheme.colors.iconPrimary,
+                )
+            }
+        }
+    }
 }
 
 @PreviewsDayNight

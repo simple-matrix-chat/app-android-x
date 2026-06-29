@@ -80,6 +80,8 @@ object TestTags {
      * Message bubble.
      */
     val messageBubble = TestTag("message_bubble")
+    val roomHeader = TestTag("room_header")
+    val roomHeaderTitle = TestTag("room_header-title")
 
     /**
      * Message Read Receipts.

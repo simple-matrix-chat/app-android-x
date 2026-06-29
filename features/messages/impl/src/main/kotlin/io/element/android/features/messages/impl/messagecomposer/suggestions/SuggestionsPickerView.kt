@@ -8,18 +8,23 @@
 
 package io.element.android.features.messages.impl.messagecomposer.suggestions
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -47,6 +52,8 @@ import io.element.android.libraries.textcomposer.mentions.ResolvedSuggestion
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 
+private val SuggestionsPickerShape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)
+
 @Composable
 fun SuggestionsPickerView(
     roomId: RoomId,
@@ -56,12 +63,19 @@ fun SuggestionsPickerView(
     onSelectSuggestion: (ResolvedSuggestion) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    if (suggestions.isEmpty()) return
+
     LazyColumn(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .shadow(elevation = 12.dp, shape = SuggestionsPickerShape)
+            .clip(SuggestionsPickerShape)
+            .background(ElementTheme.colors.bgCanvasDefault),
+        contentPadding = PaddingValues(top = 8.dp, bottom = 6.dp),
     ) {
-        items(
+        itemsIndexed(
             suggestions,
-            key = { suggestion ->
+            key = { _, suggestion ->
                 when (suggestion) {
                     is ResolvedSuggestion.AtRoom -> "@room"
                     is ResolvedSuggestion.Member -> suggestion.roomMember.userId.value
@@ -69,17 +83,23 @@ fun SuggestionsPickerView(
                     is ResolvedSuggestion.Command -> suggestion.command.command
                 }
             }
-        ) {
-            Column(modifier = Modifier.fillParentMaxWidth()) {
+        ) { index, suggestion ->
+            Column(modifier = Modifier.fillMaxWidth()) {
                 SuggestionItemView(
-                    suggestion = it,
+                    suggestion = suggestion,
                     roomId = roomId.value,
                     roomName = roomName,
                     roomAvatar = roomAvatarData,
                     onSelectSuggestion = onSelectSuggestion,
                     modifier = Modifier.fillMaxWidth()
                 )
-                HorizontalDivider(modifier = Modifier.fillMaxWidth())
+                if (index < suggestions.lastIndex) {
+                    HorizontalDivider(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(start = 64.dp)
+                    )
+                }
             }
         }
     }
@@ -97,7 +117,9 @@ private fun SuggestionItemView(
     Row(
         modifier = modifier
             .clickable { onSelectSuggestion(suggestion) }
-            .padding(horizontal = 16.dp),
+            .padding(horizontal = 16.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         val avatarSize = AvatarSize.Suggestion
         val avatarData = when (suggestion) {
@@ -114,8 +136,8 @@ private fun SuggestionItemView(
         }
         val title = when (suggestion) {
             is ResolvedSuggestion.AtRoom -> stringResource(R.string.screen_room_mentions_at_room_title)
-            is ResolvedSuggestion.Member -> suggestion.roomMember.displayName
-            is ResolvedSuggestion.Alias -> suggestion.roomName
+            is ResolvedSuggestion.Member -> suggestion.roomMember.displayName ?: suggestion.roomMember.userId.value
+            is ResolvedSuggestion.Alias -> suggestion.roomName ?: suggestion.roomAlias.value
             is ResolvedSuggestion.Command -> suggestion.command.command
         }
         val details = when (suggestion) {
@@ -126,35 +148,33 @@ private fun SuggestionItemView(
         }
         val subtitle = when (suggestion) {
             is ResolvedSuggestion.AtRoom -> "@room"
-            is ResolvedSuggestion.Member -> suggestion.roomMember.userId.value
-            is ResolvedSuggestion.Alias -> suggestion.roomAlias.value
+            is ResolvedSuggestion.Member -> suggestion.roomMember.userId.value.takeIf { suggestion.roomMember.displayName != null }
+            is ResolvedSuggestion.Alias -> suggestion.roomAlias.value.takeIf { suggestion.roomName != null }
             is ResolvedSuggestion.Command -> suggestion.command.description
         }
         if (avatarData != null && avatarType != null) {
             Avatar(
                 avatarData = avatarData,
                 avatarType = avatarType,
-                modifier = Modifier.padding(top = 12.dp, bottom = 12.dp, end = 16.dp),
             )
         }
         Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 8.dp, bottom = 8.dp)
+                .weight(1f)
                 .align(Alignment.CenterVertically),
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                title?.let {
-                    Text(
-                        text = it,
-                        style = ElementTheme.typography.fontBodyLgRegular,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
+                Text(
+                    text = title,
+                    modifier = if (details != null) Modifier.weight(1f, fill = false) else Modifier.fillMaxWidth(),
+                    style = ElementTheme.typography.fontBodyLgRegular,
+                    color = ElementTheme.colors.textPrimary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
                 details?.let {
                     Text(
                         text = it,
@@ -165,13 +185,15 @@ private fun SuggestionItemView(
                     )
                 }
             }
-            Text(
-                text = subtitle,
-                style = ElementTheme.typography.fontBodySmRegular,
-                color = ElementTheme.colors.textSecondary,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
+            subtitle?.let {
+                Text(
+                    text = it,
+                    style = ElementTheme.typography.fontBodySmRegular,
+                    color = ElementTheme.colors.textSecondary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
         }
     }
 }

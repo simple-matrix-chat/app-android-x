@@ -53,8 +53,7 @@ internal fun SelectParentSpaceOptions(
     var displaySelectSpaceBottomSheet by remember { mutableStateOf(false) }
     ConfigureRoomOptions(
         title = stringResource(CommonStrings.common_space),
-        hasDivider = false,
-        modifier = modifier
+        modifier = modifier,
     ) {
         ListItem(
             headlineContent = {

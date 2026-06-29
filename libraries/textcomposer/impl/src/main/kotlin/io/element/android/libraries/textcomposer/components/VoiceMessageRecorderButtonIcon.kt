@@ -27,25 +27,38 @@ import io.element.android.libraries.designsystem.theme.components.IconButton
 @Composable
 internal fun VoiceMessageRecorderButtonIcon(
     isRecording: Boolean,
+    usesMomentStyle: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     if (isRecording) {
         StopButton(modifier)
     } else {
-        StartButton(modifier)
+        StartButton(
+            modifier = modifier,
+            usesMomentStyle = usesMomentStyle,
+        )
     }
 }
 
 @Composable
 private fun StartButton(
     modifier: Modifier = Modifier,
+    usesMomentStyle: Boolean,
 ) {
     Icon(
         modifier = modifier.size(24.dp),
-        imageVector = CompoundIcons.MicOnSolid(),
+        imageVector = if (usesMomentStyle) {
+            CompoundIcons.MicOn()
+        } else {
+            CompoundIcons.MicOnSolid()
+        },
         // Note: accessibility is managed in TextComposer.
         contentDescription = null,
-        tint = ElementTheme.colors.iconSecondary,
+        tint = if (usesMomentStyle) {
+            ElementTheme.colors.textSecondary
+        } else {
+            ElementTheme.colors.iconSecondary
+        },
     )
 }
 
@@ -84,6 +97,12 @@ internal fun VoiceMessageRecorderButtonIconPreview() = ElementPreview {
         IconButton(onClick = {}) {
             VoiceMessageRecorderButtonIcon(
                 isRecording = true,
+            )
+        }
+        IconButton(onClick = {}) {
+            VoiceMessageRecorderButtonIcon(
+                isRecording = false,
+                usesMomentStyle = true,
             )
         }
     }

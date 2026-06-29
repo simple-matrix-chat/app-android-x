@@ -10,6 +10,7 @@ package io.element.android.features.home.impl.roomlist
 
 import androidx.compose.ui.tooling.preview.PreviewParameterProvider
 import io.element.android.libraries.matrix.api.core.RoomId
+import io.element.android.libraries.matrix.api.core.UserId
 
 open class RoomListStateContextMenuShownProvider : PreviewParameterProvider<RoomListState.ContextMenu.Shown> {
     override val values: Sequence<RoomListState.ContextMenu.Shown>
@@ -25,11 +26,25 @@ internal fun aContextMenuShown(
     isDm: Boolean = false,
     hasNewContent: Boolean = false,
     isFavorite: Boolean = false,
+    isArchived: Boolean = false,
+    isMuted: Boolean = false,
+    isEncrypted: Boolean = false,
+    isOneToOne: Boolean = isDm,
+    directUserId: UserId? = null,
+    directUserDisplayName: String? = null,
+    isDirectUserBlocked: Boolean = false,
 ) = RoomListState.ContextMenu.Shown(
     roomId = RoomId("!aRoom:aDomain"),
     roomName = roomName,
     isDm = isDm,
     hasNewContent = hasNewContent,
     isFavorite = isFavorite,
+    isArchived = isArchived,
+    isMuted = isMuted,
+    isEncrypted = isEncrypted,
+    isOneToOne = isOneToOne,
+    directUserId = directUserId,
+    directUserDisplayName = directUserDisplayName,
+    isDirectUserBlocked = isDirectUserBlocked,
     displayClearRoomCacheAction = false,
 )

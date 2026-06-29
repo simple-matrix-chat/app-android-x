@@ -9,22 +9,21 @@
 package io.element.android.libraries.mediaviewer.impl.gallery.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
-import coil3.compose.AsyncImagePainter
+import io.element.android.compound.theme.ElementTheme
 import io.element.android.libraries.designsystem.modifiers.onKeyboardContextMenuAction
 import io.element.android.libraries.designsystem.preview.ElementPreview
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
@@ -39,9 +38,13 @@ fun ImageItemView(
     onLongClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val mediaShape = RoundedCornerShape(MomentMediaGalleryMediaRadius)
     Box(
         modifier = modifier
             .aspectRatio(1f)
+            .clip(mediaShape)
+            .background(ElementTheme.colors.bgSubtleSecondary)
+            .border(1.dp, momentMediaGalleryMediaBorderColor(), mediaShape)
             .combinedClickable(
                 onClick = onClick,
                 onLongClick = onLongClick,
@@ -49,16 +52,12 @@ fun ImageItemView(
             )
             .onKeyboardContextMenuAction(onLongClick),
     ) {
-        var isLoaded by remember { mutableStateOf(false) }
         AsyncImage(
-            modifier = Modifier
-                .fillMaxWidth()
-                .then(if (isLoaded) Modifier.background(Color.White) else Modifier),
+            modifier = Modifier.fillMaxWidth(),
             model = image.thumbnailMediaRequestData,
             contentScale = ContentScale.Crop,
             alignment = Alignment.Center,
             contentDescription = null,
-            onState = { isLoaded = it is AsyncImagePainter.State.Success },
         )
     }
 }

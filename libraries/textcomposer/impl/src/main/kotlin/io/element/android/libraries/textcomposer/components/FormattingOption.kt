@@ -40,11 +40,12 @@ internal fun FormattingOption(
     imageVector: ImageVector,
     contentDescription: String,
     modifier: Modifier = Modifier,
+    usesMomentStyle: Boolean = false,
 ) {
     val backgroundColor = when (state) {
         FormattingOptionState.Selected -> ElementTheme.colors.bgAccentSelected
         FormattingOptionState.Default,
-        FormattingOptionState.Disabled -> Color.Transparent
+        FormattingOptionState.Disabled -> if (usesMomentStyle) ElementTheme.colors.bgCanvasDefault else Color.Transparent
     }
 
     val foregroundColor = when (state) {

@@ -19,6 +19,7 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
@@ -32,6 +33,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.RequestDisallowInterceptTouchEvent
 import androidx.compose.ui.input.pointer.pointerInteropFilter
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalViewConfiguration
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
@@ -41,6 +43,10 @@ import io.element.android.libraries.designsystem.preview.PreviewsDayNight
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlin.math.abs
 import kotlin.math.roundToInt
 
 private const val DEFAULT_GRAPHICS_LAYER_ALPHA: Float = 0.99F
@@ -54,6 +60,7 @@ private const val DEFAULT_GRAPHICS_LAYER_ALPHA: Float = 0.99F
  * @param onSeek Callback when the user seeks the waveform. Called with a value between 0 and 1.
  * @param modifier The modifier to be applied to the view.
  * @param seekEnabled Whether the user can seek the waveform or not.
+ * @param onLongClick Optional long click callback for containers that expose context actions.
  * @param brush The brush to use to draw the waveform.
  * @param progressBrush The brush to use to draw the progress.
  * @param cursorBrush The brush to use to draw the cursor.
@@ -68,6 +75,7 @@ fun WaveformPlaybackView(
     onSeek: (progress: Float) -> Unit,
     modifier: Modifier = Modifier,
     seekEnabled: Boolean = true,
+    onLongClick: (() -> Unit)? = null,
     brush: Brush = SolidColor(ElementTheme.colors.iconQuaternary),
     progressBrush: Brush = SolidColor(ElementTheme.colors.iconSecondary),
     cursorBrush: Brush = SolidColor(ElementTheme.colors.iconAccentTertiary),
@@ -95,11 +103,23 @@ fun WaveformPlaybackView(
     }
 
     val density = LocalDensity.current
+    val viewConfiguration = LocalViewConfiguration.current
+    val coroutineScope = rememberCoroutineScope()
     val waveformWidthPx by remember {
         derivedStateOf { with(density) { normalizedWaveformData.size * (lineWidth + linePadding).roundToPx().toFloat() } }
     }
 
     val requestDisallowInterceptTouchEvent = remember { RequestDisallowInterceptTouchEvent() }
+    var longClickJob by remember { mutableStateOf<Job?>(null) }
+    var longClickTriggered by remember { mutableStateOf(false) }
+    var downX by remember { mutableStateOf(0f) }
+    var downY by remember { mutableStateOf(0f) }
+
+    fun cancelLongClickDetection() {
+        longClickJob?.cancel()
+        longClickJob = null
+    }
+
     Canvas(
         modifier = Modifier
             .fillMaxWidth()
@@ -111,6 +131,18 @@ fun WaveformPlaybackView(
                         MotionEvent.ACTION_DOWN -> {
                             if (e.x in 0F..waveformWidthPx) {
                                 requestDisallowInterceptTouchEvent.invoke(true)
+                                longClickTriggered = false
+                                downX = e.x
+                                downY = e.y
+                                onLongClick?.let { callback ->
+                                    cancelLongClickDetection()
+                                    longClickJob = coroutineScope.launch {
+                                        delay(viewConfiguration.longPressTimeoutMillis)
+                                        longClickTriggered = true
+                                        seekProgress.value = null
+                                        callback()
+                                    }
+                                }
                                 seekProgress.value = e.x / waveformWidthPx
                                 true
                             } else {
@@ -118,6 +150,12 @@ fun WaveformPlaybackView(
                             }
                         }
                         MotionEvent.ACTION_MOVE -> {
+                            if (longClickTriggered) {
+                                return@pointerInteropFilter true
+                            }
+                            if (abs(e.x - downX) > viewConfiguration.touchSlop || abs(e.y - downY) > viewConfiguration.touchSlop) {
+                                cancelLongClickDetection()
+                            }
                             if (e.x in 0F..waveformWidthPx) {
                                 seekProgress.value = e.x / waveformWidthPx
                             }
@@ -125,8 +163,19 @@ fun WaveformPlaybackView(
                         }
                         MotionEvent.ACTION_UP -> {
                             requestDisallowInterceptTouchEvent.invoke(false)
-                            seekProgress.value?.let(onSeek)
+                            cancelLongClickDetection()
+                            if (!longClickTriggered) {
+                                seekProgress.value?.let(onSeek)
+                            }
                             seekProgress.value = null
+                            longClickTriggered = false
+                            true
+                        }
+                        MotionEvent.ACTION_CANCEL -> {
+                            requestDisallowInterceptTouchEvent.invoke(false)
+                            cancelLongClickDetection()
+                            seekProgress.value = null
+                            longClickTriggered = false
                             true
                         }
                         else -> false

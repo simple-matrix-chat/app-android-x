@@ -14,6 +14,7 @@ import io.element.android.libraries.fullscreenintent.api.FullScreenIntentPermiss
 import io.element.android.libraries.matrix.api.room.RoomNotificationMode
 import io.element.android.libraries.pushproviders.api.Distributor
 import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
 
 data class NotificationSettingsState(
     val matrixSettings: MatrixSettings,
@@ -33,8 +34,14 @@ data class NotificationSettingsState(
             val inviteForMeNotificationsEnabled: Boolean,
             val defaultGroupNotificationMode: RoomNotificationMode?,
             val defaultOneToOneNotificationMode: RoomNotificationMode?,
+            val inconsistentSettings: ImmutableList<InconsistentSetting> = persistentListOf(),
         ) : MatrixSettings
     }
+
+    data class InconsistentSetting(
+        val isOneToOne: Boolean,
+        val isEncrypted: Boolean,
+    )
 
     data class AppSettings(
         val systemNotificationsEnabled: Boolean,

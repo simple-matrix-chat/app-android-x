@@ -331,10 +331,10 @@ class FakeTimeline(
         )
     }
 
-    var forwardEventLambda: (eventId: EventId, roomIds: List<RoomId>) -> Result<Unit> = { _, _ -> lambdaError() }
+    var forwardEventLambda: (eventId: EventId, roomIds: List<RoomId>, comment: String?) -> Result<Unit> = { _, _, _ -> lambdaError() }
 
-    override suspend fun forwardEvent(eventId: EventId, roomIds: List<RoomId>): Result<Unit> = simulateLongTask {
-        forwardEventLambda(eventId, roomIds)
+    override suspend fun forwardEvent(eventId: EventId, roomIds: List<RoomId>, comment: String?): Result<Unit> = simulateLongTask {
+        forwardEventLambda(eventId, roomIds, comment)
     }
 
     var createPollLambda: (

@@ -9,6 +9,7 @@
 package io.element.android.features.messages.impl.messagecomposer
 
 import androidx.compose.runtime.Stable
+import io.element.android.emojibasebindings.EmojibaseStore
 import io.element.android.libraries.architecture.AsyncAction
 import io.element.android.libraries.textcomposer.mentions.ResolvedSuggestion
 import io.element.android.libraries.textcomposer.model.MessageComposerMode
@@ -23,10 +24,42 @@ data class MessageComposerState(
     val mode: MessageComposerMode,
     val showAttachmentSourcePicker: Boolean,
     val showTextFormatting: Boolean,
+    val composerEmojiPickerState: ComposerEmojiPickerState,
+    val contactAttachmentPickerState: ContactAttachmentPickerState,
     val canShareLocation: Boolean,
     val suggestions: ImmutableList<ResolvedSuggestion>,
     val resolveMentionDisplay: (String, String) -> TextDisplay,
     val resolveAtRoomMentionDisplay: () -> TextDisplay,
     val slashCommandAction: AsyncAction<Unit>,
     val eventSink: (MessageComposerEvent) -> Unit,
+)
+
+@Stable
+data class ComposerEmojiPickerState(
+    val isVisible: Boolean,
+    val emojibaseStore: EmojibaseStore,
+    val recentEmojis: ImmutableList<String>,
+)
+
+@Stable
+data class ContactAttachmentPickerState(
+    val isVisible: Boolean,
+    val permissionState: ContactAttachmentPermissionState,
+    val contacts: ImmutableList<ContactAttachment>,
+    val isLoading: Boolean,
+    val hasError: Boolean,
+)
+
+enum class ContactAttachmentPermissionState {
+    Granted,
+    Request,
+    Denied,
+}
+
+@Stable
+data class ContactAttachment(
+    val id: String,
+    val displayName: String,
+    val details: String?,
+    val formattedContact: String,
 )

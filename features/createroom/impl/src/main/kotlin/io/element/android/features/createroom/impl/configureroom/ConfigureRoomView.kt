@@ -8,23 +8,29 @@
 
 package io.element.android.features.createroom.impl.configureroom
 
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -34,6 +40,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
 import io.element.android.compound.theme.ElementTheme
@@ -47,19 +55,19 @@ import io.element.android.libraries.designsystem.components.async.AsyncActionVie
 import io.element.android.libraries.designsystem.components.avatar.AvatarData
 import io.element.android.libraries.designsystem.components.avatar.AvatarSize
 import io.element.android.libraries.designsystem.components.avatar.AvatarType
-import io.element.android.libraries.designsystem.components.button.BackButton
 import io.element.android.libraries.designsystem.components.list.ListItemContent
 import io.element.android.libraries.designsystem.modifiers.clearFocusOnTap
 import io.element.android.libraries.designsystem.preview.ElementPreviewDark
 import io.element.android.libraries.designsystem.preview.ElementPreviewLight
 import io.element.android.libraries.designsystem.preview.PreviewWithLargeHeight
+import io.element.android.libraries.designsystem.theme.components.HorizontalDivider
+import io.element.android.libraries.designsystem.theme.components.Icon
 import io.element.android.libraries.designsystem.theme.components.ListItem
-import io.element.android.libraries.designsystem.theme.components.ListSectionHeader
 import io.element.android.libraries.designsystem.theme.components.Scaffold
+import io.element.android.libraries.designsystem.theme.components.Surface
 import io.element.android.libraries.designsystem.theme.components.Text
 import io.element.android.libraries.designsystem.theme.components.TextButton
 import io.element.android.libraries.designsystem.theme.components.TextField
-import io.element.android.libraries.designsystem.theme.components.TopAppBar
 import io.element.android.libraries.matrix.api.core.RoomId
 import io.element.android.libraries.matrix.api.spaces.SpaceRoom
 import io.element.android.libraries.matrix.ui.components.AvatarActionBottomSheet
@@ -88,7 +96,10 @@ fun ConfigureRoomView(
     }
 
     Scaffold(
-        modifier = modifier.clearFocusOnTap(focusManager),
+        modifier = modifier
+            .fillMaxSize()
+            .clearFocusOnTap(focusManager),
+        containerColor = ElementTheme.colors.bgSubtleSecondary,
         topBar = {
             ConfigureRoomToolbar(
                 isSpace = isSpace,
@@ -106,23 +117,23 @@ fun ConfigureRoomView(
                 .padding(padding)
                 .imePadding()
                 .verticalScroll(rememberScrollState())
-                .consumeWindowInsets(padding),
+                .consumeWindowInsets(padding)
+                .padding(horizontal = 20.dp)
+                .padding(top = 8.dp, bottom = 32.dp)
+                .navigationBarsPadding(),
+            verticalArrangement = Arrangement.spacedBy(24.dp),
         ) {
             RoomNameWithAvatar(
                 isSpace = isSpace,
-                modifier = Modifier.padding(horizontal = 16.dp),
                 avatarUri = state.config.avatarUri,
                 roomName = state.config.roomName.orEmpty(),
                 onAvatarClick = ::onAvatarClick,
                 onChangeRoomName = { state.eventSink(ConfigureRoomEvents.RoomNameChanged(it)) },
             )
-            Spacer(modifier = Modifier.height(16.dp))
             RoomTopic(
-                modifier = Modifier.padding(horizontal = 16.dp),
                 topic = state.config.topic.orEmpty(),
                 onTopicChange = { state.eventSink(ConfigureRoomEvents.TopicChanged(it)) },
             )
-            Spacer(modifier = Modifier.height(16.dp))
             if (!state.isSpace && state.spaces.isNotEmpty()) {
                 SelectParentSpaceOptions(
                     spaces = state.spaces,
@@ -140,16 +151,19 @@ fun ConfigureRoomView(
                 },
             )
             if (state.config.visibilityState !is RoomVisibilityState.Private) {
-                ListSectionHeader(title = stringResource(R.string.screen_create_room_room_address_section_title))
-                RoomAddressField(
-                    modifier = Modifier.padding(horizontal = 16.dp),
-                    address = state.config.visibilityState.roomAddress().getOrNull().orEmpty(),
-                    homeserverName = state.homeserverName,
-                    addressValidity = state.roomAddressValidity,
-                    onAddressChange = { state.eventSink(ConfigureRoomEvents.RoomAddressChanged(it)) },
-                    label = null,
-                    supportingText = stringResource(R.string.screen_create_room_room_address_section_footer),
-                )
+                MomentCreateRoomSection(
+                    title = stringResource(R.string.screen_create_room_room_address_section_title),
+                ) {
+                    RoomAddressField(
+                        modifier = Modifier.fillMaxWidth(),
+                        address = state.config.visibilityState.roomAddress().getOrNull().orEmpty(),
+                        homeserverName = state.homeserverName,
+                        addressValidity = state.roomAddressValidity,
+                        onAddressChange = { state.eventSink(ConfigureRoomEvents.RoomAddressChanged(it)) },
+                        label = null,
+                        supportingText = stringResource(R.string.screen_create_room_room_address_section_footer),
+                    )
+                }
             }
         }
     }
@@ -179,7 +193,6 @@ fun ConfigureRoomView(
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ConfigureRoomToolbar(
     isSpace: Boolean,
@@ -187,17 +200,52 @@ private fun ConfigureRoomToolbar(
     onBackClick: () -> Unit,
     onNextClick: () -> Unit,
 ) {
-    TopAppBar(
-        titleStr = stringResource(if (isSpace) R.string.screen_create_room_new_space_title else R.string.screen_create_room_new_room_title),
-        navigationIcon = { BackButton(onClick = onBackClick) },
-        actions = {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(56.dp)
+            .padding(horizontal = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(44.dp)
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = onBackClick,
+                ),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                modifier = Modifier.size(24.dp),
+                imageVector = CompoundIcons.ChevronLeft(),
+                contentDescription = stringResource(CommonStrings.action_back),
+                tint = ElementTheme.colors.iconPrimary,
+            )
+        }
+        Text(
+            modifier = Modifier
+                .weight(1f)
+                .padding(horizontal = 8.dp),
+            text = stringResource(if (isSpace) R.string.screen_create_room_new_space_title else R.string.screen_create_room_new_room_title),
+            style = ElementTheme.typography.fontHeadingSmMedium,
+            color = ElementTheme.colors.textPrimary,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            textAlign = TextAlign.Center,
+        )
+        Box(
+            modifier = Modifier.heightIn(min = 44.dp),
+            contentAlignment = Alignment.CenterEnd,
+        ) {
             TextButton(
                 text = stringResource(CommonStrings.action_create),
                 enabled = isNextActionEnabled,
                 onClick = onNextClick,
             )
         }
-    )
+    }
 }
 
 @Composable
@@ -210,7 +258,7 @@ private fun RoomNameWithAvatar(
     modifier: Modifier = Modifier,
 ) {
     Row(
-        modifier = modifier,
+        modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(16.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -238,14 +286,26 @@ private fun RoomNameWithAvatar(
             )
         }
 
-        TextField(
-            modifier = Modifier.padding(bottom = 18.dp),
-            label = stringResource(CommonStrings.common_name),
-            value = roomName,
-            placeholder = stringResource(R.string.screen_create_room_name_placeholder),
-            singleLine = true,
-            onValueChange = onChangeRoomName,
-        )
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(
+                modifier = Modifier.padding(horizontal = 8.dp),
+                text = stringResource(CommonStrings.common_name),
+                style = ElementTheme.typography.fontBodySmMedium,
+                color = ElementTheme.colors.textSecondary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            TextField(
+                modifier = Modifier.fillMaxWidth(),
+                value = roomName,
+                placeholder = stringResource(R.string.screen_create_room_name_placeholder),
+                singleLine = true,
+                onValueChange = onChangeRoomName,
+            )
+        }
     }
 }
 
@@ -255,31 +315,36 @@ private fun RoomTopic(
     onTopicChange: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    TextField(
+    MomentCreateRoomSection(
+        title = stringResource(R.string.screen_create_room_topic_label),
         modifier = modifier,
-        label = stringResource(R.string.screen_create_room_topic_label),
-        value = topic,
-        onValueChange = onTopicChange,
-        maxLines = 3,
-        placeholder = stringResource(R.string.screen_create_room_topic_placeholder),
-        keyboardOptions = KeyboardOptions(
-            capitalization = KeyboardCapitalization.Sentences,
-        ),
-    )
+    ) {
+        TextField(
+            modifier = Modifier.fillMaxWidth(),
+            value = topic,
+            onValueChange = onTopicChange,
+            maxLines = 3,
+            placeholder = stringResource(R.string.screen_create_room_topic_placeholder),
+            keyboardOptions = KeyboardOptions(
+                capitalization = KeyboardCapitalization.Sentences,
+            ),
+        )
+    }
 }
 
 @Composable
 internal fun ConfigureRoomOptions(
     title: String,
     modifier: Modifier = Modifier,
-    hasDivider: Boolean = true,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    Column(
-        modifier = modifier.selectableGroup()
+    MomentCreateRoomSection(
+        title = title,
+        modifier = modifier.selectableGroup(),
     ) {
-        ListSectionHeader(title = title, hasDivider = hasDivider)
-        content()
+        MomentCreateRoomCard {
+            content()
+        }
     }
 }
 
@@ -295,7 +360,7 @@ private fun RoomJoinRuleOptions(
         title = stringResource(R.string.screen_create_room_room_access_section_title),
         modifier = modifier,
     ) {
-        options.forEach { item ->
+        options.forEachIndexed { index, item ->
             val isSelected = item == selected
             ListItem(
                 leadingContent = ListItemContent.Custom {
@@ -343,8 +408,59 @@ private fun RoomJoinRuleOptions(
                 trailingContent = ListItemContent.RadioButton(selected = isSelected),
                 onClick = { onOptionClick(item) },
             )
+            if (index != options.lastIndex) {
+                MomentCreateRoomDivider()
+            }
         }
     }
+}
+
+@Composable
+internal fun MomentCreateRoomSection(
+    title: String,
+    modifier: Modifier = Modifier,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Text(
+            modifier = Modifier.padding(horizontal = 8.dp),
+            text = title,
+            style = ElementTheme.typography.fontBodySmMedium,
+            color = ElementTheme.colors.textSecondary,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        content()
+    }
+}
+
+@Composable
+internal fun MomentCreateRoomCard(
+    modifier: Modifier = Modifier,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(28.dp),
+        color = ElementTheme.colors.bgCanvasDefault,
+        shadowElevation = 8.dp,
+        border = BorderStroke(1.dp, ElementTheme.colors.borderInteractiveSecondary.copy(alpha = 0.55f)),
+    ) {
+        Column(content = content)
+    }
+}
+
+@Composable
+internal fun MomentCreateRoomDivider(
+    modifier: Modifier = Modifier,
+) {
+    HorizontalDivider(
+        modifier = modifier.padding(start = 72.dp),
+        color = ElementTheme.colors.borderDisabled,
+    )
 }
 
 @PreviewWithLargeHeight

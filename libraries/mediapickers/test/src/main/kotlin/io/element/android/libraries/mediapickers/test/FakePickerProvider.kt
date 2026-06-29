@@ -8,7 +8,9 @@
 
 package io.element.android.libraries.mediapickers.test
 
+import android.content.Intent
 import android.net.Uri
+import androidx.activity.result.ActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.compose.runtime.Composable
 import io.element.android.libraries.core.mimetype.MimeTypes
@@ -31,8 +33,23 @@ class FakePickerProvider : PickerProvider {
     }
 
     @Composable
+    override fun registerGalleryVideoPicker(onResult: (Uri?) -> Unit): PickerLauncher<PickVisualMediaRequest, Uri?> {
+        return NoOpPickerLauncher { onResult(result) }
+    }
+
+    @Composable
     override fun registerFilePicker(mimeType: String, onResult: (Uri?, String?) -> Unit): PickerLauncher<String, Uri?> {
         return NoOpPickerLauncher { onResult(result, this.mimeType) }
+    }
+
+    @Composable
+    override fun registerContactPicker(onResult: (Uri?) -> Unit): PickerLauncher<Void?, Uri?> {
+        return NoOpPickerLauncher { onResult(result) }
+    }
+
+    @Composable
+    override fun registerCameraPicker(onResult: (uri: Uri?, mimeType: String?) -> Unit): PickerLauncher<Intent, ActivityResult> {
+        return NoOpPickerLauncher { onResult(result, mimeType) }
     }
 
     @Composable

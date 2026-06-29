@@ -27,11 +27,10 @@ class RoomListFiltersPresenterTest {
             awaitItem().let { state ->
                 assertThat(state.hasAnyFilterSelected).isFalse()
                 assertThat(state.filterSelectionStates).containsExactly(
-                    filterSelectionState(RoomListFilter.Unread, false),
-                    filterSelectionState(RoomListFilter.People, false),
-                    filterSelectionState(RoomListFilter.Rooms, false),
-                    filterSelectionState(RoomListFilter.Favourites, false),
-                    filterSelectionState(RoomListFilter.Invites, false),
+                    filterSelectionState(RoomListFilter.Direct, false),
+                    filterSelectionState(RoomListFilter.Groups, false),
+                    filterSelectionState(RoomListFilter.Channels, false),
+                    filterSelectionState(RoomListFilter.Archived, false),
                 )
             }
             cancelAndIgnoreRemainingEvents()
@@ -40,34 +39,34 @@ class RoomListFiltersPresenterTest {
 
     @Test
     @OptIn(ExperimentalCoroutinesApi::class)
-    fun `present - toggle rooms filter`() = runTest {
+    fun `present - select groups filter`() = runTest {
         val presenter = createRoomListFiltersPresenter()
         presenter.test {
-            awaitItem().eventSink.invoke(RoomListFiltersEvent.ToggleFilter(RoomListFilter.Rooms))
+            awaitItem().eventSink.invoke(RoomListFiltersEvent.ToggleFilter(RoomListFilter.Groups))
             awaitLastSequentialItem().let { state ->
                 assertThat(state.hasAnyFilterSelected).isTrue()
                 assertThat(state.filterSelectionStates).containsExactly(
-                    filterSelectionState(RoomListFilter.Rooms, true),
-                    filterSelectionState(RoomListFilter.Unread, false),
-                    filterSelectionState(RoomListFilter.Favourites, false),
+                    filterSelectionState(RoomListFilter.Direct, false),
+                    filterSelectionState(RoomListFilter.Groups, true),
+                    filterSelectionState(RoomListFilter.Channels, false),
+                    filterSelectionState(RoomListFilter.Archived, false),
                 ).inOrder()
 
                 assertThat(state.selectedFilters()).containsExactly(
-                    RoomListFilter.Rooms,
+                    RoomListFilter.Groups,
                 )
-                state.eventSink.invoke(RoomListFiltersEvent.ToggleFilter(RoomListFilter.Rooms))
+                state.eventSink.invoke(RoomListFiltersEvent.ToggleFilter(RoomListFilter.Channels))
             }
             advanceUntilIdle()
             awaitLastSequentialItem().let { state ->
-                assertThat(state.hasAnyFilterSelected).isFalse()
+                assertThat(state.hasAnyFilterSelected).isTrue()
                 assertThat(state.filterSelectionStates).containsExactly(
-                    filterSelectionState(RoomListFilter.Unread, false),
-                    filterSelectionState(RoomListFilter.People, false),
-                    filterSelectionState(RoomListFilter.Rooms, false),
-                    filterSelectionState(RoomListFilter.Favourites, false),
-                    filterSelectionState(RoomListFilter.Invites, false),
+                    filterSelectionState(RoomListFilter.Direct, false),
+                    filterSelectionState(RoomListFilter.Groups, false),
+                    filterSelectionState(RoomListFilter.Channels, true),
+                    filterSelectionState(RoomListFilter.Archived, false),
                 ).inOrder()
-                assertThat(state.selectedFilters()).isEmpty()
+                assertThat(state.selectedFilters()).containsExactly(RoomListFilter.Channels)
             }
         }
     }
@@ -77,7 +76,7 @@ class RoomListFiltersPresenterTest {
     fun `present - clear filters event`() = runTest {
         val presenter = createRoomListFiltersPresenter()
         presenter.test {
-            awaitItem().eventSink.invoke(RoomListFiltersEvent.ToggleFilter(RoomListFilter.Rooms))
+            awaitItem().eventSink.invoke(RoomListFiltersEvent.ToggleFilter(RoomListFilter.Groups))
             awaitLastSequentialItem().let { state ->
                 assertThat(state.hasAnyFilterSelected).isTrue()
                 state.eventSink.invoke(RoomListFiltersEvent.ClearSelectedFilters)

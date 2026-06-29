@@ -10,7 +10,13 @@ package io.element.android.features.messages.impl.messagecomposer
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.content.ContentResolver
+import android.content.ContentUris
+import android.content.Context
+import android.database.Cursor
 import android.net.Uri
+import android.provider.ContactsContract
+import android.text.SpannableStringBuilder
 import androidx.annotation.VisibleForTesting
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -47,9 +53,12 @@ import io.element.android.libraries.core.extensions.runCatchingExceptions
 import io.element.android.libraries.core.mimetype.MimeTypes
 import io.element.android.libraries.designsystem.utils.snackbar.SnackbarDispatcher
 import io.element.android.libraries.designsystem.utils.snackbar.SnackbarMessage
+import io.element.android.libraries.di.annotations.ApplicationContext
 import io.element.android.libraries.di.annotations.SessionCoroutineScope
+import io.element.android.libraries.matrix.api.MatrixClient
 import io.element.android.libraries.matrix.api.core.EventId
 import io.element.android.libraries.matrix.api.core.UserId
+import io.element.android.libraries.matrix.api.media.MatrixStickerInfo
 import io.element.android.libraries.matrix.api.permalink.PermalinkBuilder
 import io.element.android.libraries.matrix.api.permalink.PermalinkParser
 import io.element.android.libraries.matrix.api.room.IntentionalMention
@@ -58,6 +67,7 @@ import io.element.android.libraries.matrix.api.room.draft.ComposerDraft
 import io.element.android.libraries.matrix.api.room.draft.ComposerDraftType
 import io.element.android.libraries.matrix.api.room.getDirectRoomMember
 import io.element.android.libraries.matrix.api.room.powerlevels.use
+import io.element.android.libraries.matrix.api.timeline.Timeline
 import io.element.android.libraries.matrix.api.timeline.TimelineException
 import io.element.android.libraries.matrix.api.timeline.item.event.toEventOrTransactionId
 import io.element.android.libraries.matrix.ui.messages.reply.InReplyToDetails
@@ -65,11 +75,15 @@ import io.element.android.libraries.matrix.ui.messages.reply.map
 import io.element.android.libraries.mediapickers.api.PickerProvider
 import io.element.android.libraries.mediaupload.api.MediaOptimizationConfigProvider
 import io.element.android.libraries.mediaupload.api.MediaSenderFactory
+import io.element.android.libraries.mediaupload.api.MediaUploadInfo
 import io.element.android.libraries.mediaviewer.api.local.LocalMediaFactory
 import io.element.android.libraries.permissions.api.PermissionsEvent
 import io.element.android.libraries.permissions.api.PermissionsPresenter
 import io.element.android.libraries.preferences.api.store.SessionPreferencesStore
 import io.element.android.libraries.push.api.notifications.conversations.NotificationConversationService
+import io.element.android.libraries.recentemojis.api.AddRecentEmoji
+import io.element.android.libraries.recentemojis.api.EmojibaseProvider
+import io.element.android.libraries.recentemojis.api.GetRecentEmojis
 import io.element.android.libraries.slashcommands.api.SlashCommand
 import io.element.android.libraries.slashcommands.api.SlashCommandService
 import io.element.android.libraries.slashcommands.api.message
@@ -85,10 +99,12 @@ import io.element.android.services.analytics.api.AnalyticsService
 import io.element.android.services.analyticsproviders.api.trackers.captureInteraction
 import io.element.android.wysiwyg.compose.RichTextEditorState
 import io.element.android.wysiwyg.display.TextDisplay
+import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -100,7 +116,9 @@ import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import timber.log.Timber
+import java.io.File
 import kotlin.time.Duration.Companion.seconds
 import io.element.android.libraries.core.mimetype.MimeTypes.Any as AnyMimeTypes
 
@@ -111,6 +129,8 @@ class MessageComposerPresenter(
     @Assisted private val timelineController: TimelineController,
     @Assisted private val isInThread: Boolean,
     @SessionCoroutineScope private val sessionCoroutineScope: CoroutineScope,
+    @ApplicationContext private val context: Context,
+    private val matrixClient: MatrixClient,
     private val room: JoinedRoom,
     private val mediaPickerProvider: PickerProvider,
     private val sessionPreferencesStore: SessionPreferencesStore,
@@ -132,6 +152,9 @@ class MessageComposerPresenter(
     private val mediaOptimizationConfigProvider: MediaOptimizationConfigProvider,
     private val notificationConversationService: NotificationConversationService,
     private val slashCommandService: SlashCommandService,
+    private val emojibaseProvider: EmojibaseProvider,
+    private val getRecentEmojis: GetRecentEmojis,
+    private val addRecentEmoji: AddRecentEmoji,
 ) : Presenter<MessageComposerState> {
     @AssistedFactory
     interface Factory {
@@ -145,6 +168,7 @@ class MessageComposerPresenter(
     private val mediaSender = mediaSenderFactory.create(timelineMode = timelineController.mainTimelineMode())
 
     private val cameraPermissionPresenter = permissionsPresenterFactory.create(Manifest.permission.CAMERA)
+    private val contactsPermissionPresenter = permissionsPresenterFactory.create(Manifest.permission.READ_CONTACTS)
     private var pendingEvent: MessageComposerEvent? = null
     private val suggestionSearchTrigger = MutableStateFlow<Suggestion?>(null)
 
@@ -169,17 +193,32 @@ class MessageComposerPresenter(
         val markdownTextEditorState = rememberMarkdownTextEditorState(initialText = null, initialFocus = false)
 
         val cameraPermissionState = cameraPermissionPresenter.present()
+        val contactsPermissionState = contactsPermissionPresenter.present()
+        val contactPermissionState = when {
+            contactsPermissionState.permissionGranted -> ContactAttachmentPermissionState.Granted
+            contactsPermissionState.permissionAlreadyDenied -> ContactAttachmentPermissionState.Denied
+            else -> ContactAttachmentPermissionState.Request
+        }
 
         val canShareLocation = remember { mutableStateOf(false) }
         LaunchedEffect(Unit) {
             canShareLocation.value = locationService.isServiceAvailable()
         }
 
-        val galleryMediaPicker = mediaPickerProvider.registerGalleryPicker { uri, mimeType ->
-            handlePickedMedia(uri, mimeType)
+        val galleryImagePicker = mediaPickerProvider.registerGalleryImagePicker { uri ->
+            handlePickedMedia(uri, uri?.let { context.getMimeTypeOrDefault(it, MimeTypes.Images) })
+        }
+        val stickerPicker = mediaPickerProvider.registerGalleryImagePicker { uri ->
+            sessionCoroutineScope.sendSticker(uri)
+        }
+        val galleryVideoPicker = mediaPickerProvider.registerGalleryVideoPicker { uri ->
+            handlePickedMedia(uri, uri?.let { context.getMimeTypeOrDefault(it, MimeTypes.Videos) })
         }
         val filesPicker = mediaPickerProvider.registerFilePicker(AnyMimeTypes) { uri, mimeType ->
             handlePickedMedia(uri, mimeType ?: MimeTypes.OctetStream)
+        }
+        val cameraPicker = mediaPickerProvider.registerCameraPicker { uri, mimeType ->
+            handlePickedMedia(uri, mimeType ?: uri?.let { context.getMimeTypeOrDefault(it, MimeTypes.Jpeg) })
         }
         val cameraPhotoPicker = mediaPickerProvider.registerCameraPhotoPicker { uri ->
             handlePickedMedia(uri, MimeTypes.Jpeg)
@@ -191,19 +230,56 @@ class MessageComposerPresenter(
             mutableStateOf(false)
         }
         var showAttachmentSourcePicker: Boolean by remember { mutableStateOf(false) }
+        var showComposerEmojiPicker: Boolean by remember { mutableStateOf(false) }
+        var showContactAttachmentPicker: Boolean by remember { mutableStateOf(false) }
+        var contactAttachments: ImmutableList<ContactAttachment> by remember { mutableStateOf(persistentListOf()) }
+        var contactAttachmentsLoading: Boolean by remember { mutableStateOf(false) }
+        var contactAttachmentsError: Boolean by remember { mutableStateOf(false) }
+        var recentEmojis: ImmutableList<String> by remember { mutableStateOf(persistentListOf()) }
 
         val sendTypingNotifications by remember {
             sessionPreferencesStore.isSendTypingNotificationsEnabled()
         }.collectAsState(initial = true)
 
+        LaunchedEffect(Unit) {
+            recentEmojis = getRecentEmojis().getOrDefault(emptyList()).toImmutableList()
+        }
+
         LaunchedEffect(cameraPermissionState.permissionGranted) {
             if (cameraPermissionState.permissionGranted) {
                 when (pendingEvent) {
+                    is MessageComposerEvent.PickAttachmentSource.FromCamera -> cameraPicker.launch()
                     is MessageComposerEvent.PickAttachmentSource.PhotoFromCamera -> cameraPhotoPicker.launch()
                     is MessageComposerEvent.PickAttachmentSource.VideoFromCamera -> cameraVideoPicker.launch()
                     else -> Unit
                 }
                 pendingEvent = null
+            }
+        }
+
+        suspend fun loadContactAttachments() {
+            contactAttachmentsLoading = true
+            contactAttachmentsError = false
+            val result = withContext(Dispatchers.IO) {
+                runCatchingExceptions {
+                    context.contentResolver.loadContactAttachments()
+                }
+            }
+            result
+                .onSuccess { contacts ->
+                    contactAttachments = contacts.toImmutableList()
+                }
+                .onFailure { throwable ->
+                    Timber.w(throwable, "Failed loading contact attachments")
+                    contactAttachments = persistentListOf()
+                    contactAttachmentsError = true
+                }
+            contactAttachmentsLoading = false
+        }
+
+        LaunchedEffect(showContactAttachmentPicker, contactsPermissionState.permissionGranted) {
+            if (showContactAttachmentPicker && contactsPermissionState.permissionGranted) {
+                loadContactAttachments()
             }
         }
 
@@ -286,13 +362,65 @@ class MessageComposerPresenter(
                     showAttachmentSourcePicker = true
                 }
                 MessageComposerEvent.DismissAttachmentMenu -> showAttachmentSourcePicker = false
+                MessageComposerEvent.DismissComposerEmojiPicker -> showComposerEmojiPicker = false
+                MessageComposerEvent.DismissContactAttachmentPicker -> showContactAttachmentPicker = false
+                MessageComposerEvent.RequestContactAttachmentPermission -> {
+                    if (contactsPermissionState.permissionAlreadyDenied) {
+                        contactsPermissionState.eventSink(PermissionsEvent.OpenSystemSettingAndCloseDialog)
+                    } else {
+                        contactsPermissionState.eventSink(PermissionsEvent.RequestPermissions)
+                    }
+                }
+                MessageComposerEvent.RetryLoadContactAttachments -> localCoroutineScope.launch {
+                    if (contactsPermissionState.permissionGranted) {
+                        loadContactAttachments()
+                    } else {
+                        contactsPermissionState.eventSink(PermissionsEvent.RequestPermissions)
+                    }
+                }
+                is MessageComposerEvent.SelectContactAttachment -> {
+                    showContactAttachmentPicker = false
+                    sessionCoroutineScope.sendSharedText(event.formattedContact)
+                }
+                is MessageComposerEvent.InsertPlainText -> localCoroutineScope.launch {
+                    showComposerEmojiPicker = false
+                    insertPlainText(
+                        text = event.text,
+                        markdownTextEditorState = markdownTextEditorState,
+                        richTextEditorState = richTextEditorState,
+                    )
+                    addRecentEmoji(event.text).onFailure {
+                        Timber.w(it, "Failed adding recent emoji")
+                    }
+                }
+                MessageComposerEvent.PickAttachmentSource.Emoji -> localCoroutineScope.launch {
+                    showAttachmentSourcePicker = false
+                    showComposerEmojiPicker = true
+                }
+                MessageComposerEvent.PickAttachmentSource.Sticker -> localCoroutineScope.launch {
+                    showAttachmentSourcePicker = false
+                    stickerPicker.launch()
+                }
                 MessageComposerEvent.PickAttachmentSource.FromGallery -> localCoroutineScope.launch {
                     showAttachmentSourcePicker = false
-                    galleryMediaPicker.launch()
+                    galleryImagePicker.launch()
+                }
+                MessageComposerEvent.PickAttachmentSource.FromVideoGallery -> localCoroutineScope.launch {
+                    showAttachmentSourcePicker = false
+                    galleryVideoPicker.launch()
                 }
                 MessageComposerEvent.PickAttachmentSource.FromFiles -> localCoroutineScope.launch {
                     showAttachmentSourcePicker = false
                     filesPicker.launch()
+                }
+                MessageComposerEvent.PickAttachmentSource.FromCamera -> localCoroutineScope.launch {
+                    showAttachmentSourcePicker = false
+                    if (cameraPermissionState.permissionGranted) {
+                        cameraPicker.launch()
+                    } else {
+                        pendingEvent = event
+                        cameraPermissionState.eventSink(PermissionsEvent.RequestPermissions)
+                    }
                 }
                 MessageComposerEvent.PickAttachmentSource.PhotoFromCamera -> localCoroutineScope.launch {
                     showAttachmentSourcePicker = false
@@ -319,6 +447,18 @@ class MessageComposerPresenter(
                 MessageComposerEvent.PickAttachmentSource.Poll -> {
                     showAttachmentSourcePicker = false
                     // Navigation to the create poll screen is done at the view layer
+                }
+                MessageComposerEvent.PickAttachmentSource.Contact -> localCoroutineScope.launch {
+                    showAttachmentSourcePicker = false
+                    showContactAttachmentPicker = true
+                    contactAttachmentsError = false
+                    if (!contactsPermissionState.permissionGranted) {
+                        contactsPermissionState.eventSink(PermissionsEvent.RequestPermissions)
+                    }
+                }
+                MessageComposerEvent.PickAttachmentSource.VoiceMessage -> {
+                    showAttachmentSourcePicker = false
+                    // Starting the voice recorder is done at the view layer.
                 }
                 is MessageComposerEvent.ToggleTextFormatting -> {
                     showAttachmentSourcePicker = false
@@ -401,6 +541,18 @@ class MessageComposerPresenter(
             mode = messageComposerContext.composerMode,
             showAttachmentSourcePicker = showAttachmentSourcePicker,
             showTextFormatting = showTextFormatting,
+            composerEmojiPickerState = ComposerEmojiPickerState(
+                isVisible = showComposerEmojiPicker,
+                emojibaseStore = emojibaseProvider.emojibaseStore,
+                recentEmojis = recentEmojis,
+            ),
+            contactAttachmentPickerState = ContactAttachmentPickerState(
+                isVisible = showContactAttachmentPicker,
+                permissionState = contactPermissionState,
+                contacts = contactAttachments,
+                isLoading = contactAttachmentsLoading,
+                hasError = contactAttachmentsError,
+            ),
             canShareLocation = canShareLocation.value,
             suggestions = suggestions.toImmutableList(),
             resolveMentionDisplay = resolveMentionDisplay,
@@ -565,6 +717,35 @@ class MessageComposerPresenter(
             }
         }
 
+        onTextMessageSent(capturedMode)
+    }
+
+    private fun CoroutineScope.sendSharedText(text: String) = launch {
+        val body = text.trim().takeIf { it.isNotEmpty() } ?: return@launch
+        val capturedMode = messageComposerContext.composerMode
+        val replyEventId = (capturedMode as? MessageComposerMode.Reply)?.eventId
+
+        messageComposerContext.composerMode = MessageComposerMode.Normal
+        timelineController.invokeOnCurrentTimeline {
+            if (replyEventId != null) {
+                replyMessage(
+                    body = body,
+                    htmlBody = null,
+                    intentionalMentions = emptyList(),
+                    repliedToEventId = replyEventId,
+                )
+            } else {
+                sendMessage(
+                    body = body,
+                    htmlBody = null,
+                    intentionalMentions = emptyList(),
+                )
+            }
+        }
+        onTextMessageSent(capturedMode)
+    }
+
+    private suspend fun onTextMessageSent(capturedMode: MessageComposerMode) {
         val roomInfo = room.info()
         val roomMembers = room.membersStateFlow.value
 
@@ -619,6 +800,60 @@ class MessageComposerPresenter(
 
         // Reset composer since the attachment will be sent in a separate flow
         messageComposerContext.composerMode = MessageComposerMode.Normal
+    }
+
+    private fun CoroutineScope.sendSticker(uri: Uri?) = launch {
+        uri ?: return@launch
+        val mimeType = context.getMimeTypeOrDefault(uri, MimeTypes.Jpeg)
+        val capturedMode = messageComposerContext.composerMode
+        messageComposerContext.composerMode = MessageComposerMode.Normal
+        try {
+            runCatchingExceptions {
+                val uploadInfo = mediaSender.preProcessMedia(
+                    uri = uri,
+                    mimeType = mimeType,
+                    mediaOptimizationConfig = mediaOptimizationConfigProvider.get(),
+                ).getOrThrow()
+                val imageUploadInfo = uploadInfo as? MediaUploadInfo.Image ?: throw UnsupportedStickerMediaTypeException()
+                val imageUrl = matrixClient.uploadMedia(
+                    mimeType = imageUploadInfo.imageInfo.mimetype ?: mimeType,
+                    data = imageUploadInfo.file.readBytes(),
+                ).getOrThrow()
+                val thumbnailUrl = imageUploadInfo.thumbnailFile?.let { thumbnailFile ->
+                    matrixClient.uploadMedia(
+                        mimeType = imageUploadInfo.imageInfo.thumbnailInfo?.mimetype ?: MimeTypes.Jpeg,
+                        data = thumbnailFile.readBytes(),
+                    ).getOrThrow()
+                }
+                matrixClient.sendSticker(
+                    roomId = room.roomId,
+                    body = imageUploadInfo.file.stickerBody(),
+                    url = imageUrl,
+                    info = MatrixStickerInfo(
+                        height = imageUploadInfo.imageInfo.height,
+                        width = imageUploadInfo.imageInfo.width,
+                        mimetype = imageUploadInfo.imageInfo.mimetype ?: mimeType,
+                        size = imageUploadInfo.imageInfo.size,
+                        thumbnailInfo = imageUploadInfo.imageInfo.thumbnailInfo,
+                        thumbnailUrl = thumbnailUrl,
+                        blurhash = imageUploadInfo.imageInfo.blurhash,
+                    ),
+                    threadRootId = (timelineController.mainTimelineMode() as? Timeline.Mode.Thread)?.threadRootId,
+                ).getOrThrow()
+            }
+                .onFailure { cause ->
+                    messageComposerContext.composerMode = capturedMode
+                    Timber.e(cause, "Failed to send sticker")
+                    if (cause is CancellationException) {
+                        throw cause
+                    } else {
+                        val snackbarMessage = SnackbarMessage(sendAttachmentError(cause))
+                        snackbarDispatcher.post(snackbarMessage)
+                    }
+                }
+        } finally {
+            mediaSender.cleanUp()
+        }
     }
 
     private suspend fun sendMedia(
@@ -849,4 +1084,175 @@ class MessageComposerPresenter(
             }
         }
     }
+
+    private suspend fun insertPlainText(
+        text: String,
+        markdownTextEditorState: MarkdownTextEditorState,
+        richTextEditorState: RichTextEditorState,
+    ) {
+        if (showTextFormatting) {
+            richTextEditorState.setMarkdown(richTextEditorState.messageMarkdown + text)
+            richTextEditorState.requestFocus()
+        } else {
+            val currentText = SpannableStringBuilder(markdownTextEditorState.text.value())
+            val textRange = 0..currentText.length
+            val selectionStart = markdownTextEditorState.selection.first.coerceIn(textRange)
+            val selectionEnd = markdownTextEditorState.selection.last.coerceIn(textRange)
+            val replaceStart = minOf(selectionStart, selectionEnd)
+            val replaceEnd = maxOf(selectionStart, selectionEnd)
+            currentText.replace(replaceStart, replaceEnd, text)
+            markdownTextEditorState.text.update(currentText, true)
+            val cursorPosition = replaceStart + text.length
+            markdownTextEditorState.selection = cursorPosition..cursorPosition
+            markdownTextEditorState.requestFocusAction()
+        }
+    }
 }
+
+private class UnsupportedStickerMediaTypeException : Exception("Unsupported sticker media type")
+
+private fun Context.getMimeTypeOrDefault(uri: Uri, default: String): String {
+    return runCatchingExceptions {
+        contentResolver.getType(uri)
+    }.getOrNull() ?: default
+}
+
+private fun File.stickerBody(): String {
+    return nameWithoutExtension
+        .takeIf(String::isNotBlank)
+        ?: name.takeIf(String::isNotBlank)
+        ?: "Sticker"
+}
+
+private fun ContentResolver.loadContactAttachments(): List<ContactAttachment> {
+    return query(
+        ContactsContract.Contacts.CONTENT_URI,
+        arrayOf(
+            ContactsContract.Contacts._ID,
+            ContactsContract.Contacts.DISPLAY_NAME_PRIMARY,
+        ),
+        null,
+        null,
+        "${ContactsContract.Contacts.DISPLAY_NAME_PRIMARY} COLLATE LOCALIZED ASC",
+    )?.use { cursor ->
+        buildList {
+            while (cursor.moveToNext()) {
+                val contactId = cursor.getLongOrNull(ContactsContract.Contacts._ID) ?: continue
+                val contactUri = ContentUris.withAppendedId(ContactsContract.Contacts.CONTENT_URI, contactId)
+                val displayName = cursor.getStringOrNull(ContactsContract.Contacts.DISPLAY_NAME_PRIMARY)
+                val contactData = queryContactData(contactUri)
+                val formattedContact = formatContactAttachment(displayName, contactData) ?: continue
+                val contactTitle = displayName?.trim()?.takeIf(String::isNotEmpty)
+                    ?: contactData.phoneNumbers.firstNotBlankOrNull()
+                    ?: contactData.emails.firstNotBlankOrNull()
+                    ?: continue
+                val contactDetails = (contactData.phoneNumbers + contactData.emails)
+                    .mapNotNull { it.trim().takeIf(String::isNotEmpty) }
+                    .firstOrNull { it != contactTitle }
+                add(
+                    ContactAttachment(
+                        id = contactId.toString(),
+                        displayName = contactTitle,
+                        details = contactDetails,
+                        formattedContact = formattedContact,
+                    )
+                )
+            }
+        }
+    }.orEmpty()
+}
+
+private fun ContentResolver.formatContactAttachment(uri: Uri): String? {
+    val displayName = queryContactDisplayName(uri)
+    val contactData = queryContactData(uri)
+    return formatContactAttachment(displayName, contactData)
+}
+
+private fun formatContactAttachment(
+    displayName: String?,
+    contactData: ContactAttachmentData,
+): String? {
+    return (listOfNotNull(displayName) + contactData.phoneNumbers + contactData.emails)
+        .mapNotNull { it.trim().takeIf(String::isNotEmpty) }
+        .joinToString(separator = "\n")
+        .takeIf(String::isNotEmpty)
+}
+
+private fun ContentResolver.queryContactDisplayName(uri: Uri): String? = runCatchingExceptions {
+    query(
+        uri,
+        arrayOf(
+            ContactsContract.Contacts.DISPLAY_NAME_PRIMARY,
+        ),
+        null,
+        null,
+        null,
+    )?.use { cursor ->
+        if (cursor.moveToFirst()) {
+            cursor.getStringOrNull(ContactsContract.Contacts.DISPLAY_NAME_PRIMARY)
+        } else {
+            null
+        }
+    }
+}.getOrNull()
+
+private fun ContentResolver.queryContactData(uri: Uri): ContactAttachmentData {
+    val contactDataUri = Uri.withAppendedPath(uri, ContactsContract.Contacts.Data.CONTENT_DIRECTORY)
+    return runCatchingExceptions {
+        query(
+            contactDataUri,
+            arrayOf(
+                ContactsContract.Data.MIMETYPE,
+                ContactsContract.Data.DATA1,
+            ),
+            null,
+            null,
+            null,
+        )?.use { cursor ->
+            val phoneNumbers = mutableListOf<String>()
+            val emails = mutableListOf<String>()
+            while (cursor.moveToNext()) {
+                val value = cursor.getStringOrNull(ContactsContract.Data.DATA1) ?: continue
+                when (cursor.getStringOrNull(ContactsContract.Data.MIMETYPE)) {
+                    ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE -> phoneNumbers.add(value)
+                    ContactsContract.CommonDataKinds.Email.CONTENT_ITEM_TYPE -> emails.add(value)
+                }
+            }
+            ContactAttachmentData(
+                phoneNumbers = phoneNumbers,
+                emails = emails,
+            )
+        }.orEmpty()
+    }.getOrDefault(ContactAttachmentData())
+}
+
+private fun ContactAttachmentData?.orEmpty(): ContactAttachmentData {
+    return this ?: ContactAttachmentData()
+}
+
+private fun Cursor.getStringOrNull(columnName: String): String? {
+    val index = getColumnIndex(columnName)
+    return if (index >= 0 && !isNull(index)) {
+        getString(index)
+    } else {
+        null
+    }
+}
+
+private fun Cursor.getLongOrNull(columnName: String): Long? {
+    val index = getColumnIndex(columnName)
+    return if (index >= 0 && !isNull(index)) {
+        getLong(index)
+    } else {
+        null
+    }
+}
+
+private fun List<String>.firstNotBlankOrNull(): String? {
+    return firstNotNullOfOrNull { it.trim().takeIf(String::isNotEmpty) }
+}
+
+private data class ContactAttachmentData(
+    val phoneNumbers: List<String> = emptyList(),
+    val emails: List<String> = emptyList(),
+)

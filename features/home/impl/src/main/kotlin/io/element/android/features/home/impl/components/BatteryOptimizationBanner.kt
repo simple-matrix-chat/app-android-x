@@ -12,8 +12,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import io.element.android.features.home.impl.R
-import io.element.android.libraries.designsystem.components.Announcement
-import io.element.android.libraries.designsystem.components.AnnouncementType
 import io.element.android.libraries.designsystem.preview.ElementPreview
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
 import io.element.android.libraries.push.api.battery.BatteryOptimizationEvents
@@ -25,15 +23,13 @@ internal fun BatteryOptimizationBanner(
     state: BatteryOptimizationState,
     modifier: Modifier = Modifier,
 ) {
-    Announcement(
-        modifier = modifier.roomListBannerPadding(),
+    MomentHomeBanner(
+        modifier = modifier,
         title = stringResource(R.string.banner_battery_optimization_title_android),
         description = stringResource(R.string.banner_battery_optimization_content_android),
-        type = AnnouncementType.Actionable(
-            actionText = stringResource(R.string.banner_battery_optimization_submit_android),
-            onActionClick = { state.eventSink(BatteryOptimizationEvents.RequestDisableOptimizations) },
-            onDismissClick = { state.eventSink(BatteryOptimizationEvents.Dismiss) },
-        ),
+        actionText = stringResource(R.string.banner_battery_optimization_submit_android),
+        onActionClick = { state.eventSink(BatteryOptimizationEvents.RequestDisableOptimizations) },
+        onDismissClick = { state.eventSink(BatteryOptimizationEvents.Dismiss) },
     )
 }
 

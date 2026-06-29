@@ -32,7 +32,7 @@ fun TimelineItemFileView(
         icon = CompoundIcons.Attachment(),
         iconContentDescription = stringResource(CommonStrings.common_file),
         filename = content.filename,
-        fileExtensionAndSize = content.fileExtensionAndSize,
+        description = stringResource(CommonStrings.action_view),
         caption = content.caption,
         onContentLayoutChange = onContentLayoutChange,
         modifier = modifier,

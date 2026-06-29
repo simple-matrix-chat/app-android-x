@@ -16,16 +16,16 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -38,22 +38,23 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import io.element.android.compound.theme.ElementTheme
-import io.element.android.compound.tokens.generated.CompoundIcons
 import io.element.android.features.home.impl.R
 import io.element.android.libraries.designsystem.preview.ElementPreview
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
-import io.element.android.libraries.designsystem.theme.components.Icon
 import io.element.android.libraries.designsystem.theme.components.Text
 import io.element.android.libraries.testtags.TestTags
 import io.element.android.libraries.testtags.testTag
 
-/**
- * Ref: https://www.figma.com/design/G1xy0HDZKJf5TCRFmKb5d5/Compound-Android-Components?node-id=2191-606
- */
 @Composable
 fun RoomListFiltersView(
     state: RoomListFiltersState,
@@ -94,40 +95,44 @@ fun RoomListFiltersView(
     }
     val previousFilters = remember { mutableStateOf(listOf<RoomListFilter>()) }
     LazyRow(
-        contentPadding = PaddingValues(start = 8.dp, end = 16.dp),
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
         modifier = modifier.fillMaxWidth(),
         state = lazyListState,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(24.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        item("clear_filters") {
-            if (state.hasAnyFilterSelected) {
-                RoomListClearFiltersButton(
-                    modifier = Modifier
-                        .padding(start = 8.dp)
-                        .testTag(TestTags.homeScreenClearFilters),
-                    onClick = {
+        item("all_filter") {
+            RoomListFilterTab(
+                label = stringResource(id = R.string.screen_roomlist_filter_all),
+                selected = state.hasAnyFilterSelected.not(),
+                onClick = {
+                    if (state.hasAnyFilterSelected) {
                         previousFilters.value = state.selectedFilters()
                         onClearFiltersClick()
                         // When clearing filter, we want to ensure that the list
                         // of filters is scrolled to the start.
                         scrollToStart++
                     }
-                )
-            }
+                },
+                modifier = if (state.hasAnyFilterSelected) {
+                    Modifier.testTag(TestTags.homeScreenClearFilters)
+                } else {
+                    Modifier
+                }
+            )
         }
         state.filterSelectionStates.forEachIndexed { i, filterWithSelection ->
             item(filterWithSelection.filter) {
                 val zIndex = (if (previousFilters.value.contains(filterWithSelection.filter)) state.filterSelectionStates.size else 0) - i.toFloat()
-                RoomListFilterView(
+                RoomListFilterTab(
+                    label = stringResource(id = filterWithSelection.filter.stringResource),
                     modifier = Modifier
                         .animateItem()
                         .zIndex(zIndex),
-                    roomListFilter = filterWithSelection.filter,
                     selected = filterWithSelection.isSelected,
                     onClick = {
                         previousFilters.value = state.selectedFilters()
-                        onToggleFilter(it)
+                        onToggleFilter(filterWithSelection.filter)
                         // When selecting a filter, we want to scroll to the start of the list
                         if (filterWithSelection.isSelected.not()) {
                             scrollToStart++
@@ -140,74 +145,57 @@ fun RoomListFiltersView(
 }
 
 @Composable
-private fun RoomListClearFiltersButton(
+private fun RoomListFilterTab(
+    label: String,
+    selected: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Box(
-        modifier = modifier
-            .clip(CircleShape)
-            .background(ElementTheme.colors.bgActionPrimaryRest)
-            .clickable(onClick = onClick)
-            .padding(4.dp)
-    ) {
-        Icon(
-            modifier = Modifier
-                .align(Alignment.Center)
-                .size(16.dp),
-            imageVector = CompoundIcons.Close(),
-            tint = ElementTheme.colors.iconOnSolidPrimary,
-            contentDescription = stringResource(id = R.string.screen_roomlist_clear_filters),
-        )
-    }
-}
-
-@Composable
-private fun RoomListFilterView(
-    roomListFilter: RoomListFilter,
-    selected: Boolean,
-    onClick: (RoomListFilter) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val background = animateColorAsState(
-        targetValue = if (selected) ElementTheme.colors.bgActionPrimaryRest else ElementTheme.colors.bgCanvasDefault,
-        animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
-        label = "chip background colour",
-    )
     val textColour = animateColorAsState(
-        targetValue = if (selected) ElementTheme.colors.textOnSolidPrimary else ElementTheme.colors.textPrimary,
+        targetValue = if (selected) ElementTheme.colors.textPrimary else ElementTheme.colors.textSecondary,
         animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
         label = "chip text colour",
     )
-    val borderColour = animateColorAsState(
-        targetValue = if (selected) Color.Transparent else ElementTheme.colors.borderInteractiveSecondary,
+    val indicatorColour = animateColorAsState(
+        targetValue = if (selected) ElementTheme.colors.textPrimary else Color.Transparent,
         animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
-        label = "chip border colour",
+        label = "filter indicator colour",
     )
 
-    FilterChip(
-        selected = selected,
-        onClick = { onClick(roomListFilter) },
-        modifier = modifier.height(32.dp),
-        shape = CircleShape,
-        colors = FilterChipDefaults.filterChipColors(
-            containerColor = background.value,
-            selectedContainerColor = background.value,
-            labelColor = textColour.value,
-            selectedLabelColor = textColour.value,
-        ),
-        label = {
-            Text(
-                text = stringResource(id = roomListFilter.stringResource),
-                style = ElementTheme.typography.fontBodyMdRegular,
+    Column(
+        modifier = modifier
+            .width(IntrinsicSize.Max)
+            .semantics {
+                role = Role.Tab
+                this.selected = selected
+            }
+            .clickable(
+                role = Role.Tab,
+                onClick = onClick,
             )
-        },
-        border = FilterChipDefaults.filterChipBorder(
-            enabled = true,
-            selected = selected,
-            borderColor = borderColour.value,
-        ),
-    )
+            .padding(vertical = 4.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+        horizontalAlignment = Alignment.Start,
+    ) {
+        Text(
+            text = label,
+            style = if (selected) {
+                ElementTheme.typography.fontBodyLgMedium.copy(fontWeight = FontWeight.SemiBold)
+            } else {
+                ElementTheme.typography.fontBodyLgRegular
+            },
+            color = textColour.value,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(2.dp)
+                .clip(CircleShape)
+                .background(indicatorColour.value)
+        )
+    }
 }
 
 @PreviewsDayNight

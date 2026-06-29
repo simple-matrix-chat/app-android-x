@@ -137,7 +137,7 @@ class FakeJoinedRoom(
         val notificationSettings = roomNotificationSettingsService.getRoomNotificationSettings(
             roomId = roomId,
             isEncrypted = info().isEncrypted.orFalse(),
-            isOneToOne = isDm(),
+            isOneToOne = info().activeMembersCount == 2L,
         ).getOrThrow()
         (roomNotificationSettingsStateFlow as MutableStateFlow).value = RoomNotificationSettingsState.Ready(notificationSettings)
         return Result.success(Unit)

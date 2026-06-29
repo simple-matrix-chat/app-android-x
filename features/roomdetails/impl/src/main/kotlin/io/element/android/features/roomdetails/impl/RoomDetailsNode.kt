@@ -56,6 +56,7 @@ class RoomDetailsNode(
         fun navigateToPollHistory()
         fun navigateToMediaGallery()
         fun navigateToAdminSettings()
+        fun navigateToSecurityAndPrivacy()
         fun navigateToPinnedMessagesList()
         fun navigateToKnockRequestsList()
         fun navigateToRoomMemberDetails(userId: UserId)
@@ -128,6 +129,7 @@ class RoomDetailsNode(
             openPollHistory = callback::navigateToPollHistory,
             openMediaGallery = callback::navigateToMediaGallery,
             openAdminSettings = callback::navigateToAdminSettings,
+            openSecurityAndPrivacy = callback::navigateToSecurityAndPrivacy,
             onJoinCallClick = callback::navigateToRoomCall,
             onPinnedMessagesClick = callback::navigateToPinnedMessagesList,
             onKnockRequestsClick = callback::navigateToKnockRequestsList,

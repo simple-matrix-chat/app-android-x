@@ -28,6 +28,11 @@ interface RoomSelectEntryPoint : FeatureEntryPoint {
 
     interface Callback : Plugin {
         fun onRoomSelected(roomIds: List<RoomId>)
+
+        fun onRoomSelected(roomIds: List<RoomId>, comment: String?) {
+            onRoomSelected(roomIds)
+        }
+
         fun onCancel()
     }
 }

@@ -21,7 +21,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -31,7 +30,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
@@ -45,7 +43,6 @@ import io.element.android.libraries.designsystem.modifiers.onKeyboardContextMenu
 import io.element.android.libraries.designsystem.preview.ElementPreview
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
 import io.element.android.libraries.designsystem.theme.components.CircularProgressIndicator
-import io.element.android.libraries.designsystem.theme.components.HorizontalDivider
 import io.element.android.libraries.designsystem.theme.components.Icon
 import io.element.android.libraries.designsystem.theme.components.IconButton
 import io.element.android.libraries.designsystem.theme.components.Text
@@ -83,7 +80,6 @@ fun VoiceItemView(
         } else {
             Spacer(modifier = Modifier.height(16.dp))
         }
-        HorizontalDivider()
     }
 }
 
@@ -99,11 +95,8 @@ private fun VoiceInfoRow(
 
     Row(
         modifier = Modifier
-            .clip(RoundedCornerShape(12.dp))
-            .background(
-                color = ElementTheme.colors.bgSubtleSecondary,
-                shape = RoundedCornerShape(12.dp),
-            )
+            .background(momentMediaGalleryAttachmentBackgroundColor(), MomentMediaGalleryAttachmentShape)
+            .border(1.dp, momentMediaGalleryAttachmentBorderColor(), MomentMediaGalleryAttachmentShape)
             .combinedClickable(
                 onClick = {},
                 onLongClick = onLongClick,
@@ -111,7 +104,7 @@ private fun VoiceInfoRow(
             )
             .onKeyboardContextMenuAction(onLongClick)
             .fillMaxWidth()
-            .padding(start = 12.dp, end = 36.dp, top = 8.dp, bottom = 8.dp),
+            .padding(start = 2.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         when (state.buttonType) {
@@ -150,6 +143,7 @@ private fun VoiceInfoRow(
                 state.eventSink(VoiceMessageEvent.Seek(it))
             },
             seekEnabled = true,
+            onLongClick = onLongClick,
         )
     }
 }

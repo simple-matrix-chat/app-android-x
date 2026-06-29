@@ -17,12 +17,31 @@ import kotlinx.collections.immutable.ImmutableList
 data class EditUserProfileState(
     val userId: UserId,
     val displayName: String,
+    val username: String,
+    val phoneNumber: String,
+    val status: String,
+    val profileShareText: String?,
     val userAvatarUrl: String?,
     val avatarActions: ImmutableList<AvatarAction>,
     val saveButtonEnabled: Boolean,
     val saveAction: AsyncAction<Unit>,
+    val isLoadingProfileStatus: Boolean,
+    val isLoadingProfileUsername: Boolean,
+    val isLoadingMomentProfile: Boolean,
+    val showProfileUsername: Boolean,
+    val usernameError: EditUserProfileUsernameError?,
     val cameraPermissionState: PermissionsState,
     val canChangeDisplayName: Boolean,
     val canChangeAvatarUrl: Boolean,
     val eventSink: (EditUserProfileEvent) -> Unit
 )
+
+enum class EditUserProfileUsernameError {
+    Required,
+    TooShort,
+    TooLong,
+    Invalid,
+    Taken,
+    Unsupported,
+    SaveFailed,
+}

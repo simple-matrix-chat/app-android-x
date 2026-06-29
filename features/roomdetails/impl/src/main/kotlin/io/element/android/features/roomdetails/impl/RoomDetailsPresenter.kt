@@ -27,6 +27,8 @@ import io.element.android.features.roomcall.api.RoomCallState
 import io.element.android.features.roomdetails.impl.members.details.RoomMemberDetailsPresenter
 import io.element.android.features.roomdetailsedit.api.RoomDetailsEditPermissions
 import io.element.android.features.roomdetailsedit.api.roomDetailsEditPermissions
+import io.element.android.features.securityandprivacy.api.SecurityAndPrivacyPermissions
+import io.element.android.features.securityandprivacy.api.securityAndPrivacyPermissions
 import io.element.android.libraries.androidutils.clipboard.ClipboardHelper
 import io.element.android.libraries.architecture.Presenter
 import io.element.android.libraries.core.coroutine.CoroutineDispatchers
@@ -92,6 +94,7 @@ class RoomDetailsPresenter(
         val roomType = getRoomType(dmMember)
         val roomCallState = roomCallStatePresenter.present()
         val joinedMemberCount by remember { derivedStateOf { roomInfo.joinedMembersCount } }
+        val isSelfDirectRoom = roomInfo.isDirect && roomInfo.activeMembersCount <= 1
 
         val topicState = remember(permissions.editDetailsPermissions.canEditTopic, roomTopic, roomType) {
             val topic = roomTopic
@@ -99,6 +102,13 @@ class RoomDetailsPresenter(
                 !topic.isNullOrBlank() -> RoomTopicState.ExistingTopic(topic)
                 permissions.editDetailsPermissions.canEditTopic && roomType is RoomDetailsType.Room -> RoomTopicState.CanAddTopic
                 else -> RoomTopicState.Hidden
+            }
+        }
+        val canEditBaseInfo = remember(permissions.editDetailsPermissions, roomInfo.isDirect, roomTopic, roomType) {
+            if (roomInfo.isDirect) {
+                permissions.editDetailsPermissions.canEditTopic && !roomTopic.isNullOrBlank()
+            } else {
+                roomType == RoomDetailsType.Room && permissions.editDetailsPermissions.hasAny
             }
         }
 
@@ -120,7 +130,9 @@ class RoomDetailsPresenter(
         fun handleEvent(event: RoomDetailsEvent) {
             when (event) {
                 is RoomDetailsEvent.LeaveRoom -> {
-                    leaveRoomState.eventSink(LeaveRoomEvent.LeaveRoom(room.roomId, needsConfirmation = event.needsConfirmation))
+                    if (!isSelfDirectRoom) {
+                        leaveRoomState.eventSink(LeaveRoomEvent.LeaveRoom(room.roomId, needsConfirmation = event.needsConfirmation))
+                    }
                 }
                 RoomDetailsEvent.MuteNotification -> {
                     scope.launch(dispatchers.io) {
@@ -129,7 +141,11 @@ class RoomDetailsPresenter(
                 }
                 RoomDetailsEvent.UnmuteNotification -> {
                     scope.launch(dispatchers.io) {
-                        notificationSettingsService.unmuteRoom(room.roomId, isEncrypted = false, room.isDm())
+                        notificationSettingsService.unmuteRoom(
+                            roomId = room.roomId,
+                            isEncrypted = roomInfo.isEncrypted == true,
+                            isOneToOne = roomInfo.activeMembersCount == 2L,
+                        )
                     }
                 }
                 is RoomDetailsEvent.SetFavorite -> scope.setFavorite(event.isFavorite)
@@ -151,9 +167,9 @@ class RoomDetailsPresenter(
             roomAvatarUrl = roomAvatar,
             roomTopic = topicState,
             memberCount = joinedMemberCount,
-            isEncrypted = false,
-            canInvite = permissions.canInvite,
-            canEdit = roomType == RoomDetailsType.Room && permissions.editDetailsPermissions.hasAny,
+            isEncrypted = roomInfo.isEncrypted == true,
+            canInvite = permissions.canInvite && !roomInfo.isDirect && !isDm,
+            canEdit = canEditBaseInfo,
             roomCallState = roomCallState,
             roomType = roomType,
             roomMemberDetailsState = roomMemberDetailsState,
@@ -161,6 +177,7 @@ class RoomDetailsPresenter(
             roomNotificationSettings = roomNotificationSettingsState.roomNotificationSettings(),
             isFavorite = isFavorite,
             displayRolesAndPermissionsSettings = !isDm && permissions.canEditRolesAndPermissions,
+            displaySecurityAndPrivacySettings = !isDm && permissions.securityAndPrivacyPermissions.hasAny(roomInfo.isSpace, joinRule),
             isPublic = joinRule == JoinRule.Public,
             heroes = roomInfo.heroes,
             pinnedMessagesCount = pinnedMessagesCount,
@@ -169,6 +186,7 @@ class RoomDetailsPresenter(
             knockRequestsCount = knockRequestsCount,
             hasMemberVerificationViolations = false,
             canReportRoom = canReportRoom,
+            canLeaveRoom = !isSelfDirectRoom,
             isTombstoned = roomInfo.successorRoom != null,
             showDebugInfo = isDeveloperModeEnabled,
             roomVersion = roomInfo.roomVersion,
@@ -197,6 +215,7 @@ class RoomDetailsPresenter(
         val canInvite: Boolean = false,
         val editDetailsPermissions: RoomDetailsEditPermissions = RoomDetailsEditPermissions.DEFAULT,
         val knockRequestsPermissions: KnockRequestPermissions = KnockRequestPermissions.DEFAULT,
+        val securityAndPrivacyPermissions: SecurityAndPrivacyPermissions = SecurityAndPrivacyPermissions.DEFAULT,
         val canEditRolesAndPermissions: Boolean = false,
     )
 
@@ -207,6 +226,7 @@ class RoomDetailsPresenter(
                 canInvite = perms.canOwnUserInvite(),
                 editDetailsPermissions = perms.roomDetailsEditPermissions(),
                 knockRequestsPermissions = perms.knockRequestPermissions(),
+                securityAndPrivacyPermissions = perms.securityAndPrivacyPermissions(),
                 canEditRolesAndPermissions = perms.canEditRolesAndPermissions(),
             )
         }

@@ -9,11 +9,13 @@
 package io.element.android.features.home.impl.model
 
 import com.google.common.truth.Truth.assertThat
+import io.element.android.features.home.impl.filters.MomentHomeRoomType
 import io.element.android.libraries.designsystem.components.avatar.AvatarData
 import io.element.android.libraries.designsystem.components.avatar.AvatarSize
 import io.element.android.libraries.matrix.api.room.RoomNotificationMode
 import io.element.android.libraries.matrix.test.A_ROOM_ID
 import io.element.android.libraries.matrix.test.A_ROOM_NAME
+import io.element.android.libraries.matrix.test.A_USER_ID
 import kotlinx.collections.immutable.toImmutableList
 import org.junit.Test
 
@@ -82,11 +84,17 @@ internal fun createRoomListRoomSummary(
     isMarkedUnread: Boolean = false,
     userDefinedNotificationMode: RoomNotificationMode? = null,
     isFavorite: Boolean = false,
+    isMuted: Boolean = userDefinedNotificationMode == RoomNotificationMode.MUTE,
+    isDirect: Boolean = false,
+    isDm: Boolean = false,
+    isDirectUserBlocked: Boolean = false,
     displayType: RoomSummaryDisplayType = RoomSummaryDisplayType.ROOM,
     heroes: List<AvatarData> = emptyList(),
     timestamp: String? = null,
     isTombstoned: Boolean = false,
     isSpace: Boolean = false,
+    momentHomeRoomType: MomentHomeRoomType = MomentHomeRoomType.Unknown,
+    isArchived: Boolean = false,
 ) = RoomListRoomSummary(
     id = A_ROOM_ID.value,
     roomId = A_ROOM_ID,
@@ -102,12 +110,20 @@ internal fun createRoomListRoomSummary(
     userDefinedNotificationMode = userDefinedNotificationMode,
     hasRoomCall = false,
     activeCallIntent = null,
-    isDirect = false,
+    isDirect = isDirect,
+    isEncrypted = false,
+    isOneToOne = isDm,
     isFavorite = isFavorite,
+    isMuted = isMuted,
+    directUserId = A_USER_ID.takeIf { isDirect && isDm },
+    directUserDisplayName = A_USER_ID.value.takeIf { isDirect && isDm },
+    isDirectUserBlocked = isDirectUserBlocked,
     canonicalAlias = null,
     inviteSender = null,
-    isDm = false,
+    isDm = isDm,
     heroes = heroes.toImmutableList(),
     isTombstoned = isTombstoned,
-    isSpace = isSpace
+    isSpace = isSpace,
+    momentHomeRoomType = momentHomeRoomType,
+    isArchived = isArchived,
 )

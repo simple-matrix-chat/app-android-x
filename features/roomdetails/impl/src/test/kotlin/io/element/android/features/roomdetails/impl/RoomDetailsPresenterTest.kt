@@ -119,6 +119,7 @@ class RoomDetailsPresenterTest {
             assertThat(initialState.roomAvatarUrl).isEqualTo(room.info().avatarUrl)
             assertThat(initialState.roomTopic).isEqualTo(RoomTopicState.ExistingTopic(room.info().topic!!))
             assertThat(initialState.memberCount).isEqualTo(room.info().joinedMembersCount)
+            assertThat(initialState.isEncrypted).isEqualTo(room.info().isEncrypted == true)
             assertThat(initialState.pinnedMessagesCount).isEqualTo(0)
             assertThat(initialState.showDebugInfo).isFalse()
 
@@ -146,6 +147,7 @@ class RoomDetailsPresenterTest {
             assertThat(updatedState.roomName).isEqualTo(roomInfo.name)
             assertThat(updatedState.roomAvatarUrl).isEqualTo(roomInfo.avatarUrl)
             assertThat(updatedState.roomTopic).isEqualTo(RoomTopicState.ExistingTopic(roomInfo.topic!!))
+            assertThat(updatedState.isEncrypted).isEqualTo(roomInfo.isEncrypted == true)
             assertThat(updatedState.pinnedMessagesCount).isEqualTo(roomInfo.pinnedEventIds.size)
             cancelAndIgnoreRemainingEvents()
         }
@@ -224,6 +226,23 @@ class RoomDetailsPresenterTest {
             ),
         )
         val presenter = createRoomDetailsPresenter(room)
+        presenter.testWithLifecycleOwner(lifecycleOwner = fakeLifecycleOwner) {
+            assertThat(awaitItem().canInvite).isFalse()
+
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `present - initial state when user can invite but room is direct`() = runTest {
+        val room = aJoinedRoom(
+            roomPermissions = roomPermissions(
+                canInvite = true,
+            ),
+        ).apply {
+            givenRoomInfo(aRoomInfo(isDirect = true, isDm = true))
+        }
+        val presenter = createRoomDetailsPresenter(room, dispatchers = testCoroutineDispatchers())
         presenter.testWithLifecycleOwner(lifecycleOwner = fakeLifecycleOwner) {
             assertThat(awaitItem().canInvite).isFalse()
 
@@ -350,6 +369,51 @@ class RoomDetailsPresenterTest {
     }
 
     @Test
+    fun `present - self direct room edit is available only when a topic exists`() = runTest {
+        val room = aJoinedRoom(
+            topic = A_ROOM_TOPIC,
+            isDirect = true,
+            activeMemberCount = 1,
+            roomPermissions = roomPermissions(
+                canChangeName = true,
+                canChangeTopic = true,
+                canChangeAvatar = true,
+            ),
+        ).apply {
+            givenRoomInfo(
+                aRoomInfo(
+                    isDirect = true,
+                    isDm = true,
+                    activeMembersCount = 1,
+                    topic = A_ROOM_TOPIC,
+                )
+            )
+        }
+        val presenter = createRoomDetailsPresenter(room, dispatchers = testCoroutineDispatchers())
+        presenter.testWithLifecycleOwner(lifecycleOwner = fakeLifecycleOwner) {
+            // Initially false.
+            assertThat(awaitItem().canEdit).isFalse()
+            // Then the asynchronous permission check completes and the existing topic can be edited.
+            assertThat(awaitItem().canEdit).isTrue()
+
+            room.givenRoomInfo(
+                aRoomInfo(
+                    isDirect = true,
+                    isDm = true,
+                    activeMembersCount = 1,
+                    topic = null,
+                )
+            )
+            val updatedState = consumeItemsUntilPredicate {
+                !it.canEdit && it.roomTopic == RoomTopicState.CanAddTopic
+            }.last()
+            assertThat(updatedState.canEdit).isFalse()
+
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
     fun `present - initial state when user can edit no attributes`() = runTest {
         val room = aJoinedRoom(
             roomPermissions = roomPermissions(
@@ -423,6 +487,35 @@ class RoomDetailsPresenterTest {
     }
 
     @Test
+    fun `present - self direct room can not be left`() = runTest {
+        val leaveRoomEventRecorder = EventsRecorder<LeaveRoomEvent>(expectEvents = false)
+        val room = aJoinedRoom(
+            isDirect = true,
+            activeMemberCount = 1,
+        ).apply {
+            givenRoomInfo(
+                aRoomInfo(
+                    isDirect = true,
+                    isDm = true,
+                    activeMembersCount = 1,
+                )
+            )
+        }
+        val presenter = createRoomDetailsPresenter(
+            room = room,
+            leaveRoomState = aLeaveRoomState(eventSink = leaveRoomEventRecorder),
+        )
+        presenter.testWithLifecycleOwner(lifecycleOwner = fakeLifecycleOwner) {
+            with(awaitItem()) {
+                assertThat(canLeaveRoom).isFalse()
+                eventSink(RoomDetailsEvent.LeaveRoom(needsConfirmation = true))
+            }
+            leaveRoomEventRecorder.assertEmpty()
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
     fun `present - notification mode changes`() = runTest {
         val notificationSettingsService = FakeNotificationSettingsService()
         val room = aJoinedRoom(
@@ -476,11 +569,14 @@ class RoomDetailsPresenterTest {
     fun `present - unmute room notifications`() = runTest {
         val notificationSettingsService = FakeNotificationSettingsService(
             initialRoomMode = RoomNotificationMode.MENTIONS_AND_KEYWORDS_ONLY,
-            initialEncryptedGroupDefaultMode = RoomNotificationMode.ALL_MESSAGES
+            initialRoomModeIsDefault = false,
+            initialEncryptedOneToOneDefaultMode = RoomNotificationMode.ALL_MESSAGES,
         )
         val room = aJoinedRoom(
             notificationSettingsService = notificationSettingsService,
             roomPermissions = roomPermissions(),
+            isEncrypted = true,
+            activeMemberCount = 2,
         )
         val presenter = createRoomDetailsPresenter(
             room = room,
@@ -493,6 +589,13 @@ class RoomDetailsPresenterTest {
             }.last()
             assertThat(updatedState.roomNotificationSettings?.mode).isEqualTo(
                 RoomNotificationMode.ALL_MESSAGES
+            )
+            assertThat(notificationSettingsService.lastUnmuteRoomRequest).isEqualTo(
+                FakeNotificationSettingsService.RoomNotificationSettingsRequest(
+                    roomId = room.roomId,
+                    isEncrypted = true,
+                    isOneToOne = true,
+                )
             )
             cancelAndIgnoreRemainingEvents()
         }

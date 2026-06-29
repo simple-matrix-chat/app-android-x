@@ -14,60 +14,53 @@ import org.junit.Test
 
 class RoomListFiltersEmptyStateResourcesTest {
     @Test
-    fun `fromSelectedFilters should return null when selectedFilters is empty`() {
+    fun `fromSelectedFilters should return all empty resources when selectedFilters is empty`() {
         val selectedFilters = emptyList<RoomListFilter>()
         val result = RoomListFiltersEmptyStateResources.fromSelectedFilters(selectedFilters, isSpaceFilterSelected = false)
-        assertThat(result).isNull()
+        assertThat(result).isNotNull()
+        assertThat(result?.title).isEqualTo(R.string.screen_moment_home_empty_all_title)
+        assertThat(result?.subtitle).isEqualTo(R.string.screen_moment_home_empty_all_message)
     }
 
     @Test
-    fun `fromSelectedFilters should return exact RoomListFiltersEmptyStateResources when selectedFilters has only unread filter`() {
-        val selectedFilters = listOf(RoomListFilter.Unread)
+    fun `fromSelectedFilters should return exact RoomListFiltersEmptyStateResources when selectedFilters has only direct filter`() {
+        val selectedFilters = listOf(RoomListFilter.Direct)
         val result = RoomListFiltersEmptyStateResources.fromSelectedFilters(selectedFilters, isSpaceFilterSelected = false)
         assertThat(result).isNotNull()
-        assertThat(result?.title).isEqualTo(R.string.screen_roomlist_filter_unreads_empty_state_title)
-        assertThat(result?.subtitle).isEqualTo(R.string.screen_roomlist_filter_mixed_empty_state_subtitle)
+        assertThat(result?.title).isEqualTo(R.string.screen_moment_home_empty_direct_title)
+        assertThat(result?.subtitle).isEqualTo(R.string.screen_moment_home_empty_direct_message)
     }
 
     @Test
-    fun `fromSelectedFilters should return exact RoomListFiltersEmptyStateResources when selectedFilters has only people filter`() {
-        val selectedFilters = listOf(RoomListFilter.People)
+    fun `fromSelectedFilters should return exact RoomListFiltersEmptyStateResources when selectedFilters has only groups filter`() {
+        val selectedFilters = listOf(RoomListFilter.Groups)
         val result = RoomListFiltersEmptyStateResources.fromSelectedFilters(selectedFilters, isSpaceFilterSelected = false)
         assertThat(result).isNotNull()
-        assertThat(result?.title).isEqualTo(R.string.screen_roomlist_filter_people_empty_state_title)
-        assertThat(result?.subtitle).isEqualTo(R.string.screen_roomlist_filter_mixed_empty_state_subtitle)
+        assertThat(result?.title).isEqualTo(R.string.screen_moment_home_empty_all_title)
+        assertThat(result?.subtitle).isEqualTo(R.string.screen_moment_home_empty_all_message)
     }
 
     @Test
-    fun `fromSelectedFilters should return exact RoomListFiltersEmptyStateResources when selectedFilters has only rooms filter`() {
-        val selectedFilters = listOf(RoomListFilter.Rooms)
+    fun `fromSelectedFilters should return exact RoomListFiltersEmptyStateResources when selectedFilters has only channels filter`() {
+        val selectedFilters = listOf(RoomListFilter.Channels)
         val result = RoomListFiltersEmptyStateResources.fromSelectedFilters(selectedFilters, isSpaceFilterSelected = false)
         assertThat(result).isNotNull()
-        assertThat(result?.title).isEqualTo(R.string.screen_roomlist_filter_rooms_empty_state_title)
-        assertThat(result?.subtitle).isEqualTo(R.string.screen_roomlist_filter_mixed_empty_state_subtitle)
+        assertThat(result?.title).isEqualTo(R.string.screen_moment_home_empty_channels_title)
+        assertThat(result?.subtitle).isEqualTo(R.string.screen_moment_home_empty_channels_message)
     }
 
     @Test
-    fun `fromSelectedFilters should return exact RoomListFiltersEmptyStateResources when selectedFilters has only favourites filter`() {
-        val selectedFilters = listOf(RoomListFilter.Favourites)
+    fun `fromSelectedFilters should return exact RoomListFiltersEmptyStateResources when selectedFilters has only archived filter`() {
+        val selectedFilters = listOf(RoomListFilter.Archived)
         val result = RoomListFiltersEmptyStateResources.fromSelectedFilters(selectedFilters, isSpaceFilterSelected = false)
         assertThat(result).isNotNull()
-        assertThat(result?.title).isEqualTo(R.string.screen_roomlist_filter_favourites_empty_state_title)
-        assertThat(result?.subtitle).isEqualTo(R.string.screen_roomlist_filter_favourites_empty_state_subtitle)
-    }
-
-    @Test
-    fun `fromSelectedFilters should return exact RoomListFiltersEmptyStateResources when selectedFilters has only invites filter`() {
-        val selectedFilters = listOf(RoomListFilter.Invites)
-        val result = RoomListFiltersEmptyStateResources.fromSelectedFilters(selectedFilters, isSpaceFilterSelected = false)
-        assertThat(result).isNotNull()
-        assertThat(result?.title).isEqualTo(R.string.screen_roomlist_filter_invites_empty_state_title)
-        assertThat(result?.subtitle).isEqualTo(R.string.screen_roomlist_filter_mixed_empty_state_subtitle)
+        assertThat(result?.title).isEqualTo(R.string.screen_moment_home_empty_archived_title)
+        assertThat(result?.subtitle).isEqualTo(R.string.screen_moment_home_empty_archived_message)
     }
 
     @Test
     fun `fromSelectedFilters should return exact RoomListFiltersEmptyStateResources when selectedFilters has multiple filters`() {
-        val selectedFilters = listOf(RoomListFilter.Unread, RoomListFilter.People, RoomListFilter.Rooms, RoomListFilter.Favourites)
+        val selectedFilters = listOf(RoomListFilter.Direct, RoomListFilter.Groups)
         val result = RoomListFiltersEmptyStateResources.fromSelectedFilters(selectedFilters, isSpaceFilterSelected = false)
         assertThat(result).isNotNull()
         assertThat(result?.title).isEqualTo(R.string.screen_roomlist_filter_mixed_empty_state_title)

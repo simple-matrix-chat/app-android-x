@@ -24,4 +24,19 @@ data class RoomListFiltersState(
             .map { it.filter }
             .toImmutableList()
     }
+
+    fun selectedFilter(): RoomListFilter? {
+        return filterSelectionStates.firstOrNull { it.isSelected }?.filter
+    }
+
+    fun withArchivedFilterVisibility(visible: Boolean): RoomListFiltersState {
+        if (visible) {
+            return this
+        }
+        return copy(
+            filterSelectionStates = filterSelectionStates
+                .filterNot { it.filter == RoomListFilter.Archived }
+                .toImmutableList()
+        )
+    }
 }

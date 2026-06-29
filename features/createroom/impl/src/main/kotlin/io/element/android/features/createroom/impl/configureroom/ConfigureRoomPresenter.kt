@@ -34,6 +34,7 @@ import io.element.android.libraries.featureflag.api.FeatureFlags
 import io.element.android.libraries.matrix.api.MatrixClient
 import io.element.android.libraries.matrix.api.core.RoomId
 import io.element.android.libraries.matrix.api.createroom.CreateRoomParameters
+import io.element.android.libraries.matrix.api.createroom.MomentRoomKind
 import io.element.android.libraries.matrix.api.createroom.RoomPreset
 import io.element.android.libraries.matrix.api.room.alias.RoomAliasHelper
 import io.element.android.libraries.matrix.api.room.history.RoomHistoryVisibility
@@ -65,6 +66,7 @@ import kotlin.time.Duration.Companion.seconds
 class ConfigureRoomPresenter(
     @Assisted private val isSpace: Boolean,
     @Assisted private val initialParentSpaceId: RoomId?,
+    @Assisted private val momentRoomKind: MomentRoomKind?,
     private val dataStore: CreateRoomConfigStore,
     private val matrixClient: MatrixClient,
     private val mediaPickerProvider: PickerProvider,
@@ -77,7 +79,7 @@ class ConfigureRoomPresenter(
 ) : Presenter<ConfigureRoomState> {
     @AssistedFactory
     interface Factory {
-        fun create(isSpace: Boolean, initialParentSpaceId: RoomId?): ConfigureRoomPresenter
+        fun create(isSpace: Boolean, initialParentSpaceId: RoomId?, momentRoomKind: MomentRoomKind?): ConfigureRoomPresenter
     }
 
     private val cameraPermissionPresenter: PermissionsPresenter = permissionsPresenterFactory.create(android.Manifest.permission.CAMERA)
@@ -114,6 +116,9 @@ class ConfigureRoomPresenter(
 
         var spaces by remember { mutableStateOf<ImmutableList<SpaceRoom>>(persistentListOf()) }
         LaunchedEffect(Unit) {
+            if (momentRoomKind == MomentRoomKind.Channel && createRoomConfig.visibilityState is RoomVisibilityState.Private) {
+                dataStore.setJoinRule(JoinRuleItem.PublicVisibility.Public)
+            }
             spaces = matrixClient.spaceService.editableSpaces().getOrElse { emptyList() }.toImmutableList()
             val parentSpace = spaces.find { it.roomId == initialParentSpaceId }
             parentSpace?.let {
@@ -251,13 +256,14 @@ class ConfigureRoomPresenter(
                         avatar = avatarUrl,
                         roomAliasName = config.visibilityState.roomAddress(),
                         isSpace = isSpace,
+                        momentRoomKind = momentRoomKind,
                     )
                 }
                 is RoomVisibilityState.Private -> {
                     CreateRoomParameters(
                         name = config.roomName,
                         topic = config.topic,
-                        isEncrypted = MatrixE2EEConfig.ENABLED,
+                        isEncrypted = momentRoomKind == null && MatrixE2EEConfig.ENABLED,
                         isDirect = false,
                         visibility = RoomVisibility.Private,
                         historyVisibilityOverride = RoomHistoryVisibility.Invited,
@@ -268,6 +274,7 @@ class ConfigureRoomPresenter(
                         invite = config.invites.map { it.userId },
                         avatar = avatarUrl,
                         isSpace = isSpace,
+                        momentRoomKind = momentRoomKind,
                     )
                 }
             }

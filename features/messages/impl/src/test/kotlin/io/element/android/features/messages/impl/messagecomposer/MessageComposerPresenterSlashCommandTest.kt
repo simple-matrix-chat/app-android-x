@@ -9,6 +9,7 @@
 
 package io.element.android.features.messages.impl.messagecomposer
 
+import android.content.Context
 import android.net.Uri
 import app.cash.turbine.ReceiveTurbine
 import com.google.common.truth.Truth.assertThat
@@ -32,6 +33,7 @@ import io.element.android.libraries.matrix.api.timeline.Timeline
 import io.element.android.libraries.matrix.test.A_FAILURE_REASON
 import io.element.android.libraries.matrix.test.A_MESSAGE
 import io.element.android.libraries.matrix.test.A_USER_ID
+import io.element.android.libraries.matrix.test.FakeMatrixClient
 import io.element.android.libraries.matrix.test.permalink.FakePermalinkBuilder
 import io.element.android.libraries.matrix.test.permalink.FakePermalinkParser
 import io.element.android.libraries.matrix.test.room.FakeJoinedRoom
@@ -51,6 +53,9 @@ import io.element.android.libraries.preferences.api.store.SessionPreferencesStor
 import io.element.android.libraries.preferences.api.store.VideoCompressionPreset
 import io.element.android.libraries.preferences.test.InMemorySessionPreferencesStore
 import io.element.android.libraries.push.test.notifications.conversations.FakeNotificationConversationService
+import io.element.android.libraries.recentemojis.api.AddRecentEmoji
+import io.element.android.libraries.recentemojis.api.GetRecentEmojis
+import io.element.android.libraries.recentemojis.test.FakeEmojibaseProvider
 import io.element.android.libraries.slashcommands.api.SlashCommand
 import io.element.android.libraries.slashcommands.api.SlashCommandService
 import io.element.android.libraries.slashcommands.test.FakeSlashCommandService
@@ -63,6 +68,7 @@ import io.element.android.tests.testutils.lambda.lambdaRecorder
 import io.element.android.tests.testutils.lambda.value
 import io.element.android.tests.testutils.test
 import io.mockk.mockk
+import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -83,6 +89,7 @@ class MessageComposerPresenterSlashCommandTest {
     private val localMediaFactory = FakeLocalMediaFactory(mockMediaUrl)
     private val analyticsService = FakeAnalyticsService()
     private val notificationConversationService = FakeNotificationConversationService()
+    private val context = mockk<Context>(relaxed = true)
 
     @Test
     fun `present - initial state`() = runTest {
@@ -273,10 +280,14 @@ class MessageComposerPresenterSlashCommandTest {
         mediaOptimizationConfigProvider: FakeMediaOptimizationConfigProvider = FakeMediaOptimizationConfigProvider(),
         isInThread: Boolean = false,
         slashCommandService: SlashCommandService = FakeSlashCommandService(),
+        getRecentEmojis: GetRecentEmojis = GetRecentEmojis { Result.success(persistentListOf()) },
+        addRecentEmoji: AddRecentEmoji = AddRecentEmoji { Result.success(Unit) },
     ) = MessageComposerPresenter(
         navigator = navigator,
         sessionCoroutineScope = this,
         isInThread = isInThread,
+        context = context,
+        matrixClient = FakeMatrixClient(),
         room = room,
         mediaPickerProvider = pickerProvider,
         sessionPreferencesStore = sessionPreferencesStore,
@@ -311,6 +322,9 @@ class MessageComposerPresenterSlashCommandTest {
         mediaOptimizationConfigProvider = mediaOptimizationConfigProvider,
         notificationConversationService = notificationConversationService,
         slashCommandService = slashCommandService,
+        emojibaseProvider = FakeEmojibaseProvider(),
+        getRecentEmojis = getRecentEmojis,
+        addRecentEmoji = addRecentEmoji,
     ).apply {
         isTesting = true
         showTextFormatting = isRichTextEditorEnabled

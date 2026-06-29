@@ -38,7 +38,9 @@ import io.element.android.libraries.designsystem.preview.PreviewsDayNight
 import io.element.android.libraries.matrix.ui.media.MediaRequestData
 import io.element.android.libraries.ui.strings.CommonStrings
 
-private const val STICKER_SIZE_IN_DP = 128
+private const val STICKER_MIN_HEIGHT_IN_DP = 100
+private const val STICKER_MAX_HEIGHT_IN_DP = 300
+private const val STICKER_DEFAULT_ASPECT_RATIO = 1f
 
 @Composable
 fun TimelineItemStickerView(
@@ -53,11 +55,12 @@ fun TimelineItemStickerView(
     Column(
         modifier = modifier.semantics { contentDescription = description },
     ) {
+        val aspectRatio = content.aspectRatio ?: STICKER_DEFAULT_ASPECT_RATIO
         TimelineItemAspectRatioBox(
             modifier = Modifier.blurHashBackground(content.blurhash, alpha = 0.9f),
-            aspectRatio = coerceRatioWhenHidingContent(content.aspectRatio, hideMediaContent),
-            minHeight = STICKER_SIZE_IN_DP,
-            maxHeight = STICKER_SIZE_IN_DP,
+            aspectRatio = coerceRatioWhenHidingContent(aspectRatio, hideMediaContent),
+            minHeight = STICKER_MIN_HEIGHT_IN_DP,
+            maxHeight = STICKER_MAX_HEIGHT_IN_DP,
         ) {
             ProtectedView(
                 hideContent = hideMediaContent,

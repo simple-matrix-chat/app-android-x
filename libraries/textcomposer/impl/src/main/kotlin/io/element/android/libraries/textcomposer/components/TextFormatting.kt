@@ -39,6 +39,7 @@ import uniffi.wysiwyg_composer.ComposerAction
 internal fun TextFormatting(
     state: RichTextEditorState,
     modifier: Modifier = Modifier,
+    usesMomentStyle: Boolean = false,
 ) {
     val scrollState = rememberScrollState()
     val coroutineScope = rememberCoroutineScope()
@@ -108,28 +109,32 @@ internal fun TextFormatting(
             toggleable = true,
             onClick = { onInlineFormatClick(InlineFormat.Bold) },
             imageVector = CompoundIcons.Bold(),
-            contentDescription = stringResource(R.string.rich_text_editor_format_bold)
+            contentDescription = stringResource(R.string.rich_text_editor_format_bold),
+            usesMomentStyle = usesMomentStyle,
         )
         FormattingOption(
             state = state.actions[ComposerAction.ITALIC].toButtonState(),
             toggleable = true,
             onClick = { onInlineFormatClick(InlineFormat.Italic) },
             imageVector = CompoundIcons.Italic(),
-            contentDescription = stringResource(R.string.rich_text_editor_format_italic)
+            contentDescription = stringResource(R.string.rich_text_editor_format_italic),
+            usesMomentStyle = usesMomentStyle,
         )
         FormattingOption(
             state = state.actions[ComposerAction.UNDERLINE].toButtonState(),
             toggleable = true,
             onClick = { onInlineFormatClick(InlineFormat.Underline) },
             imageVector = CompoundIcons.Underline(),
-            contentDescription = stringResource(R.string.rich_text_editor_format_underline)
+            contentDescription = stringResource(R.string.rich_text_editor_format_underline),
+            usesMomentStyle = usesMomentStyle,
         )
         FormattingOption(
             state = state.actions[ComposerAction.STRIKE_THROUGH].toButtonState(),
             toggleable = true,
             onClick = { onInlineFormatClick(InlineFormat.StrikeThrough) },
             imageVector = CompoundIcons.Strikethrough(),
-            contentDescription = stringResource(R.string.rich_text_editor_format_strikethrough)
+            contentDescription = stringResource(R.string.rich_text_editor_format_strikethrough),
+            usesMomentStyle = usesMomentStyle,
         )
 
         var linkDialogAction by remember { mutableStateOf<LinkAction?>(null) }
@@ -149,7 +154,8 @@ internal fun TextFormatting(
             toggleable = true,
             onClick = { linkDialogAction = state.linkAction },
             imageVector = CompoundIcons.Link(),
-            contentDescription = stringResource(R.string.rich_text_editor_link)
+            contentDescription = stringResource(R.string.rich_text_editor_link),
+            usesMomentStyle = usesMomentStyle,
         )
 
         FormattingOption(
@@ -157,49 +163,56 @@ internal fun TextFormatting(
             toggleable = true,
             onClick = { onToggleListClick(ordered = false) },
             imageVector = CompoundIcons.ListBulleted(),
-            contentDescription = stringResource(R.string.rich_text_editor_bullet_list)
+            contentDescription = stringResource(R.string.rich_text_editor_bullet_list),
+            usesMomentStyle = usesMomentStyle,
         )
         FormattingOption(
             state = state.actions[ComposerAction.ORDERED_LIST].toButtonState(),
             toggleable = true,
             onClick = { onToggleListClick(ordered = true) },
             imageVector = CompoundIcons.ListNumbered(),
-            contentDescription = stringResource(R.string.rich_text_editor_numbered_list)
+            contentDescription = stringResource(R.string.rich_text_editor_numbered_list),
+            usesMomentStyle = usesMomentStyle,
         )
         FormattingOption(
             state = state.actions[ComposerAction.INDENT].toButtonState(),
             toggleable = false,
             onClick = { onIndentClick() },
             imageVector = CompoundIcons.IndentIncrease(),
-            contentDescription = stringResource(R.string.rich_text_editor_indent)
+            contentDescription = stringResource(R.string.rich_text_editor_indent),
+            usesMomentStyle = usesMomentStyle,
         )
         FormattingOption(
             state = state.actions[ComposerAction.UNINDENT].toButtonState(),
             toggleable = false,
             onClick = { onUnindentClick() },
             imageVector = CompoundIcons.IndentDecrease(),
-            contentDescription = stringResource(R.string.rich_text_editor_unindent)
+            contentDescription = stringResource(R.string.rich_text_editor_unindent),
+            usesMomentStyle = usesMomentStyle,
         )
         FormattingOption(
             state = state.actions[ComposerAction.INLINE_CODE].toButtonState(),
             toggleable = true,
             onClick = { onInlineFormatClick(InlineFormat.InlineCode) },
             imageVector = CompoundIcons.InlineCode(),
-            contentDescription = stringResource(R.string.rich_text_editor_inline_code)
+            contentDescription = stringResource(R.string.rich_text_editor_inline_code),
+            usesMomentStyle = usesMomentStyle,
         )
         FormattingOption(
             state = state.actions[ComposerAction.CODE_BLOCK].toButtonState(),
             toggleable = true,
             onClick = { onCodeBlockClick() },
             imageVector = CompoundIcons.Code(),
-            contentDescription = stringResource(R.string.rich_text_editor_code_block)
+            contentDescription = stringResource(R.string.rich_text_editor_code_block),
+            usesMomentStyle = usesMomentStyle,
         )
         FormattingOption(
             state = state.actions[ComposerAction.QUOTE].toButtonState(),
             toggleable = true,
             onClick = { onQuoteClick() },
             imageVector = CompoundIcons.Quote(),
-            contentDescription = stringResource(R.string.rich_text_editor_quote)
+            contentDescription = stringResource(R.string.rich_text_editor_quote),
+            usesMomentStyle = usesMomentStyle,
         )
     }
 }

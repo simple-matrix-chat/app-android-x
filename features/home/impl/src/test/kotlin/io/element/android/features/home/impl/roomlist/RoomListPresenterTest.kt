@@ -15,8 +15,14 @@ import io.element.android.features.announcement.api.AnnouncementService
 import io.element.android.features.home.impl.FakeDateTimeObserver
 import io.element.android.features.home.impl.datasource.RoomListDataSource
 import io.element.android.features.home.impl.datasource.aRoomListRoomSummaryFactory
+import io.element.android.features.home.impl.filters.MomentHomeMuteDuration
+import io.element.android.features.home.impl.filters.MomentHomePreferencesStore
+import io.element.android.features.home.impl.filters.MomentHomeRoomType
+import io.element.android.features.home.impl.filters.MomentHomeRoomTypeService
+import io.element.android.features.home.impl.filters.MomentMutedChatsStore
 import io.element.android.features.home.impl.filters.RoomListFiltersState
 import io.element.android.features.home.impl.filters.aRoomListFiltersState
+import io.element.android.features.home.impl.model.RoomListRoomSummary
 import io.element.android.features.home.impl.model.createRoomListRoomSummary
 import io.element.android.features.home.impl.search.RoomListSearchEvent
 import io.element.android.features.home.impl.search.RoomListSearchState
@@ -40,14 +46,17 @@ import io.element.android.libraries.fullscreenintent.api.aFullScreenIntentPermis
 import io.element.android.libraries.matrix.api.MatrixClient
 import io.element.android.libraries.matrix.api.core.RoomId
 import io.element.android.libraries.matrix.api.core.SessionId
+import io.element.android.libraries.matrix.api.core.UserId
 import io.element.android.libraries.matrix.api.room.CurrentUserMembership
 import io.element.android.libraries.matrix.api.room.RoomNotificationMode
 import io.element.android.libraries.matrix.api.roomlist.RoomList
 import io.element.android.libraries.matrix.api.timeline.ReceiptType
+import io.element.android.libraries.matrix.api.user.MatrixUser
 import io.element.android.libraries.matrix.test.A_ROOM_ID
 import io.element.android.libraries.matrix.test.A_ROOM_ID_2
 import io.element.android.libraries.matrix.test.A_ROOM_ID_3
 import io.element.android.libraries.matrix.test.A_SESSION_ID
+import io.element.android.libraries.matrix.test.A_USER_ID
 import io.element.android.libraries.matrix.test.FakeMatrixClient
 import io.element.android.libraries.matrix.test.notificationsettings.FakeNotificationSettingsService
 import io.element.android.libraries.matrix.test.room.FakeBaseRoom
@@ -74,8 +83,10 @@ import io.element.android.tests.testutils.lambda.lambdaRecorder
 import io.element.android.tests.testutils.lambda.value
 import io.element.android.tests.testutils.test
 import io.element.android.tests.testutils.testCoroutineDispatchers
+import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
@@ -148,6 +159,13 @@ class RoomListPresenterTest {
                             roomName = summary.name,
                             isDm = false,
                             isFavorite = false,
+                            isArchived = false,
+                            isMuted = false,
+                            isEncrypted = false,
+                            isOneToOne = false,
+                            directUserId = null,
+                            directUserDisplayName = null,
+                            isDirectUserBlocked = false,
                             hasNewContent = false,
                             displayClearRoomCacheAction = false,
                         )
@@ -165,6 +183,13 @@ class RoomListPresenterTest {
                             roomName = summary.name,
                             isDm = false,
                             isFavorite = true,
+                            isArchived = false,
+                            isMuted = false,
+                            isEncrypted = false,
+                            isOneToOne = false,
+                            directUserId = null,
+                            directUserDisplayName = null,
+                            isDirectUserBlocked = false,
                             hasNewContent = false,
                             displayClearRoomCacheAction = false,
                         )
@@ -192,6 +217,13 @@ class RoomListPresenterTest {
                             roomName = summary.name,
                             isDm = false,
                             isFavorite = false,
+                            isArchived = false,
+                            isMuted = false,
+                            isEncrypted = false,
+                            isOneToOne = false,
+                            directUserId = null,
+                            directUserDisplayName = null,
+                            isDirectUserBlocked = false,
                             // true here.
                             hasNewContent = false,
                             displayClearRoomCacheAction = true,
@@ -221,6 +253,13 @@ class RoomListPresenterTest {
                         roomName = summary.name,
                         isDm = false,
                         isFavorite = false,
+                        isArchived = false,
+                        isMuted = false,
+                        isEncrypted = false,
+                        isOneToOne = false,
+                        directUserId = null,
+                        directUserDisplayName = null,
+                        isDirectUserBlocked = false,
                         hasNewContent = false,
                         displayClearRoomCacheAction = false,
                     )
@@ -301,6 +340,124 @@ class RoomListPresenterTest {
 
             val room = updatedState.contentAsRooms().summaries.find { it.id == A_ROOM_ID.value }
             assertThat(room?.userDefinedNotificationMode).isEqualTo(userDefinedMode)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `present - finite muted room ids update muted room decoration`() = runTest {
+        val roomList = FakeDynamicRoomList(
+            summaries = MutableStateFlow(listOf(aRoomSummary(numUnreadNotifications = 1))),
+            loadingState = MutableStateFlow(RoomList.LoadingState.Loaded(1))
+        )
+        val roomListService = FakeRoomListService(
+            createRoomListLambda = { roomList }
+        )
+        val matrixClient = FakeMatrixClient(
+            roomListService = roomListService,
+        )
+        val presenter = createRoomListPresenter(
+            client = matrixClient,
+            momentMutedChatsStore = FakeMomentMutedChatsStore(setOf(A_ROOM_ID)),
+        )
+        presenter.test {
+            val updatedState = consumeItemsUntilPredicate { state ->
+                (state.contentState as? RoomListContentState.Rooms)?.summaries.orEmpty().any { summary ->
+                    summary.id == A_ROOM_ID.value && summary.isMuted
+                }
+            }.last()
+
+            val room = updatedState.contentAsRooms().summaries.find { it.id == A_ROOM_ID.value }
+            assertThat(room?.isMuted).isTrue()
+            assertThat(room?.isHighlighted).isFalse()
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `present - ignored direct user ids update direct room decoration`() = runTest {
+        val roomList = FakeDynamicRoomList(
+            summaries = MutableStateFlow(
+                listOf(
+                    aRoomSummary(
+                        info = aRoomInfo(
+                            isDirect = true,
+                            isDm = true,
+                            activeMembersCount = 2,
+                            heroes = listOf(MatrixUser(A_USER_ID, displayName = "Alice")),
+                        )
+                    )
+                )
+            ),
+            loadingState = MutableStateFlow(RoomList.LoadingState.Loaded(1))
+        )
+        val roomListService = FakeRoomListService(
+            createRoomListLambda = { roomList }
+        )
+        val matrixClient = FakeMatrixClient(
+            roomListService = roomListService,
+            ignoredUsersFlow = MutableStateFlow(persistentListOf(A_USER_ID)),
+        )
+        val presenter = createRoomListPresenter(client = matrixClient)
+        presenter.test {
+            val updatedState = consumeItemsUntilPredicate { state ->
+                (state.contentState as? RoomListContentState.Rooms)?.summaries.orEmpty().any { summary ->
+                    summary.directUserId == A_USER_ID && summary.isDirectUserBlocked
+                }
+            }.last()
+
+            val room = updatedState.contentAsRooms().summaries.find { it.roomId == A_ROOM_ID }
+            assertThat(room?.directUserId).isEqualTo(A_USER_ID)
+            assertThat(room?.directUserDisplayName).isEqualTo("Alice")
+            assertThat(room?.isDirectUserBlocked).isTrue()
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `present - show direct user block confirmation`() = runTest {
+        val presenter = createRoomListPresenter()
+        presenter.test {
+            val initialState = awaitItem()
+            initialState.eventSink(RoomListEvent.ShowDirectUserBlockConfirmation(A_USER_ID, displayName = "Alice", blocked = true))
+
+            awaitItem().also { state ->
+                assertThat(state.directUserBlockConfirmation)
+                    .isEqualTo(
+                        RoomListState.DirectUserBlockConfirmation.Shown(
+                            userId = A_USER_ID,
+                            displayName = "Alice",
+                            blocked = true,
+                        )
+                    )
+            }
+        }
+    }
+
+    @Test
+    fun `present - set direct user blocked calls client ignore and unignore`() = runTest {
+        val ignoredUserIds = mutableListOf<UserId>()
+        val unignoredUserIds = mutableListOf<UserId>()
+        val matrixClient = FakeMatrixClient(
+            ignoreUserResult = { userId ->
+                ignoredUserIds += userId
+                Result.success(Unit)
+            },
+            unIgnoreUserResult = { userId ->
+                unignoredUserIds += userId
+                Result.success(Unit)
+            },
+        )
+        val presenter = createRoomListPresenter(client = matrixClient)
+        presenter.test {
+            val initialState = awaitItem()
+            initialState.eventSink(RoomListEvent.SetDirectUserBlocked(A_USER_ID, blocked = true))
+            advanceTimeBy(1.seconds)
+            initialState.eventSink(RoomListEvent.SetDirectUserBlocked(A_USER_ID, blocked = false))
+            advanceTimeBy(1.seconds)
+
+            assertThat(ignoredUserIds).containsExactly(A_USER_ID)
+            assertThat(unignoredUserIds).containsExactly(A_USER_ID)
             cancelAndIgnoreRemainingEvents()
         }
     }
@@ -590,6 +747,9 @@ class RoomListPresenterTest {
         appPreferencesStore: AppPreferencesStore = InMemoryAppPreferencesStore(),
         seenInvitesStore: SeenInvitesStore = InMemorySeenInvitesStore(),
         announcementService: AnnouncementService = FakeAnnouncementService(),
+        momentHomeRoomTypeService: MomentHomeRoomTypeService = FakeMomentHomeRoomTypeService(),
+        momentHomePreferencesStore: MomentHomePreferencesStore = FakeMomentHomePreferencesStore(),
+        momentMutedChatsStore: MomentMutedChatsStore = FakeMomentMutedChatsStore(),
     ) = RoomListPresenter(
         client = client,
         leaveRoomPresenter = { leaveRoomState },
@@ -618,5 +778,51 @@ class RoomListPresenterTest {
         seenInvitesStore = seenInvitesStore,
         announcementService = announcementService,
         coldStartWatcher = FakeAnalyticsColdStartWatcher(),
+        momentHomeRoomTypeService = momentHomeRoomTypeService,
+        momentHomePreferencesStore = momentHomePreferencesStore,
+        momentMutedChatsStore = momentMutedChatsStore,
     )
+}
+
+private class FakeMomentHomeRoomTypeService(
+    override val roomTypes: StateFlow<Map<RoomId, MomentHomeRoomType>> = MutableStateFlow(emptyMap()),
+) : MomentHomeRoomTypeService {
+    override fun resolveRoomTypes(roomSummaries: List<RoomListRoomSummary>) = Unit
+}
+
+private class FakeMomentHomePreferencesStore(
+    archivedRoomIdsValue: Set<RoomId> = emptySet(),
+) : MomentHomePreferencesStore {
+    override val archivedRoomIds = MutableStateFlow(archivedRoomIdsValue)
+
+    override suspend fun setRoomArchived(roomId: RoomId, archived: Boolean) {
+        archivedRoomIds.value = if (archived) {
+            archivedRoomIds.value + roomId
+        } else {
+            archivedRoomIds.value - roomId
+        }
+    }
+}
+
+private class FakeMomentMutedChatsStore(
+    finiteMutedRoomIdsValue: Set<RoomId> = emptySet(),
+) : MomentMutedChatsStore {
+    override val finiteMutedRoomIds = MutableStateFlow(finiteMutedRoomIdsValue)
+
+    override suspend fun syncExpiredMutedChats(nowMillis: Long) = Unit
+
+    override suspend fun muteRoom(
+        roomId: RoomId,
+        duration: MomentHomeMuteDuration,
+        isEncrypted: Boolean,
+        isOneToOne: Boolean,
+    ): Result<Unit> {
+        finiteMutedRoomIds.value = finiteMutedRoomIds.value + roomId
+        return Result.success(Unit)
+    }
+
+    override suspend fun unmuteRoom(roomId: RoomId, isEncrypted: Boolean, isOneToOne: Boolean): Result<Unit> {
+        finiteMutedRoomIds.value = finiteMutedRoomIds.value - roomId
+        return Result.success(Unit)
+    }
 }

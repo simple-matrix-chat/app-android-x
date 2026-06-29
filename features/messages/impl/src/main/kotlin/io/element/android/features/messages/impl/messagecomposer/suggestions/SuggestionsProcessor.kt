@@ -21,7 +21,7 @@ import io.element.android.libraries.textcomposer.model.Suggestion
 import io.element.android.libraries.textcomposer.model.SuggestionType
 
 /**
- * This class is responsible for processing suggestions when `@`, `/` or `#` are type in the composer.
+ * This class is responsible for processing Moment suggestions when `@` or `#` are typed in the composer.
  */
 @Inject
 class SuggestionsProcessor(
@@ -75,14 +75,9 @@ class SuggestionsProcessor(
                     }
             }
             SuggestionType.Command -> {
-                // Command suggestions are valid only if this is the beginning of the message
-                if (suggestion.start == 0) {
-                    slashCommandService.getSuggestions(suggestion.text, isInThread).map {
-                        ResolvedSuggestion.Command(it)
-                    }
-                } else {
-                    emptyList()
-                }
+                // Moment iOS only exposes mention and room suggestions. Keep slash command execution on send,
+                // but don't show Element-style slash command suggestions in the composer sheet.
+                emptyList()
             }
             SuggestionType.Emoji,
             is SuggestionType.Custom -> {

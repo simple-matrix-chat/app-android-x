@@ -48,6 +48,7 @@ internal fun aRoomSelectState(
     resultState: SearchBarResultState<ImmutableList<SelectRoomInfo>> = SearchBarResultState.Initial(),
     searchQuery: String = "",
     isSearchActive: Boolean = false,
+    forwardComment: String = "",
     selectedRooms: ImmutableList<SelectRoomInfo> = persistentListOf(),
     eventSink: (RoomSelectEvents) -> Unit = {},
 ) = RoomSelectState(
@@ -55,6 +56,7 @@ internal fun aRoomSelectState(
     resultState = resultState,
     searchQuery = TextFieldState(initialText = searchQuery),
     isSearchActive = isSearchActive,
+    forwardComment = forwardComment,
     selectedRooms = selectedRooms,
     eventSink = eventSink,
 )

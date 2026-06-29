@@ -46,6 +46,7 @@ class RoomSelectPresenter(
         var selectedRooms by remember { mutableStateOf(persistentListOf<SelectRoomInfo>()) }
         val queryState = rememberTextFieldState()
         var isSearchActive by remember { mutableStateOf(false) }
+        var forwardComment by remember { mutableStateOf("") }
 
         val coroutineScope = rememberCoroutineScope()
         val dataSource = remember { dataSourceFactory.create(coroutineScope) }
@@ -80,6 +81,7 @@ class RoomSelectPresenter(
 //                    }
                 }
                 RoomSelectEvents.RemoveSelectedRoom -> selectedRooms = persistentListOf()
+                is RoomSelectEvents.UpdateForwardComment -> forwardComment = event.comment
                 RoomSelectEvents.ToggleSearchActive -> isSearchActive = !isSearchActive
                 is RoomSelectEvents.UpdateVisibleRange -> coroutineScope.launch {
                     dataSource.updateVisibleRange(event.range)
@@ -92,6 +94,7 @@ class RoomSelectPresenter(
             resultState = searchResults,
             searchQuery = queryState,
             isSearchActive = isSearchActive,
+            forwardComment = forwardComment,
             selectedRooms = selectedRooms,
             eventSink = ::handleEvent,
         )

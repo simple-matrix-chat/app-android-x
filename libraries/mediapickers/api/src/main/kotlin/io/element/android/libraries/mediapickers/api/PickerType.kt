@@ -27,6 +27,13 @@ sealed interface PickerType<Input, Output> {
         }
     }
 
+    data object Video : PickerType<PickVisualMediaRequest, Uri?> {
+        override fun getContract() = ActivityResultContracts.PickVisualMedia()
+        override fun getDefaultRequest(): PickVisualMediaRequest {
+            return PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.VideoOnly)
+        }
+    }
+
     data object ImageAndVideo : PickerType<PickVisualMediaRequest, Uri?> {
         override fun getContract() = ActivityResultContracts.PickVisualMedia()
         override fun getDefaultRequest(): PickVisualMediaRequest {
@@ -55,5 +62,10 @@ sealed interface PickerType<Input, Output> {
         override fun getDefaultRequest(): String {
             return mimeType
         }
+    }
+
+    data object Contact : PickerType<Void?, Uri?> {
+        override fun getContract() = ActivityResultContracts.PickContact()
+        override fun getDefaultRequest(): Void? = null
     }
 }

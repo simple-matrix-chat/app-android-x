@@ -9,6 +9,7 @@
 package io.element.android.features.messages.impl.timeline.components.event
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -81,6 +82,9 @@ fun TimelineItemVoiceView(
     )
     Row(
         modifier = modifier
+            .background(momentTimelineAttachmentBackgroundColor(), MomentTimelineAttachmentShape)
+            .border(1.dp, momentTimelineAttachmentBorderColor(), MomentTimelineAttachmentShape)
+            .padding(start = 2.dp, top = 8.dp, end = 8.dp, bottom = 8.dp)
             .clearAndSetSemantics {
                 contentDescription = a11y
                 if (state.buttonType == VoiceMessageState.ButtonType.Disabled) {
@@ -244,11 +248,11 @@ private fun CustomIconButton(
     IconButton(
         onClick = onClick,
         modifier = Modifier
-            .background(color = ElementTheme.colors.bgCanvasDefault, shape = CircleShape)
+            .background(color = momentTimelineAttachmentIconBackgroundColor(), shape = CircleShape)
             .size(36.dp),
         enabled = enabled,
         colors = IconButtonDefaults.iconButtonColors(
-            contentColor = ElementTheme.colors.iconSecondary,
+            contentColor = ElementTheme.colors.iconPrimary,
             disabledContentColor = ElementTheme.colors.iconDisabled,
         ),
         content = content,

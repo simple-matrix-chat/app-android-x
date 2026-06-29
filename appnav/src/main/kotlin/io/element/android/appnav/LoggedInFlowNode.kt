@@ -21,21 +21,23 @@ import com.bumble.appyx.core.lifecycle.subscribe
 import com.bumble.appyx.core.modality.BuildContext
 import com.bumble.appyx.core.navigation.NavElements
 import com.bumble.appyx.core.navigation.NavKey
+import com.bumble.appyx.core.navigation.backpresshandlerstrategies.BaseBackPressHandlerStrategy
 import com.bumble.appyx.core.navigation.model.permanent.PermanentNavModel
 import com.bumble.appyx.core.node.Node
 import com.bumble.appyx.core.plugin.Plugin
 import com.bumble.appyx.navmodel.backstack.BackStack
 import com.bumble.appyx.navmodel.backstack.BackStack.State.ACTIVE
 import com.bumble.appyx.navmodel.backstack.BackStack.State.CREATED
+import com.bumble.appyx.navmodel.backstack.BackStack.State.DESTROYED
 import com.bumble.appyx.navmodel.backstack.BackStack.State.STASHED
 import com.bumble.appyx.navmodel.backstack.BackStackElement
 import com.bumble.appyx.navmodel.backstack.BackStackElements
 import com.bumble.appyx.navmodel.backstack.operation.BackStackOperation
+import com.bumble.appyx.navmodel.backstack.operation.Pop
 import com.bumble.appyx.navmodel.backstack.operation.Push
 import com.bumble.appyx.navmodel.backstack.operation.pop
 import com.bumble.appyx.navmodel.backstack.operation.push
 import com.bumble.appyx.navmodel.backstack.operation.replace
-import com.bumble.appyx.navmodel.backstack.operation.singleTop
 import dev.zacsweers.metro.Assisted
 import dev.zacsweers.metro.AssistedInject
 import io.element.android.annotations.ContributesNode
@@ -93,8 +95,10 @@ import io.element.android.services.analytics.api.AnalyticsService
 import io.element.android.services.analytics.api.watchers.AnalyticsRoomListStateWatcher
 import io.element.android.services.appnavstate.api.AppNavigationStateService
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import kotlinx.parcelize.Parcelize
@@ -143,6 +147,7 @@ class LoggedInFlowNode(
     backstack = BackStack(
         initialElement = NavTarget.Placeholder,
         savedStateMap = buildContext.savedStateMap,
+        backPressHandler = LoggedInBackPressHandler(),
     ),
     permanentNavModel = PermanentNavModel(
         navTargets = setOf(NavTarget.LoggedInPermanent),
@@ -211,6 +216,14 @@ class LoggedInFlowNode(
         sendingQueue.launchIn(lifecycleScope)
     }
 
+    private fun switchToProfileTab() {
+        backstack.accept(SwitchRootTabOperation(LoggedInRootTab.Profile))
+    }
+
+    private fun switchToChatsTab() {
+        backstack.accept(SwitchRootTabOperation(LoggedInRootTab.Chats))
+    }
+
     sealed interface NavTarget : Parcelable {
         @Parcelize
         data object Placeholder : NavTarget
@@ -271,17 +284,21 @@ class LoggedInFlowNode(
             NavTarget.Home -> {
                 val callback = object : HomeEntryPoint.Callback {
                     override fun navigateToRoom(roomId: RoomId, joinedRoom: JoinedRoom?) {
+                        navigateToRoom(roomId, joinedRoom, eventId = null)
+                    }
+
+                    override fun navigateToRoom(roomId: RoomId, joinedRoom: JoinedRoom?, eventId: EventId?) {
                         lifecycleScope.launch {
                             attachRoom(
                                 roomIdOrAlias = roomId.toRoomIdOrAlias(),
-                                initialElement = RoomNavigationTarget.Root(joinedRoom = joinedRoom),
+                                initialElement = RoomNavigationTarget.Root(eventId = eventId, joinedRoom = joinedRoom),
                                 clearBackstack = false,
                             )
                         }
                     }
 
                     override fun navigateToSettings() {
-                        backstack.push(NavTarget.Settings())
+                        switchToProfileTab()
                     }
 
                     override fun navigateToCreateRoom() {
@@ -389,6 +406,10 @@ class LoggedInFlowNode(
             }
             is NavTarget.Settings -> {
                 val callback = object : PreferencesEntryPoint.Callback {
+                    override fun navigateToChatsTab() {
+                        switchToChatsTab()
+                    }
+
                     override fun navigateToAddAccount() {
                         callback.navigateToAddAccount()
                     }
@@ -585,6 +606,98 @@ class LoggedInFlowNode(
                     }
                 }
             }
+        }
+    }
+}
+
+internal enum class LoggedInRootTab {
+    Chats,
+    Profile,
+}
+
+private fun LoggedInRootTab.navTarget(): LoggedInFlowNode.NavTarget {
+    return when (this) {
+        LoggedInRootTab.Chats -> LoggedInFlowNode.NavTarget.Home
+        LoggedInRootTab.Profile -> LoggedInFlowNode.NavTarget.Settings()
+    }
+}
+
+private fun LoggedInRootTab.inactiveNavTarget(): LoggedInFlowNode.NavTarget {
+    return when (this) {
+        LoggedInRootTab.Chats -> LoggedInFlowNode.NavTarget.Settings()
+        LoggedInRootTab.Profile -> LoggedInFlowNode.NavTarget.Home
+    }
+}
+
+internal fun LoggedInFlowNode.NavTarget.isRootTabTarget(): Boolean {
+    return when (this) {
+        LoggedInFlowNode.NavTarget.Home -> true
+        is LoggedInFlowNode.NavTarget.Settings -> initialElement == PreferencesEntryPoint.InitialTarget.Root
+        else -> false
+    }
+}
+
+private fun LoggedInFlowNode.NavTarget.isSameRootTabTargetAs(other: LoggedInFlowNode.NavTarget): Boolean {
+    return when (other) {
+        LoggedInFlowNode.NavTarget.Home -> this == LoggedInFlowNode.NavTarget.Home
+        is LoggedInFlowNode.NavTarget.Settings -> this is LoggedInFlowNode.NavTarget.Settings &&
+            initialElement == PreferencesEntryPoint.InitialTarget.Root
+        else -> false
+    }
+}
+
+@Parcelize
+internal class SwitchRootTabOperation(
+    private val activeRootTab: LoggedInRootTab,
+) : BackStackOperation<LoggedInFlowNode.NavTarget> {
+    override fun isApplicable(elements: NavElements<LoggedInFlowNode.NavTarget, BackStack.State>): Boolean {
+        return elements.any { element ->
+            element.targetState == ACTIVE && element.key.navTarget.isRootTabTarget()
+        }
+    }
+
+    override fun invoke(elements: BackStackElements<LoggedInFlowNode.NavTarget>): BackStackElements<LoggedInFlowNode.NavTarget> {
+        val activeRootTarget = activeRootTab.navTarget()
+        val inactiveRootTarget = activeRootTab.inactiveNavTarget()
+        val nonRootElements = elements.filterNot { element ->
+            element.key.navTarget.isRootTabTarget()
+        }
+        val inactiveRootElement = elements.lastRootElementMatching(inactiveRootTarget)
+            ?.transitionTo(STASHED, this)
+        val activeRootElement = elements.lastRootElementMatching(activeRootTarget)
+            ?.transitionTo(ACTIVE, this)
+            ?: BackStackElement(
+                key = NavKey(activeRootTarget),
+                fromState = CREATED,
+                targetState = ACTIVE,
+                operation = this
+            )
+        return nonRootElements + listOfNotNull(inactiveRootElement, activeRootElement)
+    }
+
+    private fun BackStackElements<LoggedInFlowNode.NavTarget>.lastRootElementMatching(
+        rootTarget: LoggedInFlowNode.NavTarget,
+    ) = lastOrNull { element ->
+        element.targetState != DESTROYED && element.key.navTarget.isSameRootTabTargetAs(rootTarget)
+    }
+}
+
+internal class LoggedInBackPressHandler : BaseBackPressHandlerStrategy<LoggedInFlowNode.NavTarget, BackStack.State>() {
+    override val canHandleBackPressFlow: Flow<Boolean> by lazy {
+        navModel.elements.map(::canHandleBackPress)
+    }
+
+    override fun onBackPressed() {
+        navModel.accept(Pop())
+    }
+
+    companion object {
+        fun canHandleBackPress(elements: BackStackElements<LoggedInFlowNode.NavTarget>): Boolean {
+            val activeTarget = elements.lastOrNull { element ->
+                element.targetState == ACTIVE
+            }?.key?.navTarget ?: return false
+            return activeTarget.isRootTabTarget().not() &&
+                elements.any { element -> element.targetState == STASHED }
         }
     }
 }

@@ -8,6 +8,7 @@
 
 package io.element.android.features.messages.impl.timeline.components
 
+import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
@@ -50,7 +51,8 @@ import io.element.android.libraries.testtags.testTag
 import io.element.android.libraries.ui.utils.a11y.isTalkbackActive
 import io.element.android.libraries.ui.utils.graphics.drawInLayer
 
-private val BUBBLE_RADIUS = 12.dp
+private val BUBBLE_RADIUS = 20.dp
+private val BUBBLE_MERGED_RADIUS = 4.dp
 private val avatarRadius = AvatarSize.TimelineSender.dp / 2
 
 private val MIN_BUBBLE_WIDTH = 80.dp
@@ -80,6 +82,7 @@ fun MessageEventBubble(
     val cutTopStart = state.cutTopStart
     // Ignore state.isHighlighted for now, we need a design decision on it.
     val backgroundBubbleColor = MessageEventBubbleDefaults.backgroundBubbleColor(state.isMine)
+    val borderColor = MessageEventBubbleDefaults.borderColor(state.isMine)
     val bubbleShape = remember(state) { MessageEventBubbleDefaults.shape(state.cutTopStart, state.groupPosition, state.isMine) }
     val radiusPx = (avatarRadius + SENDER_AVATAR_BORDER_WIDTH).toPx()
     val yOffsetPx = -(NEGATIVE_MARGIN_FOR_BUBBLE + avatarRadius).toPx()
@@ -117,7 +120,14 @@ fun MessageEventBubble(
                         }
                     }
                 }
-            },
+            }
+            .then(
+                if (borderColor == Color.Transparent) {
+                    Modifier
+                } else {
+                    Modifier.border(width = 1.dp, color = borderColor, shape = bubbleShape)
+                }
+            ),
         // Need to set the contentAlignment again (it's already set in TimelineItemEventRow), for the case
         // when content width is low.
         contentAlignment = if (state.isMine) Alignment.CenterEnd else Alignment.CenterStart
@@ -142,19 +152,19 @@ object MessageEventBubbleDefaults {
         val topLeftCorner = if (cutTopStart) 0.dp else BUBBLE_RADIUS
         return when (groupPosition) {
             TimelineItemGroupPosition.First -> if (isMine) {
-                RoundedCornerShape(BUBBLE_RADIUS, BUBBLE_RADIUS, 0.dp, BUBBLE_RADIUS)
+                RoundedCornerShape(BUBBLE_RADIUS, BUBBLE_RADIUS, BUBBLE_MERGED_RADIUS, BUBBLE_RADIUS)
             } else {
-                RoundedCornerShape(topLeftCorner, BUBBLE_RADIUS, BUBBLE_RADIUS, 0.dp)
+                RoundedCornerShape(topLeftCorner, BUBBLE_RADIUS, BUBBLE_RADIUS, BUBBLE_MERGED_RADIUS)
             }
             TimelineItemGroupPosition.Middle -> if (isMine) {
-                RoundedCornerShape(BUBBLE_RADIUS, 0.dp, 0.dp, BUBBLE_RADIUS)
+                RoundedCornerShape(BUBBLE_RADIUS, BUBBLE_MERGED_RADIUS, BUBBLE_MERGED_RADIUS, BUBBLE_RADIUS)
             } else {
-                RoundedCornerShape(0.dp, BUBBLE_RADIUS, BUBBLE_RADIUS, 0.dp)
+                RoundedCornerShape(BUBBLE_MERGED_RADIUS, BUBBLE_RADIUS, BUBBLE_RADIUS, BUBBLE_MERGED_RADIUS)
             }
             TimelineItemGroupPosition.Last -> if (isMine) {
-                RoundedCornerShape(BUBBLE_RADIUS, 0.dp, BUBBLE_RADIUS, BUBBLE_RADIUS)
+                RoundedCornerShape(BUBBLE_RADIUS, BUBBLE_MERGED_RADIUS, BUBBLE_RADIUS, BUBBLE_RADIUS)
             } else {
-                RoundedCornerShape(0.dp, BUBBLE_RADIUS, BUBBLE_RADIUS, BUBBLE_RADIUS)
+                RoundedCornerShape(BUBBLE_MERGED_RADIUS, BUBBLE_RADIUS, BUBBLE_RADIUS, BUBBLE_RADIUS)
             }
             TimelineItemGroupPosition.None ->
                 RoundedCornerShape(
@@ -163,6 +173,16 @@ object MessageEventBubbleDefaults {
                     BUBBLE_RADIUS,
                     BUBBLE_RADIUS
                 )
+        }
+    }
+
+    @Composable
+    fun borderColor(isMine: Boolean): Color {
+        return when {
+            ElementTheme.isLightTheme && isMine -> Color(0xFFD9DCE3)
+            ElementTheme.isLightTheme -> Color.Transparent
+            isMine -> Color.White.copy(alpha = 0.14f)
+            else -> Color.White.copy(alpha = 0.12f)
         }
     }
 

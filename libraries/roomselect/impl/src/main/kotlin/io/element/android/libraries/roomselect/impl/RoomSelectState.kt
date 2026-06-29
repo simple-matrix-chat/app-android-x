@@ -19,6 +19,7 @@ data class RoomSelectState(
     val resultState: SearchBarResultState<ImmutableList<SelectRoomInfo>>,
     val searchQuery: TextFieldState,
     val isSearchActive: Boolean,
+    val forwardComment: String,
     val selectedRooms: ImmutableList<SelectRoomInfo>,
     val eventSink: (RoomSelectEvents) -> Unit
 )

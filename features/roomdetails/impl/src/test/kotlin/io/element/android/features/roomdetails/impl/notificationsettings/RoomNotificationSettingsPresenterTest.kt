@@ -35,6 +35,36 @@ class RoomNotificationSettingsPresenterTest {
     }
 
     @Test
+    fun `present - fetch notification settings uses room encryption and active member count`() = runTest {
+        val notificationSettingsService = FakeNotificationSettingsService()
+        val room = aJoinedRoom(
+            notificationSettingsService = notificationSettingsService,
+            isEncrypted = true,
+            activeMemberCount = 2,
+        )
+        val presenter = createRoomNotificationSettingsPresenter(notificationSettingsService, room)
+        presenter.test {
+            consumeItemsUntilPredicate {
+                it.roomNotificationSettings.isSuccess() && it.defaultRoomNotificationMode != null
+            }
+            assertThat(notificationSettingsService.lastGetRoomNotificationSettingsRequest).isEqualTo(
+                FakeNotificationSettingsService.RoomNotificationSettingsRequest(
+                    roomId = room.roomId,
+                    isEncrypted = true,
+                    isOneToOne = true,
+                )
+            )
+            assertThat(notificationSettingsService.lastGetDefaultRoomNotificationModeRequest).isEqualTo(
+                FakeNotificationSettingsService.DefaultRoomNotificationModeRequest(
+                    isEncrypted = true,
+                    isOneToOne = true,
+                )
+            )
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
     fun `present - notification mode changed`() = runTest {
         val presenter = createRoomNotificationSettingsPresenter()
         presenter.test {
@@ -138,11 +168,25 @@ class RoomNotificationSettingsPresenterTest {
     }
 
     @Test
-    fun `present - do not display mentions only warning`() = runTest {
+    fun `present - displays mentions only warning when encrypted push is unsupported`() = runTest {
         val notificationService = FakeNotificationSettingsService().apply {
             givenCanHomeServerPushEncryptedEventsToDeviceResult(Result.success(false))
         }
         val room = aJoinedRoom(notificationSettingsService = notificationService, isEncrypted = true)
+        val presenter = createRoomNotificationSettingsPresenter(notificationService, room)
+        presenter.test {
+            val loadedState = consumeItemsUntilPredicate { it.displayMentionsOnlyDisclaimer }.last()
+            assertThat(loadedState.displayMentionsOnlyDisclaimer).isTrue()
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `present - does not display mentions only warning when room is unencrypted`() = runTest {
+        val notificationService = FakeNotificationSettingsService().apply {
+            givenCanHomeServerPushEncryptedEventsToDeviceResult(Result.success(false))
+        }
+        val room = aJoinedRoom(notificationSettingsService = notificationService, isEncrypted = false)
         val presenter = createRoomNotificationSettingsPresenter(notificationService, room)
         presenter.test {
             val loadedState = consumeItemsUntilPredicate { it.roomNotificationSettings.isSuccess() }.last()

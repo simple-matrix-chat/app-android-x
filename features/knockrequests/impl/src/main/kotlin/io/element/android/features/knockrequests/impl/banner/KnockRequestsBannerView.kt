@@ -11,6 +11,7 @@ package io.element.android.features.knockrequests.impl.banner
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -20,12 +21,15 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -48,7 +52,6 @@ import io.element.android.libraries.designsystem.theme.components.Button
 import io.element.android.libraries.designsystem.theme.components.ButtonSize
 import io.element.android.libraries.designsystem.theme.components.Icon
 import io.element.android.libraries.designsystem.theme.components.OutlinedButton
-import io.element.android.libraries.designsystem.theme.components.Surface
 import io.element.android.libraries.designsystem.theme.components.Text
 import io.element.android.libraries.ui.strings.CommonStrings
 import kotlinx.collections.immutable.ImmutableList
@@ -68,11 +71,17 @@ fun KnockRequestsBannerView(
             enter = expandVertically(),
             exit = shrinkVertically(),
         ) {
-            Surface(
-                shape = MaterialTheme.shapes.small,
-                color = ElementTheme.colors.bgCanvasDefaultLevel1,
-                shadowElevation = 24.dp,
-                modifier = Modifier.padding(16.dp),
+            Box(
+                modifier = Modifier
+                    .padding(horizontal = 16.dp)
+                    .padding(top = 16.dp, bottom = 28.dp)
+                    .shadow(
+                        elevation = 12.dp,
+                        shape = RoundedCornerShape(12.dp),
+                        clip = false,
+                    )
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(ElementTheme.colors.bgCanvasDefaultLevel1),
             ) {
                 KnockRequestsBannerContent(
                     state = state,
@@ -145,9 +154,12 @@ private fun KnockRequestsBannerContent(
             }
             Spacer(modifier = Modifier.width(4.dp))
             Icon(
-                modifier = Modifier.clickable(onClick = ::onDismissClick),
+                modifier = Modifier
+                    .size(24.dp)
+                    .clickable(onClick = ::onDismissClick),
                 imageVector = CompoundIcons.Close(),
-                contentDescription = stringResource(CommonStrings.action_close)
+                contentDescription = stringResource(CommonStrings.action_close),
+                tint = ElementTheme.colors.iconSecondary,
             )
         }
         val reason = state.reason

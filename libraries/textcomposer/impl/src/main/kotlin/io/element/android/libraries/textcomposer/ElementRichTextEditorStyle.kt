@@ -40,18 +40,21 @@ object ElementRichTextEditorStyle {
     }
 
     @Composable
-    fun textStyle(): RichTextEditorStyle {
-        return common()
+    fun textStyle(usesMomentTimelineStyle: Boolean = false): RichTextEditorStyle {
+        return common(usesMomentTimelineStyle = usesMomentTimelineStyle)
     }
 
     @Composable
-    private fun common(): RichTextEditorStyle {
+    private fun common(usesMomentTimelineStyle: Boolean = false): RichTextEditorStyle {
         val colors = ElementTheme.colors
-        val codeCornerRadius = 4.dp
-        val codeBorderWidth = 1.dp
+        val codeCornerRadius = if (usesMomentTimelineStyle) 2.dp else 4.dp
+        val codeBorderWidth = if (usesMomentTimelineStyle) 0.dp else 1.dp
+        val codeBackgroundColor = colors.bgSubtleTertiary
+        val codeBorderColor = if (usesMomentTimelineStyle) codeBackgroundColor else colors.borderInteractiveSecondary
+        val codeRelativeTextSize = if (usesMomentTimelineStyle) 0.9f else 0.85f
         return RichTextEditorDefaults.style(
             bulletList = RichTextEditorDefaults.bulletListStyle(
-                bulletGapWidth = 8.dp,
+                bulletGapWidth = if (usesMomentTimelineStyle) 6.dp else 8.dp,
             ),
             text = RichTextEditorDefaults.textStyle(
                 color = LocalTextStyle.current.color.takeIf { it.isSpecified } ?: LocalContentColor.current,
@@ -66,19 +69,23 @@ object ElementRichTextEditorStyle {
                 color = colors.textLinkExternal,
             ),
             codeBlock = RichTextEditorDefaults.codeBlockStyle(
-                leadingMargin = 8.dp,
+                leadingMargin = if (usesMomentTimelineStyle) 6.dp else 8.dp,
+                verticalPadding = if (usesMomentTimelineStyle) 4.dp else 8.dp,
+                relativeTextSize = codeRelativeTextSize,
                 background = RichTextEditorDefaults.codeBlockBackgroundStyle(
-                    color = colors.bgSubtleTertiary,
-                    borderColor = colors.borderInteractiveSecondary,
+                    color = codeBackgroundColor,
+                    borderColor = codeBorderColor,
                     cornerRadius = codeCornerRadius,
                     borderWidth = codeBorderWidth,
                 )
             ),
             inlineCode = RichTextEditorDefaults.inlineCodeStyle(
+                horizontalPadding = if (usesMomentTimelineStyle) 3.dp else 4.dp,
                 verticalPadding = 0.dp,
+                relativeTextSize = codeRelativeTextSize,
                 background = RichTextEditorDefaults.inlineCodeBackgroundStyle(
-                    color = colors.bgSubtleTertiary,
-                    borderColor = colors.borderInteractiveSecondary,
+                    color = codeBackgroundColor,
+                    borderColor = codeBorderColor,
                     cornerRadius = codeCornerRadius,
                     borderWidth = codeBorderWidth,
                 )

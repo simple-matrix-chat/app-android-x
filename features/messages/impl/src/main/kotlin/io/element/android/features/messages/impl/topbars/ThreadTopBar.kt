@@ -8,33 +8,41 @@
 
 package io.element.android.features.messages.impl.topbars
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import io.element.android.compound.theme.ElementTheme
-import io.element.android.libraries.designsystem.components.avatar.Avatar
+import io.element.android.compound.tokens.generated.CompoundIcons
 import io.element.android.libraries.designsystem.components.avatar.AvatarData
 import io.element.android.libraries.designsystem.components.avatar.AvatarSize
-import io.element.android.libraries.designsystem.components.avatar.AvatarType
 import io.element.android.libraries.designsystem.components.avatar.anAvatarData
-import io.element.android.libraries.designsystem.components.button.BackButton
 import io.element.android.libraries.designsystem.preview.ElementPreview
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
 import io.element.android.libraries.designsystem.preview.ROOM_NAME
 import io.element.android.libraries.designsystem.theme.components.HorizontalDivider
+import io.element.android.libraries.designsystem.theme.components.Icon
+import io.element.android.libraries.designsystem.theme.components.IconButton
 import io.element.android.libraries.designsystem.theme.components.Text
-import io.element.android.libraries.designsystem.theme.components.TopAppBar
 import io.element.android.libraries.matrix.ui.components.aMatrixUserList
 import io.element.android.libraries.matrix.ui.model.getAvatarData
 import io.element.android.libraries.ui.strings.CommonStrings
@@ -42,7 +50,6 @@ import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun ThreadTopBar(
     roomName: String?,
@@ -52,44 +59,76 @@ internal fun ThreadTopBar(
     onBackClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    TopAppBar(
-        modifier = modifier,
-        navigationIcon = {
-            BackButton(onClick = onBackClick)
-        },
-        title = {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Avatar(
-                    avatarData = roomAvatarData,
-                    avatarType = AvatarType.Room(
-                        heroes = heroes,
-                        isTombstoned = isTombstoned,
-                    ),
-                )
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 8.dp)
-                        .semantics {
-                            heading()
-                        },
-                ) {
-                    Text(
-                        text = stringResource(CommonStrings.common_thread),
-                        style = ElementTheme.typography.fontBodyLgMedium,
-                    )
-                    Text(
-                        text = roomName ?: stringResource(CommonStrings.common_no_room_name),
-                        style = ElementTheme.typography.fontBodySmRegular,
-                        fontStyle = FontStyle.Italic.takeIf { roomName == null },
-                        color = ElementTheme.colors.textSecondary,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-            }
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .background(ElementTheme.colors.bgCanvasDefault)
+            .padding(horizontal = 20.dp)
+            .padding(top = 8.dp, bottom = 6.dp)
+            .heightIn(min = 44.dp),
+    ) {
+        IconButton(
+            modifier = Modifier
+                .align(Alignment.CenterStart)
+                .size(40.dp),
+            onClick = onBackClick,
+        ) {
+            Icon(
+                imageVector = CompoundIcons.ChevronLeft(),
+                contentDescription = stringResource(CommonStrings.action_back),
+                tint = ElementTheme.colors.iconPrimary,
+            )
         }
-    )
+
+        Column(
+            modifier = Modifier
+                .align(Alignment.Center)
+                .fillMaxWidth()
+                .padding(horizontal = 56.dp)
+                .semantics {
+                    heading()
+                },
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(1.dp),
+        ) {
+            Text(
+                text = stringResource(CommonStrings.common_thread),
+                style = ElementTheme.typography.fontBodyLgMedium.copy(
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.Bold,
+                ),
+                color = ElementTheme.colors.textPrimary,
+                textAlign = TextAlign.Center,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            ThreadSubtitle(roomName)
+        }
+    }
+}
+
+@Composable
+private fun ThreadSubtitle(roomName: String?) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(8.dp)
+                .clip(CircleShape)
+                .background(ElementTheme.colors.textSecondary.copy(alpha = 0.75f)),
+        )
+        Text(
+            text = roomName ?: stringResource(CommonStrings.common_no_room_name),
+            style = ElementTheme.typography.fontBodyXsMedium,
+            fontStyle = FontStyle.Italic.takeIf { roomName == null },
+            color = ElementTheme.colors.textSecondary,
+            textAlign = TextAlign.Center,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
 }
 
 @PreviewsDayNight

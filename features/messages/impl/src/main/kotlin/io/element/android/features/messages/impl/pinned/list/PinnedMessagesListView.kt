@@ -8,22 +8,31 @@
 
 package io.element.android.features.messages.impl.pinned.list
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
 import im.vector.app.features.analytics.plan.Interaction
+import io.element.android.compound.theme.ElementTheme
 import io.element.android.compound.tokens.generated.CompoundIcons
 import io.element.android.features.messages.impl.actionlist.ActionListEvent
 import io.element.android.features.messages.impl.actionlist.ActionListView
@@ -39,15 +48,14 @@ import io.element.android.features.messages.impl.timeline.model.event.TimelineIt
 import io.element.android.features.messages.impl.timeline.protection.TimelineProtectionEvent
 import io.element.android.features.messages.impl.timeline.protection.TimelineProtectionState
 import io.element.android.features.poll.api.pollcontent.PollTitleView
-import io.element.android.libraries.designsystem.atomic.molecules.IconTitleSubtitleMolecule
 import io.element.android.libraries.designsystem.components.BigIcon
-import io.element.android.libraries.designsystem.components.button.BackButton
 import io.element.android.libraries.designsystem.components.dialogs.ErrorDialog
 import io.element.android.libraries.designsystem.preview.ElementPreview
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
 import io.element.android.libraries.designsystem.theme.components.CircularProgressIndicator
 import io.element.android.libraries.designsystem.theme.components.Scaffold
-import io.element.android.libraries.designsystem.theme.components.TopAppBar
+import io.element.android.libraries.designsystem.theme.components.Text
+import io.element.android.libraries.designsystem.theme.components.TextButton
 import io.element.android.libraries.matrix.api.timeline.Timeline
 import io.element.android.libraries.matrix.api.user.MatrixUser
 import io.element.android.libraries.ui.strings.CommonStrings
@@ -65,16 +73,19 @@ fun PinnedMessagesListView(
     onLinkLongClick: (Link) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val analyticsService = LocalAnalyticsService.current
+    fun onClose() {
+        analyticsService.captureInteraction(Interaction.Name.PinnedMessageBannerCloseListButton)
+        onBackClick()
+    }
+    BackHandler(onBack = ::onClose)
     Scaffold(
         modifier = modifier,
+        containerColor = ElementTheme.colors.bgCanvasDefault,
         topBar = {
-            val analyticsService = LocalAnalyticsService.current
             PinnedMessagesListTopBar(
                 state = state,
-                onBackClick = {
-                    analyticsService.captureInteraction(Interaction.Name.PinnedMessageBannerCloseListButton)
-                    onBackClick()
-                }
+                onCloseClick = ::onClose,
             )
         },
         content = { padding ->
@@ -93,18 +104,42 @@ fun PinnedMessagesListView(
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun PinnedMessagesListTopBar(
     state: PinnedMessagesListState,
-    onBackClick: () -> Unit,
+    onCloseClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    TopAppBar(
-        titleStr = state.title(),
-        navigationIcon = { BackButton(onClick = onBackClick) },
-        modifier = modifier,
-    )
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .statusBarsPadding()
+            .height(56.dp)
+            .padding(horizontal = 20.dp),
+    ) {
+        Text(
+            modifier = Modifier
+                .align(Alignment.Center)
+                .fillMaxWidth()
+                .padding(horizontal = 88.dp),
+            text = state.title(),
+            style = ElementTheme.typography.fontBodyLgMedium,
+            color = ElementTheme.colors.textPrimary,
+            textAlign = TextAlign.Center,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        val backContentDescription = stringResource(CommonStrings.action_back)
+        TextButton(
+            modifier = Modifier
+                .align(Alignment.CenterEnd)
+                .semantics {
+                    contentDescription = backContentDescription
+                },
+            text = stringResource(CommonStrings.action_close),
+            onClick = onCloseClick,
+        )
+    }
 }
 
 @Composable
@@ -148,18 +183,28 @@ private fun PinnedMessagesListContent(
 private fun PinnedMessagesListEmpty(
     modifier: Modifier = Modifier,
 ) {
-    Box(
-        modifier = modifier.padding(
-            horizontal = 32.dp,
-            vertical = 48.dp,
-        ),
-        contentAlignment = Alignment.Center,
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(horizontal = 16.dp)
+            .padding(top = 48.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         val pinActionText = stringResource(id = CommonStrings.action_pin)
-        IconTitleSubtitleMolecule(
-            title = stringResource(id = CommonStrings.screen_pinned_timeline_empty_state_headline),
-            subTitle = stringResource(id = CommonStrings.screen_pinned_timeline_empty_state_description, pinActionText),
-            iconStyle = BigIcon.Style.Default(CompoundIcons.Pin()),
+        BigIcon(style = BigIcon.Style.Default(CompoundIcons.Pin()))
+        Text(
+            modifier = Modifier.padding(top = 16.dp),
+            text = stringResource(id = CommonStrings.screen_pinned_timeline_empty_state_headline),
+            style = ElementTheme.typography.fontHeadingSmMedium,
+            color = ElementTheme.colors.textPrimary,
+            textAlign = TextAlign.Center,
+        )
+        Text(
+            modifier = Modifier.padding(top = 16.dp),
+            text = stringResource(id = CommonStrings.screen_pinned_timeline_empty_state_description, pinActionText),
+            style = ElementTheme.typography.fontBodyMdRegular,
+            color = ElementTheme.colors.textSecondary,
+            textAlign = TextAlign.Center,
         )
     }
 }

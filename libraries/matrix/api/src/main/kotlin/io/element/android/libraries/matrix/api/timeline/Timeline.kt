@@ -161,7 +161,7 @@ interface Timeline : AutoCloseable {
 
     suspend fun toggleReaction(emoji: String, eventOrTransactionId: EventOrTransactionId): Result<Boolean>
 
-    suspend fun forwardEvent(eventId: EventId, roomIds: List<RoomId>): Result<Unit>
+    suspend fun forwardEvent(eventId: EventId, roomIds: List<RoomId>, comment: String? = null): Result<Unit>
 
     suspend fun cancelSend(transactionId: TransactionId): Result<Unit> =
         redactEvent(transactionId.toEventOrTransactionId(), reason = null)

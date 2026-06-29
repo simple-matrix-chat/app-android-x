@@ -12,6 +12,7 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.lazy.LazyColumn
@@ -53,6 +54,7 @@ fun SearchUserBar(
     modifier: Modifier = Modifier,
     showBackButton: Boolean = true,
     placeHolderTitle: String = stringResource(CommonStrings.common_search_for_someone),
+    noResultsContent: (@Composable ColumnScope.() -> Unit)? = null,
 ) {
     val columnState = rememberLazyListState()
 
@@ -97,6 +99,7 @@ fun SearchUserBar(
                 AsyncLoading()
             }
         },
+        noResultsContent = noResultsContent,
         resultState = resultState,
         resultHandler = { users ->
             LazyColumn(state = columnState) {

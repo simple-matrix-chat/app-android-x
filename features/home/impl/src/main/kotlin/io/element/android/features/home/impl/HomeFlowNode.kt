@@ -34,8 +34,11 @@ import im.vector.app.features.analytics.plan.MobileScreen
 import io.element.android.annotations.ContributesNode
 import io.element.android.features.home.api.HomeEntryPoint
 import io.element.android.features.home.impl.components.RoomListMenuAction
+import io.element.android.features.home.impl.contacts.HomeContactsPresenter
+import io.element.android.features.home.impl.contacts.HomeContactsView
 import io.element.android.features.home.impl.model.RoomListRoomSummary
 import io.element.android.features.home.impl.roomlist.RoomListEvent
+import io.element.android.features.home.impl.search.RoomListSearchEvent
 import io.element.android.features.invite.api.InviteData
 import io.element.android.features.invite.api.acceptdecline.AcceptDeclineInviteView
 import io.element.android.features.invite.api.declineandblock.DeclineInviteAndBlockEntryPoint
@@ -56,7 +59,11 @@ import io.element.android.libraries.designsystem.utils.DelayedVisibility
 import io.element.android.libraries.di.SessionScope
 import io.element.android.libraries.di.annotations.SessionCoroutineScope
 import io.element.android.libraries.matrix.api.MatrixClient
+import io.element.android.libraries.matrix.api.core.EventId
 import io.element.android.libraries.matrix.api.core.RoomId
+import io.element.android.libraries.matrix.api.room.StartDMResult
+import io.element.android.libraries.matrix.api.room.startDM
+import io.element.android.libraries.matrix.api.user.MatrixUser
 import io.element.android.services.analytics.api.AnalyticsService
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -79,6 +86,7 @@ class HomeFlowNode(
     @Assisted plugins: List<Plugin>,
     private val matrixClient: MatrixClient,
     private val presenter: HomePresenter,
+    private val contactsPresenter: HomeContactsPresenter,
     private val inviteFriendsUseCase: InviteFriendsUseCase,
     private val analyticsService: AnalyticsService,
     private val acceptDeclineInviteView: AcceptDeclineInviteView,
@@ -134,6 +142,9 @@ class HomeFlowNode(
 
         @Parcelize
         data class SelectNewOwnersWhenLeavingRoom(val roomId: RoomId) : NavTarget
+
+        @Parcelize
+        data object Contacts : NavTarget
     }
 
     private fun navigateToReportRoom(roomId: RoomId) {
@@ -183,6 +194,7 @@ class HomeFlowNode(
 
             fun navigateToRoom(
                 roomId: RoomId,
+                eventId: EventId? = null,
             ) {
                 if (!loadingJoinedRoomJob.value.isUninitialized()) {
                     Timber.w("Already loading a room, ignoring navigateToRoom for $roomId")
@@ -195,7 +207,7 @@ class HomeFlowNode(
                     }.fold(
                         onSuccess = { joinedRoom ->
                             if (isActive) {
-                                callback.navigateToRoom(roomId, joinedRoom)
+                                callback.navigateToRoom(roomId, joinedRoom, eventId)
                                 loadingJoinedRoomJob.value = AsyncData.Success(coroutineContext.job)
                                 // Wait a bit before resetting the state to avoid allowing to open several rooms
                                 delay(200.milliseconds)
@@ -205,7 +217,7 @@ class HomeFlowNode(
                         onFailure = {
                             // If the operation wasn't cancelled, navigate without the room, using the room id
                             if (it !is CancellationException) {
-                                callback.navigateToRoom(roomId, null)
+                                callback.navigateToRoom(roomId, null, eventId)
                             }
                             loadingJoinedRoomJob.value = AsyncData.Failure(error = it, prevData = coroutineContext.job)
                             // Wait a bit before resetting the state to avoid allowing to open several rooms
@@ -217,14 +229,64 @@ class HomeFlowNode(
                 loadingJoinedRoomJob.value = AsyncData.Loading(job)
             }
 
-                HomeView(
-                    homeState = state,
-                    onRoomClick = ::navigateToRoom,
-                    onSettingsClick = callback::navigateToSettings,
-                    onStartChatClick = callback::navigateToCreateRoom,
-                    onCreateSpaceClick = callback::navigateToCreateSpace,
-                    onRoomSettingsClick = callback::navigateToRoomSettings,
-                    onMenuActionClick = { onMenuActionClick(activity, it) },
+            fun navigateToUser(matrixUser: MatrixUser) {
+                if (!loadingJoinedRoomJob.value.isUninitialized()) {
+                    Timber.w("Already loading a room, ignoring navigateToUser for ${matrixUser.userId}")
+                    return
+                }
+
+                val job = sessionCoroutineScope.launch {
+                    when (val startDmResult = matrixClient.startDM(matrixUser.userId, createIfDmDoesNotExist = true)) {
+                        is StartDMResult.Success -> {
+                            state.roomListState.searchState.eventSink(RoomListSearchEvent.TrackRecentSearch(startDmResult.roomId))
+                            runCatchingExceptions {
+                                matrixClient.getJoinedRoom(startDmResult.roomId)
+                            }.fold(
+                                onSuccess = { joinedRoom ->
+                                    if (isActive) {
+                                        callback.navigateToRoom(startDmResult.roomId, joinedRoom, eventId = null)
+                                        loadingJoinedRoomJob.value = AsyncData.Success(coroutineContext.job)
+                                        delay(200.milliseconds)
+                                        loadingJoinedRoomJob.value = AsyncData.Uninitialized
+                                    }
+                                },
+                                onFailure = {
+                                    if (it !is CancellationException) {
+                                        callback.navigateToRoom(startDmResult.roomId, null, eventId = null)
+                                    }
+                                    loadingJoinedRoomJob.value = AsyncData.Failure(error = it, prevData = coroutineContext.job)
+                                    delay(200.milliseconds)
+                                    loadingJoinedRoomJob.value = AsyncData.Uninitialized
+                                }
+                            )
+                        }
+                        StartDMResult.DmDoesNotExist -> {
+                            val error = IllegalStateException("DM does not exist for ${matrixUser.userId}")
+                            loadingJoinedRoomJob.value = AsyncData.Failure(error = error, prevData = coroutineContext.job)
+                            delay(200.milliseconds)
+                            loadingJoinedRoomJob.value = AsyncData.Uninitialized
+                        }
+                        is StartDMResult.Failure -> {
+                            Timber.e(startDmResult.throwable, "Failed to start DM from global search for ${matrixUser.userId}")
+                            loadingJoinedRoomJob.value = AsyncData.Failure(error = startDmResult.throwable, prevData = coroutineContext.job)
+                            delay(200.milliseconds)
+                            loadingJoinedRoomJob.value = AsyncData.Uninitialized
+                        }
+                    }
+                }
+                loadingJoinedRoomJob.value = AsyncData.Loading(job)
+            }
+
+            HomeView(
+                homeState = state,
+                onRoomClick = ::navigateToRoom,
+                onUserClick = ::navigateToUser,
+                onSettingsClick = callback::navigateToSettings,
+                onStartChatClick = callback::navigateToCreateRoom,
+                onOpenContactsClick = { backstack.push(NavTarget.Contacts) },
+                onCreateSpaceClick = callback::navigateToCreateSpace,
+                onRoomSettingsClick = callback::navigateToRoomSettings,
+                onMenuActionClick = { onMenuActionClick(activity, it) },
                 onReportRoomClick = ::navigateToReportRoom,
                 onDeclineInviteAndBlockUser = ::navigateToDeclineInviteAndBlockUser,
                 modifier = modifier,
@@ -278,7 +340,63 @@ class HomeFlowNode(
                     listType = ChangeRoomMemberRolesListType.SelectNewOwnersWhenLeaving,
                 )
             }
+            NavTarget.Contacts -> contactsNode(buildContext)
             NavTarget.Root -> rootNode(buildContext)
+        }
+    }
+
+    private fun contactsNode(buildContext: BuildContext): Node {
+        return node(buildContext) { modifier ->
+            val state by stateFlow.collectAsState()
+            val contactsState = contactsPresenter.present()
+
+            HomeContactsView(
+                state = state,
+                contactsState = contactsState,
+                onBackClick = { backstack.pop() },
+                onStartChatClick = callback::navigateToCreateRoom,
+                onRoomClick = { room ->
+                    sessionCoroutineScope.launch {
+                        runCatchingExceptions {
+                            matrixClient.getJoinedRoom(room.roomId)
+                        }.fold(
+                            onSuccess = { joinedRoom ->
+                                callback.navigateToRoom(room.roomId, joinedRoom, eventId = null)
+                            },
+                            onFailure = { throwable ->
+                                Timber.w(throwable, "Failed to load contact room ${room.roomId}; navigating by id")
+                                callback.navigateToRoom(room.roomId, joinedRoom = null, eventId = null)
+                            }
+                        )
+                    }
+                },
+                onUserClick = { matrixUser ->
+                    sessionCoroutineScope.launch {
+                        when (val startDmResult = matrixClient.startDM(matrixUser.userId, createIfDmDoesNotExist = true)) {
+                            is StartDMResult.Success -> {
+                                runCatchingExceptions {
+                                    matrixClient.getJoinedRoom(startDmResult.roomId)
+                                }.fold(
+                                    onSuccess = { joinedRoom ->
+                                        callback.navigateToRoom(startDmResult.roomId, joinedRoom, eventId = null)
+                                    },
+                                    onFailure = { throwable ->
+                                        Timber.w(throwable, "Failed to load contact DM ${startDmResult.roomId}; navigating by id")
+                                        callback.navigateToRoom(startDmResult.roomId, joinedRoom = null, eventId = null)
+                                    }
+                                )
+                            }
+                            StartDMResult.DmDoesNotExist -> {
+                                Timber.w("DM does not exist for contact ${matrixUser.userId}")
+                            }
+                            is StartDMResult.Failure -> {
+                                Timber.e(startDmResult.throwable, "Failed to start DM from contact ${matrixUser.userId}")
+                            }
+                        }
+                    }
+                },
+                modifier = modifier,
+            )
         }
     }
 }

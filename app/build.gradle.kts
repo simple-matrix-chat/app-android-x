@@ -263,11 +263,11 @@ dependencies {
             ":features:analytics:impl",
             ":features:linknewdevice:impl",
             ":features:securebackup:impl",
-            ":features:securityandprivacy:impl",
             ":features:verifysession:impl",
         ),
     )
     implementation(projects.features.migration.api)
+    implementation(projects.features.linknewdevice.impl)
     implementation(projects.appnav)
     implementation(projects.appconfig)
     implementation(projects.libraries.uiStrings)

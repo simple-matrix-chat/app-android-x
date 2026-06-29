@@ -39,7 +39,26 @@ class RoomListSearchPresenter(
         val dataSource = remember { dataSourceFactory.create(coroutineScope) }
 
         LaunchedEffect(searchQuery.text) {
-            dataSource.setSearchQuery(searchQuery.text.toString())
+            val query = searchQuery.text.toString()
+            dataSource.setSearchQuery(query)
+            dataSource.searchMessages(query)
+            dataSource.searchMomentUsers(query)
+        }
+
+        val searchResults by dataSource.roomSummaries.collectAsState(initial = persistentListOf())
+        val userResults by dataSource.userResults.collectAsState()
+        val messageResults by dataSource.messageResults.collectAsState()
+        val isSearchingUsers by dataSource.isSearchingUsers.collectAsState()
+        val isSearchingMessages by dataSource.isSearchingMessages.collectAsState()
+        val hasMoreMessageResults by dataSource.hasMoreMessageResults.collectAsState()
+        val hasMessageSearchError by dataSource.hasMessageSearchError.collectAsState()
+        val recentlyViewedRooms by dataSource.recentlyViewedRooms.collectAsState()
+        val recentSearches by dataSource.recentSearches.collectAsState(initial = persistentListOf())
+
+        LaunchedEffect(isSearchActive) {
+            if (isSearchActive) {
+                dataSource.loadRecentlyViewedRooms()
+            }
         }
 
         fun handleEvent(event: RoomListSearchEvent) {
@@ -53,16 +72,29 @@ class RoomListSearchPresenter(
                 }
                 is RoomListSearchEvent.UpdateVisibleRange -> coroutineScope.launch {
                     dataSource.updateVisibleRange(visibleRange = event.range)
+                    val resultCount = searchResults.size + userResults.size + messageResults.size
+                    if (event.range.last >= resultCount - 3) {
+                        dataSource.loadMoreMessages()
+                    }
+                }
+                is RoomListSearchEvent.TrackRecentSearch -> coroutineScope.launch {
+                    dataSource.trackRecentSearch(event.roomId)
                 }
             }
         }
 
-        val searchResults by dataSource.roomSummaries.collectAsState(initial = persistentListOf())
-
         return RoomListSearchState(
             isSearchActive = isSearchActive,
             query = searchQuery,
-            results = searchResults,
+            results = if (searchQuery.text.isBlank()) persistentListOf() else searchResults,
+            userResults = if (searchQuery.text.isBlank()) persistentListOf() else userResults,
+            messageResults = if (searchQuery.text.isBlank()) persistentListOf() else messageResults,
+            isSearchingUsers = isSearchingUsers,
+            isSearchingMessages = isSearchingMessages,
+            hasMoreMessageResults = hasMoreMessageResults,
+            hasMessageSearchError = hasMessageSearchError,
+            recentlyViewedRooms = recentlyViewedRooms,
+            recentSearches = recentSearches,
             eventSink = ::handleEvent,
         )
     }

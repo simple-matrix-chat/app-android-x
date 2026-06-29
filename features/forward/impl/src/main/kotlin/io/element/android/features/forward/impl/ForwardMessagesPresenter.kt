@@ -42,8 +42,12 @@ class ForwardMessagesPresenter(
 
     private val forwardingActionState: MutableState<AsyncAction<List<RoomId>>> = mutableStateOf(AsyncAction.Uninitialized)
 
-    fun onRoomSelected(roomIds: List<RoomId>) {
-        sessionCoroutineScope.forwardEvent(eventId, roomIds)
+    fun onRoomSelected(roomIds: List<RoomId>, comment: String? = null) {
+        if (forwardingActionState.value.isLoading() || forwardingActionState.value.isSuccess()) {
+            return
+        }
+        forwardingActionState.value = AsyncAction.Loading
+        sessionCoroutineScope.forwardEvent(eventId, roomIds, comment)
     }
 
     @Composable
@@ -63,9 +67,14 @@ class ForwardMessagesPresenter(
     private fun CoroutineScope.forwardEvent(
         eventId: EventId,
         roomIds: List<RoomId>,
+        comment: String?,
     ) = launch {
         suspend {
-            timelineProvider.getActiveTimeline().forwardEvent(eventId, roomIds)
+            timelineProvider.getActiveTimeline().forwardEvent(
+                eventId = eventId,
+                roomIds = roomIds,
+                comment = comment?.trim()?.takeIf { it.isNotEmpty() },
+            )
                 .onFailure {
                     Timber.e(it, "Error while forwarding event")
                 }

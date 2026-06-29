@@ -186,6 +186,7 @@ class TimelineItemEventFactory(
         }
         return TimelineItemReadReceipts(
             receipts = event.receipts
+                .filterNot { receipt -> matrixClient.isMe(receipt.userId) }
                 .map { receipt ->
                     val roomMember = roomMembers.find { it.userId == receipt.userId }
                     ReadReceiptData(

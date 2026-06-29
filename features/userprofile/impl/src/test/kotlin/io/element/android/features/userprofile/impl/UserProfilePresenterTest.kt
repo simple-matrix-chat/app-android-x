@@ -27,16 +27,19 @@ import io.element.android.libraries.matrix.api.MatrixClient
 import io.element.android.libraries.matrix.api.core.RoomId
 import io.element.android.libraries.matrix.api.core.UserId
 import io.element.android.libraries.matrix.api.room.StateEventType
+import io.element.android.libraries.matrix.api.user.MatrixPublicProfile
 import io.element.android.libraries.matrix.api.user.MatrixUser
 import io.element.android.libraries.matrix.test.AN_EXCEPTION
 import io.element.android.libraries.matrix.test.A_ROOM_ID
 import io.element.android.libraries.matrix.test.A_USER_ID
 import io.element.android.libraries.matrix.test.A_USER_ID_2
+import io.element.android.libraries.matrix.test.A_USER_NAME
 import io.element.android.libraries.matrix.test.FakeMatrixClient
 import io.element.android.libraries.matrix.test.room.FakeBaseRoom
 import io.element.android.libraries.matrix.test.room.powerlevels.FakeRoomPermissions
 import io.element.android.libraries.matrix.ui.components.aMatrixUser
 import io.element.android.tests.testutils.WarmUpRule
+import io.element.android.tests.testutils.consumeItemsUntilPredicate
 import io.element.android.tests.testutils.lambda.any
 import io.element.android.tests.testutils.lambda.lambdaError
 import io.element.android.tests.testutils.lambda.lambdaRecorder
@@ -73,6 +76,44 @@ class UserProfilePresenterTest {
             assertThat(initialState.isBlocked).isEqualTo(AsyncData.Success(false))
             assertThat(initialState.dmRoomId).isEqualTo(A_ROOM_ID)
             assertThat(initialState.canCall).isFalse()
+        }
+    }
+
+    @Test
+    fun `present - returns Moment profile data`() = runTest {
+        val matrixUser = aMatrixUser(A_USER_ID.value, A_USER_NAME, "anAvatarUrl")
+        val profileLink = "https://unmoment.app/u/alice"
+        val client = createFakeMatrixClient().apply {
+            givenGetProfileResult(A_USER_ID, Result.success(matrixUser))
+            givenProfileUsername("alice")
+            givenProfileStatus("Available")
+            givenPublicProfile(
+                MatrixPublicProfile(
+                    userId = A_USER_ID,
+                    displayName = A_USER_NAME,
+                    username = "alice",
+                    phoneNumber = "+44 7123 456789",
+                )
+            )
+            givenUserProfileLink(profileLink)
+        }
+        val presenter = createUserProfilePresenter(
+            userId = A_USER_ID,
+            client = client,
+        )
+        presenter.test {
+            val loadedState = consumeItemsUntilPredicate { state ->
+                state.username == "alice" &&
+                    state.phoneNumber == "+44 7123 456789" &&
+                    state.status == "Available" &&
+                    state.profileShareText == "$A_USER_NAME\n$profileLink"
+            }.last()
+            assertThat(loadedState.userName).isEqualTo(A_USER_NAME)
+            assertThat(loadedState.username).isEqualTo("alice")
+            assertThat(loadedState.phoneNumber).isEqualTo("+44 7123 456789")
+            assertThat(loadedState.status).isEqualTo("Available")
+            assertThat(loadedState.profileShareText).isEqualTo("$A_USER_NAME\n$profileLink")
+            cancelAndIgnoreRemainingEvents()
         }
     }
 

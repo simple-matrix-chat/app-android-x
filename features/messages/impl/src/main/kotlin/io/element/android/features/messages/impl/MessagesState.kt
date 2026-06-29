@@ -13,6 +13,7 @@ import io.element.android.features.messages.impl.actionlist.ActionListState
 import io.element.android.features.messages.impl.link.LinkState
 import io.element.android.features.messages.impl.messagecomposer.MessageComposerState
 import io.element.android.features.messages.impl.pinned.banner.PinnedMessagesBannerState
+import io.element.android.features.messages.impl.search.RoomMessageSearchState
 import io.element.android.features.messages.impl.timeline.TimelineState
 import io.element.android.features.messages.impl.timeline.components.customreaction.CustomReactionState
 import io.element.android.features.messages.impl.timeline.components.reactionsummary.ReactionSummaryState
@@ -49,6 +50,7 @@ data class MessagesState(
     val roomCallState: RoomCallState,
     val appName: String,
     val pinnedMessagesBannerState: PinnedMessagesBannerState,
+    val roomMessageSearchState: RoomMessageSearchState,
     val roomMemberModerationState: RoomMemberModerationState,
     val successorRoom: SuccessorRoom?,
     val threads: Threads,

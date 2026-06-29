@@ -39,6 +39,7 @@ fun SearchSingleUserResultItem(
             modifier = modifier.clickable(onClick = onClick),
             matrixUser = searchResult.matrixUser,
             avatarSize = AvatarSize.UserListItem,
+            subtext = searchResult.subtitle ?: if (searchResult.matrixUser.displayName.isNullOrEmpty()) null else searchResult.matrixUser.userId.value,
         )
     }
 }
@@ -49,6 +50,14 @@ internal fun SearchSingleUserResultItemPreview() = ElementThemedPreview {
     Column {
         SearchSingleUserResultItem(
             searchResult = UserSearchResult(aMatrixUser(), isUnresolved = false),
+            onClick = {},
+        )
+        HorizontalDivider()
+        SearchSingleUserResultItem(
+            searchResult = UserSearchResult(
+                matrixUser = aMatrixUser(displayName = "Alice Johnson"),
+                subtitle = "+79991234567",
+            ),
             onClick = {},
         )
         HorizontalDivider()

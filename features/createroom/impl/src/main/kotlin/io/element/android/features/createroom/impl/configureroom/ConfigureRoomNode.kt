@@ -24,6 +24,7 @@ import io.element.android.libraries.architecture.callback
 import io.element.android.libraries.architecture.inputs
 import io.element.android.libraries.di.SessionScope
 import io.element.android.libraries.matrix.api.core.RoomId
+import io.element.android.libraries.matrix.api.createroom.MomentRoomKind
 import io.element.android.services.analytics.api.AnalyticsService
 import kotlinx.parcelize.Parcelize
 
@@ -43,11 +44,12 @@ class ConfigureRoomNode(
     data class Inputs(
         val isSpace: Boolean,
         val parentSpaceId: RoomId?,
+        val momentRoomKind: MomentRoomKind?,
     ) : NodeInputs, Parcelable
 
     private val inputs = inputs<Inputs>()
 
-    private val presenter = presenterFactory.create(inputs.isSpace, inputs.parentSpaceId)
+    private val presenter = presenterFactory.create(inputs.isSpace, inputs.parentSpaceId, inputs.momentRoomKind)
 
     init {
         lifecycle.subscribe(

@@ -24,26 +24,18 @@ import androidx.compose.ui.zIndex
 import io.element.android.features.messages.impl.timeline.TimelineEvent
 import io.element.android.features.messages.impl.timeline.aTimelineItemEvent
 import io.element.android.features.messages.impl.timeline.components.event.TimelineItemEventContentView
-import io.element.android.features.messages.impl.timeline.components.receipt.ReadReceiptViewState
-import io.element.android.features.messages.impl.timeline.components.receipt.TimelineItemReadReceiptView
-import io.element.android.features.messages.impl.timeline.components.receipt.aReadReceiptData
 import io.element.android.features.messages.impl.timeline.model.TimelineItem
 import io.element.android.features.messages.impl.timeline.model.TimelineItemGroupPosition
-import io.element.android.features.messages.impl.timeline.model.TimelineItemReadReceipts
 import io.element.android.features.messages.impl.timeline.model.event.aTimelineItemStateEventContent
 import io.element.android.features.messages.impl.timeline.util.defaultTimelineContentPadding
 import io.element.android.libraries.designsystem.preview.ElementPreview
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
-import kotlinx.collections.immutable.persistentListOf
 
 @Composable
 fun TimelineItemStateEventRow(
     event: TimelineItem.Event,
-    renderReadReceipts: Boolean,
-    isLastOutgoingMessage: Boolean,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
-    onReadReceiptsClick: (event: TimelineItem.Event) -> Unit,
     eventSink: (TimelineEvent.TimelineItemEvent) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -80,15 +72,6 @@ fun TimelineItemStateEventRow(
                 )
             }
         }
-        TimelineItemReadReceiptView(
-            state = ReadReceiptViewState(
-                sendState = event.localSendState,
-                isLastOutgoingMessage = isLastOutgoingMessage,
-                receipts = event.readReceiptState.receipts,
-            ),
-            renderReadReceipts = renderReadReceipts,
-            onReadReceiptsClick = { onReadReceiptsClick(event) },
-        )
     }
 }
 
@@ -100,15 +83,9 @@ internal fun TimelineItemStateEventRowPreview() = ElementPreview {
             isMine = false,
             content = aTimelineItemStateEventContent(),
             groupPosition = TimelineItemGroupPosition.None,
-            readReceiptState = TimelineItemReadReceipts(
-                receipts = persistentListOf(aReadReceiptData(0)),
-            )
         ),
-        renderReadReceipts = true,
-        isLastOutgoingMessage = false,
         onClick = {},
         onLongClick = {},
-        onReadReceiptsClick = {},
         eventSink = {}
     )
 }

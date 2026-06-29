@@ -89,12 +89,30 @@ class PinnedMessagesListPresenterTest {
     }
 
     @Test
-    fun `present - empty state`() = runTest {
+    fun `present - empty state when room has no pinned event ids`() = runTest {
         val room = FakeJoinedRoom(
             baseRoom = FakeBaseRoom(
                 roomPermissions = roomPermissions(),
             ).apply {
                 givenRoomInfo(aRoomInfo(pinnedEventIds = listOf()))
+            },
+            createTimelineResult = { Result.success(FakeTimeline()) },
+        )
+        val presenter = createPinnedMessagesListPresenter(room = room)
+        presenter.test {
+            val emptyState = awaitItem()
+            assertThat(emptyState).isEqualTo(PinnedMessagesListState.Empty)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `present - empty state when pinned timeline has no items`() = runTest {
+        val room = FakeJoinedRoom(
+            baseRoom = FakeBaseRoom(
+                roomPermissions = roomPermissions(),
+            ).apply {
+                givenRoomInfo(aRoomInfo(pinnedEventIds = listOf(AN_EVENT_ID)))
             },
             createTimelineResult = { Result.success(FakeTimeline()) },
         )

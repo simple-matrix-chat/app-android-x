@@ -13,11 +13,13 @@ import com.bumble.appyx.core.node.Node
 import com.bumble.appyx.core.plugin.Plugin
 import io.element.android.libraries.architecture.FeatureEntryPoint
 import io.element.android.libraries.matrix.api.core.RoomId
+import io.element.android.libraries.matrix.api.createroom.MomentRoomKind
 
 interface CreateRoomEntryPoint : FeatureEntryPoint {
     interface Builder {
         fun setIsSpace(isSpace: Boolean): Builder
         fun setParentSpace(parentSpaceId: RoomId): Builder
+        fun setMomentRoomKind(momentRoomKind: MomentRoomKind): Builder
         fun build(): Node
     }
 

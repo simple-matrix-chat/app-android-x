@@ -61,6 +61,9 @@ class EditDefaultNotificationSettingPresenter(
         val mode: MutableState<RoomNotificationMode?> = remember {
             mutableStateOf(null)
         }
+        val pendingMode: MutableState<RoomNotificationMode?> = remember {
+            mutableStateOf(null)
+        }
 
         val changeNotificationSettingAction: MutableState<AsyncAction<Unit>> = remember { mutableStateOf(AsyncAction.Uninitialized) }
 
@@ -71,15 +74,15 @@ class EditDefaultNotificationSettingPresenter(
         val localCoroutineScope = rememberCoroutineScope()
         LaunchedEffect(Unit) {
             fetchSettings(mode)
-            observeNotificationSettings(mode, changeNotificationSettingAction)
+            observeNotificationSettings(mode, pendingMode, changeNotificationSettingAction)
             observeRoomSummaries(roomsWithUserDefinedMode)
-            displayMentionsOnlyDisclaimer = false
+            displayMentionsOnlyDisclaimer = shouldDisplayMentionsOnlyDisclaimer()
         }
 
         fun handleEvent(event: EditDefaultNotificationSettingStateEvents) {
             when (event) {
                 is EditDefaultNotificationSettingStateEvents.SetNotificationMode -> {
-                    localCoroutineScope.setDefaultNotificationMode(event.mode, changeNotificationSettingAction)
+                    localCoroutineScope.setDefaultNotificationMode(event.mode, pendingMode, changeNotificationSettingAction)
                 }
                 EditDefaultNotificationSettingStateEvents.ClearError -> changeNotificationSettingAction.value = AsyncAction.Uninitialized
             }
@@ -88,6 +91,7 @@ class EditDefaultNotificationSettingPresenter(
         return EditDefaultNotificationSettingState(
             isOneToOne = isDm,
             mode = mode.value,
+            pendingMode = pendingMode.value,
             roomsWithUserDefinedMode = roomsWithUserDefinedMode.value.toImmutableList(),
             changeNotificationSettingAction = changeNotificationSettingAction.value,
             displayMentionsOnlyDisclaimer = displayMentionsOnlyDisclaimer,
@@ -96,18 +100,22 @@ class EditDefaultNotificationSettingPresenter(
     }
 
     private fun CoroutineScope.fetchSettings(mode: MutableState<RoomNotificationMode?>) = launch {
-        mode.value = notificationSettingsService.getDefaultRoomNotificationMode(isEncrypted = false, isOneToOne = isDm).getOrThrow()
+        val unencryptedMode = notificationSettingsService.getDefaultRoomNotificationMode(isEncrypted = false, isOneToOne = isDm).getOrThrow()
+        val encryptedMode = notificationSettingsService.getDefaultRoomNotificationMode(isEncrypted = true, isOneToOne = isDm).getOrThrow()
+        mode.value = encryptedMode.takeIf { it == unencryptedMode }
     }
 
     @OptIn(FlowPreview::class)
     private fun CoroutineScope.observeNotificationSettings(
         mode: MutableState<RoomNotificationMode?>,
+        pendingMode: MutableState<RoomNotificationMode?>,
         changeNotificationSettingAction: MutableState<AsyncAction<Unit>>,
     ) {
         notificationSettingsService.notificationSettingsChangeFlow
             .debounce(0.5.seconds)
             .onEach {
                 fetchSettings(mode)
+                pendingMode.value = null
                 changeNotificationSettingAction.value = AsyncAction.Uninitialized
             }
             .launchIn(this)
@@ -151,9 +159,27 @@ class EditDefaultNotificationSettingPresenter(
             )
     }
 
-    private fun CoroutineScope.setDefaultNotificationMode(mode: RoomNotificationMode, action: MutableState<AsyncAction<Unit>>) = launch {
+    private fun CoroutineScope.setDefaultNotificationMode(
+        mode: RoomNotificationMode,
+        pendingMode: MutableState<RoomNotificationMode?>,
+        action: MutableState<AsyncAction<Unit>>,
+    ) = launch {
+        pendingMode.value = mode
         action.runUpdatingStateNoSuccess {
-            notificationSettingsService.setDefaultRoomNotificationMode(isEncrypted = false, mode = mode, isDM = isDm)
+            notificationSettingsService.setDefaultRoomNotificationMode(isEncrypted = true, mode = mode, isDM = isDm)
+                .fold(
+                    onSuccess = {
+                        notificationSettingsService.setDefaultRoomNotificationMode(isEncrypted = false, mode = mode, isDM = isDm)
+                    },
+                    onFailure = { Result.failure(it) },
+                )
         }
+        pendingMode.value = null
+    }
+
+    private suspend fun shouldDisplayMentionsOnlyDisclaimer(): Boolean {
+        return notificationSettingsService.canHomeServerPushEncryptedEventsToDevice()
+            .map { canPushEncryptedEventsToDevice -> !canPushEncryptedEventsToDevice }
+            .getOrDefault(false)
     }
 }

@@ -61,6 +61,7 @@ open class PreferencesRootStateProvider : PreviewParameterProvider<PreferencesRo
 
 fun aPreferencesRootState(
     myUser: MatrixUser = aMatrixUser(),
+    profileStatus: String = "",
     version: String = "Version 1.1 (1)",
     deviceId: DeviceId? = null,
     isMultiAccountEnabled: Boolean = false,
@@ -71,11 +72,14 @@ fun aPreferencesRootState(
     canDeactivateAccount: Boolean = false,
     nbOfBlockedUsers: Int = 0,
     showLabsItem: Boolean = false,
+    momentPrivacySummary: MomentPrivacySummary = MomentPrivacySummary.Custom,
+    momentNotificationsSummary: MomentNotificationsSummary? = MomentNotificationsSummary.Enabled,
     directLogoutState: DirectLogoutState = aDirectLogoutState(),
     snackbarMessage: SnackbarMessage? = null,
     eventSink: (PreferencesRootEvent) -> Unit = {},
 ) = PreferencesRootState(
     myUser = myUser,
+    profileStatus = profileStatus,
     version = version,
     deviceId = deviceId,
     isMultiAccountEnabled = isMultiAccountEnabled,
@@ -86,6 +90,8 @@ fun aPreferencesRootState(
     canDeactivateAccount = canDeactivateAccount,
     nbOfBlockedUsers = nbOfBlockedUsers,
     showLabsItem = showLabsItem,
+    momentPrivacySummary = momentPrivacySummary,
+    momentNotificationsSummary = momentNotificationsSummary,
     directLogoutState = directLogoutState,
     snackbarMessage = snackbarMessage,
     eventSink = eventSink,

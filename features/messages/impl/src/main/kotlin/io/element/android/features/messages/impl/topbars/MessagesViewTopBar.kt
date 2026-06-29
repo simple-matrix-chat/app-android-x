@@ -8,16 +8,21 @@
 
 package io.element.android.features.messages.impl.topbars
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
-import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.LocalMinimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -25,105 +30,121 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import io.element.android.compound.theme.ElementTheme
+import io.element.android.compound.tokens.generated.CompoundIcons
 import io.element.android.features.messages.impl.MessagesMenuActions
 import io.element.android.features.roomcall.api.RoomCallState
 import io.element.android.features.roomcall.api.aStandByCallState
 import io.element.android.features.roomcall.api.anOngoingCallState
-import io.element.android.libraries.designsystem.components.avatar.Avatar
-import io.element.android.libraries.designsystem.components.avatar.AvatarData
-import io.element.android.libraries.designsystem.components.avatar.AvatarSize
-import io.element.android.libraries.designsystem.components.avatar.AvatarType
-import io.element.android.libraries.designsystem.components.avatar.anAvatarData
-import io.element.android.libraries.designsystem.components.button.BackButton
 import io.element.android.libraries.designsystem.preview.ElementPreview
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
 import io.element.android.libraries.designsystem.preview.ROOM_NAME
 import io.element.android.libraries.designsystem.theme.components.HorizontalDivider
+import io.element.android.libraries.designsystem.theme.components.Icon
+import io.element.android.libraries.designsystem.theme.components.IconButton
 import io.element.android.libraries.designsystem.theme.components.Text
-import io.element.android.libraries.designsystem.theme.components.TopAppBar
-import io.element.android.libraries.matrix.ui.components.aMatrixUserList
-import io.element.android.libraries.matrix.ui.model.getAvatarData
+import io.element.android.libraries.testtags.TestTags
+import io.element.android.libraries.testtags.testTag
 import io.element.android.libraries.ui.strings.CommonStrings
-import kotlinx.collections.immutable.ImmutableList
-import kotlinx.collections.immutable.persistentListOf
-import kotlinx.collections.immutable.toImmutableList
 
-@OptIn(ExperimentalMaterial3Api::class)
+internal val MomentRoomHeaderActionSize = 32.dp
+internal val MomentRoomHeaderActionSpacing = 12.dp
+internal val MomentRoomHeaderTitleHorizontalPadding = 128.dp
+
 @Composable
 internal fun MessagesViewTopBar(
     roomName: String?,
-    roomAvatar: AvatarData,
-    isTombstoned: Boolean,
-    heroes: ImmutableList<AvatarData>,
     onRoomDetailsClick: () -> Unit,
     onBackClick: () -> Unit,
     modifier: Modifier = Modifier,
     menuActions: @Composable RowScope.() -> Unit,
 ) {
-    TopAppBar(
-        modifier = modifier,
-        navigationIcon = {
-            BackButton(onClick = onBackClick)
-        },
-        title = {
-            val roundedCornerShape = RoundedCornerShape(8.dp)
-            Row(
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .background(ElementTheme.colors.bgCanvasDefault)
+            .padding(horizontal = 20.dp)
+            .padding(top = 8.dp, bottom = 6.dp)
+            .heightIn(min = 44.dp)
+            .testTag(TestTags.roomHeader),
+    ) {
+        CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides MomentRoomHeaderActionSize) {
+            IconButton(
                 modifier = Modifier
-                    .clip(roundedCornerShape)
-                    .clickable { onRoomDetailsClick() },
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                verticalAlignment = Alignment.CenterVertically,
+                    .align(Alignment.CenterStart)
+                    .size(MomentRoomHeaderActionSize),
+                onClick = onBackClick,
             ) {
-                val titleModifier = Modifier.weight(1f, fill = false)
-                RoomAvatarAndNameRow(
-                    roomName = roomName,
-                    roomAvatar = roomAvatar,
-                    isTombstoned = isTombstoned,
-                    heroes = heroes,
-                    modifier = titleModifier
+                Icon(
+                    imageVector = CompoundIcons.ChevronLeft(),
+                    contentDescription = stringResource(CommonStrings.action_back),
+                    tint = ElementTheme.colors.iconPrimary,
                 )
             }
-        },
-        actions = menuActions,
-        windowInsets = WindowInsets(0.dp)
-    )
+        }
+
+        RoomTitle(
+            roomName = roomName,
+            onRoomDetailsClick = onRoomDetailsClick,
+            modifier = Modifier
+                .align(Alignment.Center)
+                .fillMaxWidth()
+                .padding(horizontal = MomentRoomHeaderTitleHorizontalPadding)
+                .semantics {
+                    heading()
+                }
+                .testTag(TestTags.roomHeaderTitle),
+        )
+
+        CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides MomentRoomHeaderActionSize) {
+            Row(
+                modifier = Modifier.align(Alignment.CenterEnd),
+                horizontalArrangement = Arrangement.spacedBy(MomentRoomHeaderActionSpacing),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                menuActions()
+                IconButton(
+                    modifier = Modifier.size(MomentRoomHeaderActionSize),
+                    onClick = onRoomDetailsClick,
+                ) {
+                    Icon(
+                        imageVector = CompoundIcons.Settings(),
+                        contentDescription = stringResource(CommonStrings.common_settings),
+                        tint = ElementTheme.colors.iconPrimary,
+                    )
+                }
+            }
+        }
+    }
 }
 
 @Composable
-private fun RoomAvatarAndNameRow(
+private fun RoomTitle(
     roomName: String?,
-    roomAvatar: AvatarData,
-    heroes: ImmutableList<AvatarData>,
-    isTombstoned: Boolean,
-    modifier: Modifier = Modifier
+    onRoomDetailsClick: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    Row(
-        modifier = modifier,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Avatar(
-            avatarData = roomAvatar,
-            avatarType = AvatarType.Room(
-                heroes = heroes,
-                isTombstoned = isTombstoned,
-            ),
-        )
-        Text(
-            modifier = Modifier
-                .padding(start = 8.dp)
-                .semantics {
-                    heading()
-                },
-            text = roomName ?: stringResource(CommonStrings.common_no_room_name),
-            style = ElementTheme.typography.fontBodyLgMedium,
-            fontStyle = FontStyle.Italic.takeIf { roomName == null },
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
-    }
+    Text(
+        modifier = modifier
+            .clip(RoundedCornerShape(8.dp))
+            .clickable { onRoomDetailsClick() }
+            .padding(horizontal = 8.dp, vertical = 2.dp),
+        text = roomName ?: stringResource(CommonStrings.common_no_room_name),
+        style = ElementTheme.typography.fontBodyLgMedium.copy(
+            fontSize = 17.sp,
+            fontWeight = FontWeight.Bold,
+        ),
+        fontStyle = FontStyle.Italic.takeIf { roomName == null },
+        color = ElementTheme.colors.textPrimary,
+        textAlign = TextAlign.Center,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis
+    )
 }
 
 @PreviewsDayNight
@@ -132,25 +153,18 @@ internal fun MessagesViewTopBarPreview() = ElementPreview {
     @Composable
     fun AMessagesViewTopBar(
         roomName: String? = ROOM_NAME,
-        roomAvatar: AvatarData = anAvatarData(
-            name = ROOM_NAME,
-            size = AvatarSize.TimelineRoom,
-        ),
-        isTombstoned: Boolean = false,
-        heroes: ImmutableList<AvatarData> = persistentListOf(),
         roomCallState: RoomCallState = RoomCallState.Unavailable,
         displayThreads: Boolean = false,
     ) = MessagesViewTopBar(
         roomName = roomName,
-        roomAvatar = roomAvatar,
-        isTombstoned = isTombstoned,
-        heroes = heroes,
         onRoomDetailsClick = {},
         onBackClick = {},
         menuActions = {
             MessagesMenuActions(
                 roomCallState = roomCallState,
                 displayThreads = displayThreads,
+                displaySearch = true,
+                onSearchClick = {},
                 onJoinCallClick = {},
                 onThreadsListClick = {},
             )
@@ -160,7 +174,6 @@ internal fun MessagesViewTopBarPreview() = ElementPreview {
         AMessagesViewTopBar()
         HorizontalDivider()
         AMessagesViewTopBar(
-            heroes = aMatrixUserList().map { it.getAvatarData(AvatarSize.TimelineRoom) }.toImmutableList(),
             roomCallState = anOngoingCallState(),
         )
         HorizontalDivider()
@@ -171,16 +184,7 @@ internal fun MessagesViewTopBarPreview() = ElementPreview {
         HorizontalDivider()
         AMessagesViewTopBar(
             roomName = "A DM with a very very very long name",
-            roomAvatar = anAvatarData(
-                size = AvatarSize.TimelineRoom,
-                url = "https://some-avatar.jpg"
-            ),
             roomCallState = aStandByCallState(canStartCall = false),
-        )
-        HorizontalDivider()
-        AMessagesViewTopBar(
-            roomName = "A DM with a very very very long name",
-            isTombstoned = true,
         )
         HorizontalDivider()
         AMessagesViewTopBar(

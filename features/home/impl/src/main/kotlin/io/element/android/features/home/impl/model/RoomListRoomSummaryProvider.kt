@@ -9,6 +9,7 @@
 package io.element.android.features.home.impl.model
 
 import androidx.compose.ui.tooling.preview.PreviewParameterProvider
+import io.element.android.features.home.impl.filters.MomentHomeRoomType
 import io.element.android.libraries.designsystem.components.avatar.AvatarData
 import io.element.android.libraries.designsystem.components.avatar.AvatarSize
 import io.element.android.libraries.designsystem.preview.LAST_MESSAGE
@@ -175,13 +176,21 @@ internal fun aRoomListRoomSummary(
     avatarData: AvatarData = AvatarData(id, name, size = AvatarSize.RoomListItem),
     isDirect: Boolean = false,
     isDm: Boolean = false,
+    isEncrypted: Boolean = false,
+    isOneToOne: Boolean = isDm,
+    directUserId: UserId? = null,
+    directUserDisplayName: String? = null,
+    isDirectUserBlocked: Boolean = false,
     isFavorite: Boolean = false,
+    isMuted: Boolean = notificationMode == RoomNotificationMode.MUTE,
     inviteSender: InviteSender? = null,
     displayType: RoomSummaryDisplayType = RoomSummaryDisplayType.ROOM,
     canonicalAlias: RoomAlias? = null,
     heroes: List<AvatarData> = emptyList(),
     isTombstoned: Boolean = false,
     isSpace: Boolean = false,
+    momentHomeRoomType: MomentHomeRoomType = if (isDirect) MomentHomeRoomType.Direct else MomentHomeRoomType.Unknown,
+    isArchived: Boolean = false,
 ) = RoomListRoomSummary(
     id = id,
     roomId = RoomId(id),
@@ -198,11 +207,19 @@ internal fun aRoomListRoomSummary(
     activeCallIntent = activeCallIntent,
     isDirect = isDirect,
     isDm = isDm,
+    isEncrypted = isEncrypted,
+    isOneToOne = isOneToOne,
+    directUserId = directUserId,
+    directUserDisplayName = directUserDisplayName,
+    isDirectUserBlocked = isDirectUserBlocked,
     isFavorite = isFavorite,
+    isMuted = isMuted,
     inviteSender = inviteSender,
     displayType = displayType,
     canonicalAlias = canonicalAlias,
     heroes = heroes.toImmutableList(),
     isTombstoned = isTombstoned,
-    isSpace = isSpace
+    isSpace = isSpace,
+    momentHomeRoomType = momentHomeRoomType,
+    isArchived = isArchived,
 )

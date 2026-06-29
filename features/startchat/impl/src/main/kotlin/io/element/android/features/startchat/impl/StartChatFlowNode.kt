@@ -34,6 +34,7 @@ import io.element.android.libraries.architecture.createNode
 import io.element.android.libraries.di.SessionScope
 import io.element.android.libraries.matrix.api.core.RoomId
 import io.element.android.libraries.matrix.api.core.toRoomIdOrAlias
+import io.element.android.libraries.matrix.api.createroom.MomentRoomKind
 import kotlinx.parcelize.Parcelize
 
 @ContributesNode(SessionScope::class)
@@ -55,7 +56,7 @@ class StartChatFlowNode(
         data object Root : NavTarget
 
         @Parcelize
-        data object NewRoom : NavTarget
+        data class NewRoom(val momentRoomKind: MomentRoomKind?) : NavTarget
 
         @Parcelize
         data object JoinByAddress : NavTarget
@@ -74,7 +75,7 @@ class StartChatFlowNode(
             NavTarget.Root -> {
                 createNode<StartChatNode>(buildContext = buildContext, plugins = listOf(navigator))
             }
-            NavTarget.NewRoom -> {
+            is NavTarget.NewRoom -> {
                 val callback = object : CreateRoomEntryPoint.Callback {
                     override fun onRoomCreated(roomId: RoomId) {
                         navigator.onRoomCreated(roomId.toRoomIdOrAlias(), emptyList())
@@ -87,6 +88,9 @@ class StartChatFlowNode(
                         callback = callback,
                     )
                     .setIsSpace(false)
+                    .apply {
+                        navTarget.momentRoomKind?.let(::setMomentRoomKind)
+                    }
                     .build()
             }
             NavTarget.JoinByAddress -> {

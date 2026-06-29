@@ -15,45 +15,43 @@ import kotlinx.coroutines.flow.MutableStateFlow
 
 @ContributesBinding(SessionScope::class)
 class DefaultFilterSelectionStrategy : FilterSelectionStrategy {
-    private val selectedFilters = LinkedHashSet<RoomListFilter>()
+    private var selectedFilter: RoomListFilter? = null
     private val availableFilters
-        get() = RoomListFilter.entries.toSet()
+        get() = RoomListFilter.entries
 
     override val filterSelectionStates = MutableStateFlow(buildFilters())
 
     override fun select(filter: RoomListFilter) {
-        selectedFilters.add(filter)
+        selectedFilter = filter
         filterSelectionStates.value = buildFilters()
     }
 
     override fun deselect(filter: RoomListFilter) {
-        selectedFilters.remove(filter)
-        filterSelectionStates.value = buildFilters()
+        if (selectedFilter == filter) {
+            selectedFilter = null
+            filterSelectionStates.value = buildFilters()
+        }
+    }
+
+    override fun toggle(filter: RoomListFilter) {
+        select(filter)
     }
 
     override fun isSelected(filter: RoomListFilter): Boolean {
-        return selectedFilters.contains(filter)
+        return selectedFilter == filter
     }
 
     override fun clear() {
-        selectedFilters.clear()
+        selectedFilter = null
         filterSelectionStates.value = buildFilters()
     }
 
     private fun buildFilters(): Set<FilterSelectionState> {
-        val selectedFilterStates = selectedFilters.map {
+        return availableFilters.map {
             FilterSelectionState(
                 filter = it,
-                isSelected = true
+                isSelected = it == selectedFilter
             )
-        }
-        val unselectedFilters = availableFilters - selectedFilters - selectedFilters.flatMap { it.incompatibleFilters }.toSet()
-        val unselectedFilterStates = unselectedFilters.map {
-            FilterSelectionState(
-                filter = it,
-                isSelected = false
-            )
-        }
-        return (selectedFilterStates + unselectedFilterStates).toSet()
+        }.toSet()
     }
 }

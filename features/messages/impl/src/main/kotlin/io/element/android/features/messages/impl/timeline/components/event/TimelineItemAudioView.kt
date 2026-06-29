@@ -27,7 +27,7 @@ fun TimelineItemAudioView(
         icon = CompoundIcons.Audio(),
         iconContentDescription = null,
         filename = content.filename,
-        fileExtensionAndSize = content.fileExtensionAndSize,
+        description = content.duration.asMomentTimelineDuration(),
         caption = content.caption,
         onContentLayoutChange = onContentLayoutChange,
         modifier = modifier,
@@ -43,3 +43,10 @@ internal fun TimelineItemAudioViewPreview(@PreviewParameter(TimelineItemAudioCon
             onContentLayoutChange = {},
         )
     }
+
+private fun kotlin.time.Duration.asMomentTimelineDuration(): String {
+    val totalSeconds = inWholeSeconds.coerceAtLeast(0)
+    val minutes = totalSeconds / 60
+    val seconds = totalSeconds % 60
+    return "$minutes:${seconds.toString().padStart(2, '0')}"
+}

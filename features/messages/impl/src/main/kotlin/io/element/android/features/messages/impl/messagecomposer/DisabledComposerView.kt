@@ -10,18 +10,17 @@ package io.element.android.features.messages.impl.messagecomposer
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredHeightIn
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -33,8 +32,6 @@ import io.element.android.libraries.designsystem.preview.ElementPreview
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
 import io.element.android.libraries.designsystem.theme.components.Icon
 import io.element.android.libraries.designsystem.theme.components.IconButton
-import io.element.android.libraries.designsystem.theme.components.IconColorButton
-import io.element.android.libraries.designsystem.theme.components.IconColorButtonStyle
 
 @Composable
 internal fun DisabledComposerView(
@@ -42,43 +39,43 @@ internal fun DisabledComposerView(
 ) {
     Row(
         modifier = modifier
-            .padding(3.dp)
+            .padding(start = 4.dp, end = 6.dp, bottom = 4.dp)
             .fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        IconColorButton(
-            onClick = {},
-            imageVector = CompoundIcons.Plus(),
-            contentDescription = null,
-            iconColorButtonStyle = IconColorButtonStyle.Disabled,
-        )
-
-        val bgColor = ElementTheme.colors.bgCanvasDisabled
-        val borderColor = ElementTheme.colors.borderDisabled
-
-        Box(
-            modifier = Modifier
-                .clip(RoundedCornerShape(21.dp))
-                .border(0.5.dp, borderColor, RoundedCornerShape(21.dp))
-                .background(color = bgColor)
-                .size(42.dp)
-                .requiredHeightIn(min = 42.dp)
-                .weight(1f),
-        )
-
-        Spacer(modifier = Modifier.width(8.dp))
         IconButton(
-            modifier = Modifier
-                .padding(start = 2.dp)
-                .size(48.dp),
+            modifier = Modifier.size(48.dp),
             enabled = false,
             onClick = {},
         ) {
             Icon(
-                modifier = Modifier.size(30.dp),
-                imageVector = CompoundIcons.SendSolid(),
-                contentDescription = "",
-                tint = ElementTheme.colors.iconQuaternary
+                modifier = Modifier.size(28.dp),
+                imageVector = CompoundIcons.Plus(),
+                contentDescription = null,
+                tint = ElementTheme.colors.iconDisabled,
+            )
+        }
+
+        val bgColor = ElementTheme.colors.bgSubtlePrimary
+        val borderColor = ElementTheme.colors.borderDisabled
+
+        Box(
+            modifier = Modifier
+                .clip(CircleShape)
+                .border(0.5.dp, borderColor, CircleShape)
+                .background(color = bgColor)
+                .requiredHeightIn(min = 48.dp)
+                .weight(1f),
+            contentAlignment = Alignment.CenterEnd,
+        ) {
+            Icon(
+                modifier = Modifier
+                    .padding(end = 12.dp)
+                    .size(24.dp),
+                imageVector = CompoundIcons.MicOnSolid(),
+                contentDescription = null,
+                tint = ElementTheme.colors.iconDisabled,
             )
         }
     }

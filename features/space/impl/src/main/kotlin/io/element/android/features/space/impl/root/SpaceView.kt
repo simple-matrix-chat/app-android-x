@@ -121,6 +121,7 @@ fun SpaceView(
 
     Scaffold(
         modifier = modifier,
+        containerColor = ElementTheme.colors.bgCanvasDefault,
         topBar = {
             Box {
                 AnimatedVisibility(

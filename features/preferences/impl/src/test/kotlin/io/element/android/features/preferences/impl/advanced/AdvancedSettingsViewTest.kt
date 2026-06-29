@@ -11,10 +11,15 @@
 package io.element.android.features.preferences.impl.advanced
 
 import androidx.activity.ComponentActivity
+import androidx.annotation.StringRes
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.AndroidComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.v2.runAndroidComposeUiTest
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.google.common.truth.Truth.assertThat
@@ -29,7 +34,6 @@ import io.element.android.services.analytics.test.FakeAnalyticsService
 import io.element.android.tests.testutils.EnsureNeverCalled
 import io.element.android.tests.testutils.EventsRecorder
 import io.element.android.tests.testutils.assertNoNodeWithText
-import io.element.android.tests.testutils.clickOn
 import io.element.android.tests.testutils.ensureCalledOnce
 import io.element.android.tests.testutils.pressBack
 import kotlinx.collections.immutable.toImmutableList
@@ -61,8 +65,7 @@ class AdvancedSettingsViewTest {
                 eventSink = eventsRecorder,
             ),
         )
-        clickOn(CommonStrings.common_appearance)
-        clickOn(R.string.theme_dark)
+        scrollToAndClickOn(R.string.theme_dark)
         eventsRecorder.assertSingle(AdvancedSettingsEvents.SetTheme(ThemeOption.Dark))
     }
 
@@ -73,7 +76,6 @@ class AdvancedSettingsViewTest {
                 availableThemeOptions = ThemeOption.entries.toImmutableList(),
             ),
         )
-        clickOn(CommonStrings.common_appearance)
         run {
             val text = activity!!.getString(R.string.theme_black)
             onNodeWithText(text).assertExists()
@@ -87,7 +89,6 @@ class AdvancedSettingsViewTest {
                 availableThemeOptions = ThemeOption.entries.filterNot { it == ThemeOption.Black }.toImmutableList(),
             ),
         )
-        clickOn(CommonStrings.common_appearance)
         assertNoNodeWithText(R.string.theme_black)
     }
 
@@ -99,7 +100,7 @@ class AdvancedSettingsViewTest {
                 eventSink = eventsRecorder,
             ),
         )
-        clickOn(CommonStrings.action_view_source)
+        scrollToAndClickOn(CommonStrings.action_view_source)
         eventsRecorder.assertSingle(AdvancedSettingsEvents.SetDeveloperModeEnabled(true))
     }
 
@@ -111,7 +112,7 @@ class AdvancedSettingsViewTest {
                 eventSink = eventsRecorder,
             ),
         )
-        clickOn(R.string.screen_advanced_settings_share_presence)
+        scrollToAndClickOn(R.string.screen_advanced_settings_share_presence)
         eventsRecorder.assertSingle(AdvancedSettingsEvents.SetSharePresenceEnabled(true))
     }
 
@@ -125,7 +126,7 @@ class AdvancedSettingsViewTest {
             ),
             analyticsService = analyticsService
         )
-        clickOn(R.string.screen_advanced_settings_media_compression_description)
+        scrollToAndClickOn(R.string.screen_advanced_settings_media_compression_description)
         eventsRecorder.assertSingle(AdvancedSettingsEvents.SetCompressMedia(true))
         assertThat(analyticsService.capturedEvents).isEqualTo(
             listOf(
@@ -147,7 +148,7 @@ class AdvancedSettingsViewTest {
             ),
             analyticsService = analyticsService
         )
-        clickOn(R.string.screen_advanced_settings_media_compression_description)
+        scrollToAndClickOn(R.string.screen_advanced_settings_media_compression_description)
         eventsRecorder.assertSingle(AdvancedSettingsEvents.SetCompressMedia(false))
         assertThat(analyticsService.capturedEvents).isEqualTo(
             listOf(
@@ -168,7 +169,7 @@ class AdvancedSettingsViewTest {
                 hideInviteAvatars = false
             ),
         )
-        clickOn(R.string.screen_advanced_settings_hide_invite_avatars_toggle_title)
+        scrollToAndClickOn(R.string.screen_advanced_settings_hide_invite_avatars_toggle_title)
         eventsRecorder.assertSingle(AdvancedSettingsEvents.SetHideInviteAvatars(true))
     }
 
@@ -182,7 +183,7 @@ class AdvancedSettingsViewTest {
                 timelineMediaPreviewValue = MediaPreviewValue.On
             ),
         )
-        clickOn(R.string.screen_advanced_settings_show_media_timeline_always_hide)
+        scrollToAndClickOn(R.string.screen_advanced_settings_show_media_timeline_always_hide)
         eventsRecorder.assertSingle(AdvancedSettingsEvents.SetTimelineMediaPreviewValue(MediaPreviewValue.Off))
     }
 
@@ -196,7 +197,7 @@ class AdvancedSettingsViewTest {
                 timelineMediaPreviewValue = MediaPreviewValue.On
             ),
         )
-        clickOn(R.string.screen_advanced_settings_show_media_timeline_private_rooms)
+        scrollToAndClickOn(R.string.screen_advanced_settings_show_media_timeline_private_rooms)
         eventsRecorder.assertSingle(AdvancedSettingsEvents.SetTimelineMediaPreviewValue(MediaPreviewValue.Private))
     }
 
@@ -210,7 +211,7 @@ class AdvancedSettingsViewTest {
                 timelineMediaPreviewValue = MediaPreviewValue.Off
             ),
         )
-        clickOn(R.string.screen_advanced_settings_show_media_timeline_always_show)
+        scrollToAndClickOn(R.string.screen_advanced_settings_show_media_timeline_always_show)
         eventsRecorder.assertSingle(AdvancedSettingsEvents.SetTimelineMediaPreviewValue(MediaPreviewValue.On))
     }
 
@@ -226,7 +227,7 @@ class AdvancedSettingsViewTest {
             ),
         )
         // The toggle should be disabled, so clicking should not emit any events
-        clickOn(R.string.screen_advanced_settings_hide_invite_avatars_toggle_title)
+        scrollToAndClickOn(R.string.screen_advanced_settings_hide_invite_avatars_toggle_title)
     }
 
     @Test
@@ -241,9 +242,16 @@ class AdvancedSettingsViewTest {
             ),
         )
         // The options should be disabled, so clicking should not emit any events
-        clickOn(R.string.screen_advanced_settings_show_media_timeline_always_hide)
-        clickOn(R.string.screen_advanced_settings_show_media_timeline_private_rooms)
+        scrollToAndClickOn(R.string.screen_advanced_settings_show_media_timeline_always_hide)
+        scrollToAndClickOn(R.string.screen_advanced_settings_show_media_timeline_private_rooms)
     }
+}
+
+private fun AndroidComposeUiTest<ComponentActivity>.scrollToAndClickOn(@StringRes res: Int) {
+    val text = activity!!.getString(res)
+    onNode(hasText(text) and hasClickAction())
+        .performScrollTo()
+        .performClick()
 }
 
 private fun AndroidComposeUiTest<ComponentActivity>.setAdvancedSettingsView(

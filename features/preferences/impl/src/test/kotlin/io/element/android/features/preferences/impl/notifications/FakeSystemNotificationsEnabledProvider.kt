@@ -8,8 +8,10 @@
 
 package io.element.android.features.preferences.impl.notifications
 
-class FakeSystemNotificationsEnabledProvider : SystemNotificationsEnabledProvider {
+class FakeSystemNotificationsEnabledProvider(
+    private val enabled: Boolean = true,
+) : SystemNotificationsEnabledProvider {
     override fun notificationsEnabled(): Boolean {
-        return true
+        return enabled
     }
 }

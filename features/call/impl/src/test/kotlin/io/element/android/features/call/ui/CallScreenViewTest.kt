@@ -14,6 +14,8 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.test.AndroidComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.v2.runAndroidComposeUiTest
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.element.android.features.call.impl.pip.PictureInPictureEvent
@@ -24,7 +26,12 @@ import io.element.android.features.call.impl.ui.CallScreenState
 import io.element.android.features.call.impl.ui.CallScreenView
 import io.element.android.features.call.impl.ui.JavascriptBackHandlerBridge
 import io.element.android.features.call.impl.ui.aCallScreenState
+import io.element.android.libraries.architecture.AsyncData
+import io.element.android.libraries.ui.strings.CommonStrings
 import io.element.android.tests.testutils.EventsRecorder
+import io.element.android.tests.testutils.assertNoNodeWithText
+import io.element.android.tests.testutils.assertNodeWithTextIsDisplayed
+import io.element.android.tests.testutils.clickOn
 import io.element.android.tests.testutils.pressBackKey
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -38,6 +45,43 @@ import org.robolectric.shadows.ShadowWebView
 @OptIn(ExperimentalTestApi::class)
 @RunWith(AndroidJUnit4::class)
 class CallScreenViewTest {
+    @Test
+    fun `loading url state renders call canvas without progress dialog text or web view setup`() = runAndroidComposeUiTest {
+        val callEvents = EventsRecorder<CallScreenEvent>()
+
+        setCallScreenView(
+            state = aCallScreenState(
+                urlState = AsyncData.Loading(),
+                eventSink = callEvents,
+            ),
+            useInspectionMode = false,
+        )
+
+        assertNoNodeWithText(CommonStrings.common_please_wait)
+        callEvents.assertEmpty()
+    }
+
+    @Test
+    fun `failure url state close action hangs up`() = runAndroidComposeUiTest {
+        val callEvents = EventsRecorder<CallScreenEvent>()
+        val errorMessage = "Call failed"
+
+        setCallScreenView(
+            state = aCallScreenState(
+                urlState = AsyncData.Failure(Exception(errorMessage)),
+                eventSink = callEvents,
+            ),
+            useInspectionMode = false,
+        )
+
+        assertNodeWithTextIsDisplayed(CommonStrings.common_error)
+        onNodeWithText(errorMessage).assertIsDisplayed()
+
+        clickOn(CommonStrings.action_close)
+
+        callEvents.assertSingle(CallScreenEvent.Hangup)
+    }
+
     @Test
     fun `pressing back key triggers hangup when no web view is available and pip is unsupported`() = runAndroidComposeUiTest {
         val callEvents = EventsRecorder<CallScreenEvent>()

@@ -17,16 +17,19 @@ import io.element.android.libraries.matrix.api.core.RoomAlias
 import io.element.android.libraries.matrix.api.core.RoomId
 import io.element.android.libraries.matrix.api.core.RoomIdOrAlias
 import io.element.android.libraries.matrix.api.core.SessionId
+import io.element.android.libraries.matrix.api.core.ThreadId
 import io.element.android.libraries.matrix.api.core.UserId
 import io.element.android.libraries.matrix.api.createroom.CreateRoomParameters
 import io.element.android.libraries.matrix.api.encryption.EncryptionService
 import io.element.android.libraries.matrix.api.linknewdevice.LinkDesktopHandler
 import io.element.android.libraries.matrix.api.linknewdevice.LinkMobileHandler
 import io.element.android.libraries.matrix.api.media.MatrixMediaLoader
+import io.element.android.libraries.matrix.api.media.MatrixStickerInfo
 import io.element.android.libraries.matrix.api.media.MediaPreviewService
 import io.element.android.libraries.matrix.api.notification.NotificationService
 import io.element.android.libraries.matrix.api.notificationsettings.NotificationSettingsService
 import io.element.android.libraries.matrix.api.oauth.AccountManagementAction
+import io.element.android.libraries.matrix.api.privacy.MatrixMomentPrivacySettings
 import io.element.android.libraries.matrix.api.pusher.PushersService
 import io.element.android.libraries.matrix.api.room.BaseRoom
 import io.element.android.libraries.matrix.api.room.JoinedRoom
@@ -37,10 +40,15 @@ import io.element.android.libraries.matrix.api.room.alias.ResolvedRoomAlias
 import io.element.android.libraries.matrix.api.room.location.BeaconInfoUpdate
 import io.element.android.libraries.matrix.api.roomdirectory.RoomDirectoryService
 import io.element.android.libraries.matrix.api.roomlist.RoomListService
+import io.element.android.libraries.matrix.api.search.MatrixMessageSearchPage
+import io.element.android.libraries.matrix.api.session.DeleteSessionDeviceResult
+import io.element.android.libraries.matrix.api.session.MatrixSessionDevice
 import io.element.android.libraries.matrix.api.spaces.SpaceService
 import io.element.android.libraries.matrix.api.sync.SlidingSyncVersion
 import io.element.android.libraries.matrix.api.sync.SyncService
 import io.element.android.libraries.matrix.api.timeline.Timeline
+import io.element.android.libraries.matrix.api.user.MatrixMomentUserSearchMatch
+import io.element.android.libraries.matrix.api.user.MatrixPublicProfile
 import io.element.android.libraries.matrix.api.user.MatrixSearchUserResults
 import io.element.android.libraries.matrix.api.user.MatrixUser
 import io.element.android.libraries.matrix.api.verification.SessionVerificationService
@@ -79,6 +87,8 @@ interface MatrixClient {
     suspend fun createDM(userId: UserId): Result<RoomId>
     suspend fun getProfile(userId: UserId): Result<MatrixUser>
     suspend fun searchUsers(searchTerm: String, limit: Long): Result<MatrixSearchUserResults>
+    suspend fun searchMomentUsers(query: String, limit: Int, defaultCountry: String?): Result<List<MatrixMomentUserSearchMatch>>
+    suspend fun searchMessages(searchTerm: String, nextBatch: String? = null, roomId: RoomId? = null): Result<MatrixMessageSearchPage>
     suspend fun setDisplayName(displayName: String): Result<Unit>
     suspend fun uploadAvatar(mimeType: String, data: ByteArray): Result<Unit>
     suspend fun removeAvatar(): Result<Unit>
@@ -105,8 +115,21 @@ interface MatrixClient {
      * Retrieve the user profile, will also eventually emit a new value to [userProfile].
      */
     suspend fun getUserProfile(): Result<MatrixUser>
+    suspend fun getProfileStatus(): Result<String>
+    suspend fun getProfileStatus(userId: UserId): Result<String>
+    suspend fun setProfileStatus(status: String): Result<Unit>
+    suspend fun getProfileUsername(userId: UserId): Result<String>
+    suspend fun setProfileUsername(username: String, displayName: String): Result<String>
+    suspend fun getPublicProfile(userId: UserId): Result<MatrixPublicProfile?>
+    suspend fun createUserProfileLink(userId: UserId): Result<String?>
     suspend fun getAccountManagementUrl(action: AccountManagementAction?): Result<String?>
+    suspend fun getAccountData(eventType: String): Result<String?>
+    suspend fun setAccountData(eventType: String, content: String): Result<Unit>
+    suspend fun syncMomentPrivacySettings(settings: MatrixMomentPrivacySettings): Result<Unit>
+    suspend fun getSessionDevices(): Result<List<MatrixSessionDevice>>
+    suspend fun deleteSessionDevice(deviceId: DeviceId): Result<DeleteSessionDeviceResult>
     suspend fun uploadMedia(mimeType: String, data: ByteArray): Result<String>
+    suspend fun sendSticker(roomId: RoomId, body: String, url: String, info: MatrixStickerInfo, threadRootId: ThreadId?): Result<Unit>
 
     /**
      * Get a room info flow for a given room ID.

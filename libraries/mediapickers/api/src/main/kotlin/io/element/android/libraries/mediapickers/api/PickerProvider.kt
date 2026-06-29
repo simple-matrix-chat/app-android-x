@@ -8,7 +8,9 @@
 
 package io.element.android.libraries.mediapickers.api
 
+import android.content.Intent
 import android.net.Uri
+import androidx.activity.result.ActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.compose.runtime.Composable
 
@@ -24,10 +26,21 @@ interface PickerProvider {
     ): PickerLauncher<PickVisualMediaRequest, Uri?>
 
     @Composable
+    fun registerGalleryVideoPicker(
+        onResult: (Uri?) -> Unit
+    ): PickerLauncher<PickVisualMediaRequest, Uri?>
+
+    @Composable
     fun registerFilePicker(
         mimeType: String,
         onResult: (uri: Uri?, mimeType: String?) -> Unit,
     ): PickerLauncher<String, Uri?>
+
+    @Composable
+    fun registerContactPicker(onResult: (Uri?) -> Unit): PickerLauncher<Void?, Uri?>
+
+    @Composable
+    fun registerCameraPicker(onResult: (uri: Uri?, mimeType: String?) -> Unit): PickerLauncher<Intent, ActivityResult>
 
     @Composable
     fun registerCameraPhotoPicker(onResult: (Uri?) -> Unit): PickerLauncher<Uri, Boolean>

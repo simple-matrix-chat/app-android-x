@@ -8,9 +8,16 @@
 
 package io.element.android.features.startchat.impl.root
 
+import io.element.android.libraries.matrix.api.createroom.MomentRoomKind
 import io.element.android.libraries.matrix.api.user.MatrixUser
 
 sealed interface StartChatEvents {
     data class StartDM(val matrixUser: MatrixUser) : StartChatEvents
     data object CancelStartDM : StartChatEvents
+    data class CreateMomentRoom(
+        val name: String,
+        val momentRoomKind: MomentRoomKind,
+        val isPublic: Boolean,
+    ) : StartChatEvents
+    data object CancelCreateMomentRoom : StartChatEvents
 }

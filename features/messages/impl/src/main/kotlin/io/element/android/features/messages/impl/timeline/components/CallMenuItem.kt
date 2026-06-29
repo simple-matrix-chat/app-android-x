@@ -10,7 +10,6 @@ package io.element.android.features.messages.impl.timeline.components
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.size
@@ -18,6 +17,10 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.PreviewParameter
@@ -28,6 +31,8 @@ import io.element.android.features.roomcall.api.RoomCallState
 import io.element.android.features.roomcall.api.RoomCallStateProvider
 import io.element.android.libraries.designsystem.preview.ElementPreview
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
+import io.element.android.libraries.designsystem.theme.components.DropdownMenu
+import io.element.android.libraries.designsystem.theme.components.DropdownMenuItem
 import io.element.android.libraries.designsystem.theme.components.Icon
 import io.element.android.libraries.designsystem.theme.components.IconButton
 import io.element.android.libraries.designsystem.theme.components.Text
@@ -66,28 +71,88 @@ private fun StandByCallMenuItem(
     onJoinCallClick: (isAudioCall: Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Row(modifier = modifier) {
-        // Only show voice call in DMs
-        if (roomCallState.isDM) {
-            IconButton(
-                onClick = { onJoinCallClick(true) },
-                enabled = roomCallState.canStartCall,
-            ) {
-                Icon(
-                    imageVector = CompoundIcons.VoiceCallSolid(),
-                    contentDescription = stringResource(CommonStrings.a11y_start_voice_call),
-                )
-            }
-        }
+    if (roomCallState.isDM) {
+        DirectCallMenuItem(
+            canStartCall = roomCallState.canStartCall,
+            onJoinCallClick = onJoinCallClick,
+            modifier = modifier,
+        )
+    } else {
+        VideoCallButton(
+            canStartCall = roomCallState.canStartCall,
+            onJoinCallClick = onJoinCallClick,
+            modifier = modifier,
+        )
+    }
+}
+
+@Composable
+private fun DirectCallMenuItem(
+    canStartCall: Boolean,
+    onJoinCallClick: (isAudioCall: Boolean) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var isMenuExpanded by remember { mutableStateOf(false) }
+    Box {
         IconButton(
-            onClick = { onJoinCallClick(false) },
-            enabled = roomCallState.canStartCall,
+            modifier = modifier,
+            onClick = { isMenuExpanded = true },
+            enabled = canStartCall,
         ) {
             Icon(
                 imageVector = CompoundIcons.VideoCallSolid(),
-                contentDescription = stringResource(CommonStrings.a11y_start_call),
+                contentDescription = stringResource(CommonStrings.action_call),
             )
         }
+        DropdownMenu(
+            expanded = isMenuExpanded,
+            onDismissRequest = { isMenuExpanded = false },
+        ) {
+            DropdownMenuItem(
+                text = { Text(stringResource(CommonStrings.a11y_start_voice_call)) },
+                leadingIcon = {
+                    Icon(
+                        imageVector = CompoundIcons.VoiceCallSolid(),
+                        contentDescription = null,
+                    )
+                },
+                onClick = {
+                    isMenuExpanded = false
+                    onJoinCallClick(true)
+                },
+            )
+            DropdownMenuItem(
+                text = { Text(stringResource(CommonStrings.a11y_start_video_call)) },
+                leadingIcon = {
+                    Icon(
+                        imageVector = CompoundIcons.VideoCallSolid(),
+                        contentDescription = null,
+                    )
+                },
+                onClick = {
+                    isMenuExpanded = false
+                    onJoinCallClick(false)
+                },
+            )
+        }
+    }
+}
+
+@Composable
+private fun VideoCallButton(
+    canStartCall: Boolean,
+    onJoinCallClick: (isAudioCall: Boolean) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    IconButton(
+        modifier = modifier,
+        onClick = { onJoinCallClick(false) },
+        enabled = canStartCall,
+    ) {
+        Icon(
+            imageVector = CompoundIcons.VideoCallSolid(),
+            contentDescription = stringResource(CommonStrings.a11y_start_call),
+        )
     }
 }
 

@@ -10,6 +10,7 @@ package io.element.android.features.messages.impl.timeline.components.event
 
 import android.text.SpannedString
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -74,11 +75,10 @@ fun TimelineItemImageView(
     val a11yLabel = stringResource(CommonStrings.common_image)
     val description = content.caption?.let { "$a11yLabel: $it" } ?: a11yLabel
     Column(modifier = modifier) {
-        val containerModifier = if (content.showCaption) {
-            Modifier.clip(RoundedCornerShape(10.dp))
-        } else {
-            Modifier
-        }
+        val mediaShape = RoundedCornerShape(if (content.showCaption) MomentTimelineCaptionedMediaRadius else MomentTimelineMediaRadius)
+        val containerModifier = Modifier
+            .clip(mediaShape)
+            .border(1.dp, momentTimelineMediaBorderColor(), mediaShape)
         TimelineItemAspectRatioBox(
             modifier = containerModifier.blurHashBackground(content.blurhash, alpha = 0.9f).align(Alignment.CenterHorizontally),
             aspectRatio = coerceRatioWhenHidingContent(content.aspectRatio, hideMediaContent),
@@ -137,7 +137,7 @@ fun TimelineItemImageView(
                         .padding(horizontal = 4.dp) // This is (12.dp - 8.dp) contentPadding from CommonLayout
                         .widthIn(min = MIN_HEIGHT_IN_DP.dp * aspectRatio, max = MAX_HEIGHT_IN_DP.dp * aspectRatio),
                     text = caption,
-                    style = ElementRichTextEditorStyle.textStyle(),
+                    style = ElementRichTextEditorStyle.textStyle(usesMomentTimelineStyle = true),
                     onLinkClickedListener = onLinkClick,
                     onLinkLongClickedListener = onLinkLongClick,
                     releaseOnDetach = false,

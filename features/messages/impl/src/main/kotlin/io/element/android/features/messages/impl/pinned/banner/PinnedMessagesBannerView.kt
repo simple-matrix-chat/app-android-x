@@ -15,10 +15,8 @@ import androidx.compose.foundation.layout.Arrangement.spacedBy
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -30,10 +28,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.res.stringResource
@@ -46,10 +44,10 @@ import io.element.android.compound.theme.ElementTheme
 import io.element.android.compound.tokens.generated.CompoundIcons
 import io.element.android.libraries.designsystem.preview.ElementPreview
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
+import io.element.android.libraries.designsystem.theme.components.ButtonSize
 import io.element.android.libraries.designsystem.theme.components.Icon
 import io.element.android.libraries.designsystem.theme.components.Text
 import io.element.android.libraries.designsystem.theme.components.TextButton
-import io.element.android.libraries.designsystem.theme.pinnedMessageBannerBorder
 import io.element.android.libraries.designsystem.theme.pinnedMessageBannerIndicator
 import io.element.android.libraries.designsystem.utils.annotatedTextWithBold
 import io.element.android.libraries.matrix.api.core.EventId
@@ -85,23 +83,27 @@ private fun PinnedMessagesBannerRow(
     modifier: Modifier = Modifier,
 ) {
     val analyticsService = LocalAnalyticsService.current
-    val borderColor = ElementTheme.colors.pinnedMessageBannerBorder
     Row(
         modifier = modifier
-            .background(color = ElementTheme.colors.bgCanvasDefault)
             .fillMaxWidth()
-            .drawBorder(borderColor)
-            .heightIn(min = 64.dp)
+            .padding(bottom = 28.dp)
+            .shadow(
+                elevation = 12.dp,
+                shape = RectangleShape,
+                clip = false,
+            )
+            .background(color = ElementTheme.colors.bgCanvasDefault)
             .clickable {
                 if (state is PinnedMessagesBannerState.Loaded) {
                     analyticsService.captureInteraction(Interaction.Name.PinnedMessageBannerClick)
                     onClick(state.currentPinnedMessage.eventId)
                     state.eventSink(PinnedMessagesBannerEvent.MoveToNextPinned)
                 }
-            },
+            }
+            .padding(vertical = 16.dp)
+            .padding(start = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Spacer(modifier = Modifier.width(26.dp))
         PinIndicators(
             pinIndex = state.currentPinnedMessageIndex(),
             pinsCount = state.pinnedMessagesCount(),
@@ -143,31 +145,11 @@ private fun ViewAllButton(
     }
     TextButton(
         text = text,
+        size = ButtonSize.Medium,
         showProgress = state is PinnedMessagesBannerState.Loading,
         onClick = onViewAllClick,
         modifier = modifier,
     )
-}
-
-private fun Modifier.drawBorder(borderColor: Color): Modifier {
-    return this
-        .drawBehind {
-            val strokeWidth = 0.5.dp.toPx()
-            val y = size.height - strokeWidth / 2
-            drawLine(
-                borderColor,
-                Offset(0f, y),
-                Offset(size.width, y),
-                strokeWidth
-            )
-            drawLine(
-                borderColor,
-                Offset(0f, 0f),
-                Offset(size.width, 0f),
-                strokeWidth
-            )
-        }
-        .shadow(elevation = 5.dp, spotColor = Color.Transparent)
 }
 
 @Composable
@@ -176,14 +158,6 @@ private fun PinIndicators(
     pinsCount: Int,
     modifier: Modifier = Modifier,
 ) {
-    val indicatorHeight = remember(pinsCount) {
-        when (pinsCount) {
-            0 -> 0
-            1 -> 32
-            2 -> 18
-            else -> 11
-        }
-    }
     val activeIndex = remember(pinIndex) {
         pinIndex % 3
     }
@@ -199,7 +173,7 @@ private fun PinIndicators(
             }
         }
     }
-    val indicatorsCount = pinsCount.coerceAtMost(3)
+    val indicatorsCount = if (pinsCount == 0) 0 else 3
 
     Column(
         modifier = modifier,
@@ -209,7 +183,7 @@ private fun PinIndicators(
             Box(
                 modifier = Modifier
                     .width(2.dp)
-                    .height(indicatorHeight.dp)
+                    .height(11.dp)
                     .background(
                         color = if (index == activeIndex) {
                             ElementTheme.colors.iconAccentPrimary

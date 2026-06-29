@@ -9,13 +9,14 @@
 package io.element.android.features.messages.impl.timeline.components.event
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -37,7 +38,7 @@ fun TimelineItemAttachmentView(
     icon: ImageVector,
     iconContentDescription: String?,
     filename: String,
-    fileExtensionAndSize: String,
+    description: String,
     caption: String?,
     onContentLayoutChange: (ContentAvoidingLayoutData) -> Unit,
     modifier: Modifier = Modifier,
@@ -49,13 +50,13 @@ fun TimelineItemAttachmentView(
             icon = icon,
             iconContentDescription = iconContentDescription,
             filename = filename,
-            fileExtensionAndSize = fileExtensionAndSize,
+            description = description,
             hasCaption = caption != null,
             onContentLayoutChange = onContentLayoutChange,
         )
         if (caption != null) {
             TimelineItemAttachmentCaptionView(
-                modifier = Modifier.padding(top = 4.dp),
+                modifier = Modifier.padding(top = 8.dp),
                 caption = caption,
                 onContentLayoutChange = onContentLayoutChange,
             )
@@ -68,43 +69,47 @@ private fun TimelineItemAttachmentHeaderView(
     icon: ImageVector,
     iconContentDescription: String?,
     filename: String,
-    fileExtensionAndSize: String,
+    description: String,
     hasCaption: Boolean,
     onContentLayoutChange: (ContentAvoidingLayoutData) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val iconSize = 36.dp
-    val spacing = 8.dp
+    val iconSize = 28.dp
+    val spacing = 10.dp
     Row(
-        modifier = modifier,
+        modifier = modifier
+            .widthIn(min = 184.dp)
+            .background(momentTimelineAttachmentBackgroundColor(), MomentTimelineAttachmentShape)
+            .border(1.dp, momentTimelineAttachmentBorderColor(), MomentTimelineAttachmentShape)
+            .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(spacing),
     ) {
         Box(
             modifier = Modifier
                 .size(iconSize)
-                .background(ElementTheme.colors.bgCanvasDefault, RoundedCornerShape(4.dp)),
+                .background(momentTimelineAttachmentIconBackgroundColor(), MomentTimelineAttachmentIconShape),
             contentAlignment = Alignment.Center,
         ) {
             Icon(
                 imageVector = icon,
                 contentDescription = iconContentDescription,
                 tint = ElementTheme.colors.iconPrimary,
-                modifier = Modifier.size(24.dp),
+                modifier = Modifier.size(18.dp),
             )
         }
         Column {
             Text(
                 text = filename,
                 color = ElementTheme.colors.textPrimary,
-                maxLines = 2,
-                style = ElementTheme.typography.fontBodyLgRegular,
+                maxLines = 1,
+                style = ElementTheme.typography.fontBodyMdRegular,
                 overflow = TextOverflow.Ellipsis
             )
             Text(
-                text = fileExtensionAndSize,
+                text = description,
                 color = ElementTheme.colors.textSecondary,
-                style = ElementTheme.typography.fontBodySmRegular,
+                style = ElementTheme.typography.fontBodyXsRegular,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 onTextLayout = if (hasCaption) {
@@ -112,7 +117,7 @@ private fun TimelineItemAttachmentHeaderView(
                 } else {
                     ContentAvoidingLayout.measureLastTextLine(
                         onContentLayoutChange = onContentLayoutChange,
-                        extraWidth = iconSize + spacing
+                        extraWidth = iconSize + spacing + 24.dp
                     )
                 },
             )

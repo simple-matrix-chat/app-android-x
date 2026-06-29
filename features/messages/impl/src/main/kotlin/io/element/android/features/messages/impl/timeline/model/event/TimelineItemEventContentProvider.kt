@@ -10,9 +10,15 @@ package io.element.android.features.messages.impl.timeline.model.event
 
 import android.graphics.Typeface
 import android.text.style.StyleSpan
+import android.text.style.URLSpan
 import androidx.compose.ui.tooling.preview.PreviewParameterProvider
 import androidx.core.text.buildSpannedString
 import androidx.core.text.inSpans
+import io.element.android.wysiwyg.view.spans.CodeBlockSpan
+import io.element.android.wysiwyg.view.spans.InlineCodeSpan
+import io.element.android.wysiwyg.view.spans.OrderedListSpan
+import io.element.android.wysiwyg.view.spans.QuoteSpan
+import io.element.android.wysiwyg.view.spans.UnorderedListSpan
 import org.jsoup.nodes.Document
 
 class TimelineItemEventContentProvider : PreviewParameterProvider<TimelineItemEventContent> {
@@ -50,6 +56,79 @@ class TimelineItemTextBasedContentProvider : PreviewParameterProvider<TimelineIt
         append(text)
     }
 
+    private fun buildInlineRichText() = buildSpannedString {
+        append("Moment ")
+        inSpans(StyleSpan(Typeface.BOLD)) {
+            append("bold")
+        }
+        append(", ")
+        inSpans(InlineCodeSpan(relativeSizeProportion = 0.9f)) {
+            append("inline_code")
+        }
+        append(", and ")
+        inSpans(URLSpan("https://matrix.org")) {
+            append("a link")
+        }
+    }
+
+    private fun buildBlockRichText() = buildSpannedString {
+        append("Text before quote\n")
+        inSpans(
+            QuoteSpan(
+                indicatorColor = 0xFF8E8E93.toInt(),
+                indicatorWidth = 2,
+                indicatorPadding = 4,
+                margin = 4,
+            )
+        ) {
+            append("A compact quote that wraps onto another visual line.")
+        }
+        append("\n")
+        inSpans(
+            CodeBlockSpan(
+                leadingMargin = 6,
+                verticalPadding = 4,
+                relativeSizeProportion = 0.9f,
+            )
+        ) {
+            append("fun momentStyle() = true\nprintln(momentStyle())")
+        }
+        append("\nText after code")
+    }
+
+    private fun buildListRichText() = buildSpannedString {
+        append("List preview\n")
+        inSpans(UnorderedListSpan(gapWidth = 6, bulletRadius = 2)) {
+            append("First bullet")
+        }
+        append("\n")
+        inSpans(UnorderedListSpan(gapWidth = 6, bulletRadius = 2)) {
+            append("Second bullet with enough text to wrap naturally")
+        }
+        append("\n")
+        inSpans(
+            OrderedListSpan(
+                typeface = Typeface.defaultFromStyle(Typeface.NORMAL),
+                textSize = 16f,
+                order = 1,
+                gapWidth = 6,
+            )
+        ) {
+            append("First ordered item")
+        }
+        append("\n")
+        inSpans(
+            OrderedListSpan(
+                typeface = Typeface.defaultFromStyle(Typeface.NORMAL),
+                textSize = 16f,
+                order = 2,
+                gapWidth = 6,
+            )
+        ) {
+            append("Second ordered item")
+        }
+    }
+
     override val values = sequenceOf(
         aTimelineItemEmoteContent(),
         aTimelineItemEmoteContent().copy(formattedBody = buildSpanned("Emote")),
@@ -57,6 +136,18 @@ class TimelineItemTextBasedContentProvider : PreviewParameterProvider<TimelineIt
         aTimelineItemNoticeContent().copy(formattedBody = buildSpanned("Notice")),
         aTimelineItemTextContent(),
         aTimelineItemTextContent().copy(formattedBody = buildSpanned("Text")),
+        aTimelineItemTextContent(
+            body = "Moment rich text",
+            formattedBody = buildInlineRichText(),
+        ),
+        aTimelineItemTextContent(
+            body = "Moment block text",
+            formattedBody = buildBlockRichText(),
+        ),
+        aTimelineItemTextContent(
+            body = "Moment list text",
+            formattedBody = buildListRichText(),
+        ),
     )
 }
 

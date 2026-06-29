@@ -9,12 +9,15 @@
 package io.element.android.features.messages.impl
 
 import android.os.Build
+import androidx.compose.foundation.text.input.clearText
+import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
@@ -36,6 +39,9 @@ import io.element.android.features.messages.impl.link.LinkState
 import io.element.android.features.messages.impl.messagecomposer.MessageComposerEvent
 import io.element.android.features.messages.impl.messagecomposer.MessageComposerState
 import io.element.android.features.messages.impl.pinned.banner.PinnedMessagesBannerState
+import io.element.android.features.messages.impl.search.RoomMessageSearchEvent
+import io.element.android.features.messages.impl.search.RoomMessageSearchResult
+import io.element.android.features.messages.impl.search.RoomMessageSearchState
 import io.element.android.features.messages.impl.timeline.MarkAsFullyRead
 import io.element.android.features.messages.impl.timeline.TimelineController
 import io.element.android.features.messages.impl.timeline.TimelineEvent
@@ -69,12 +75,14 @@ import io.element.android.libraries.designsystem.utils.snackbar.collectSnackbarM
 import io.element.android.libraries.di.annotations.SessionCoroutineScope
 import io.element.android.libraries.featureflag.api.FeatureFlagService
 import io.element.android.libraries.featureflag.api.FeatureFlags
+import io.element.android.libraries.matrix.api.MatrixClient
 import io.element.android.libraries.matrix.api.core.toThreadId
 import io.element.android.libraries.matrix.api.permalink.PermalinkParser
 import io.element.android.libraries.matrix.api.room.JoinedRoom
 import io.element.android.libraries.matrix.api.room.RoomInfo
 import io.element.android.libraries.matrix.api.room.RoomMembersState
 import io.element.android.libraries.matrix.api.room.powerlevels.permissionsAsState
+import io.element.android.libraries.matrix.api.search.MatrixMessageSearchResult
 import io.element.android.libraries.matrix.api.timeline.Timeline
 import io.element.android.libraries.matrix.api.timeline.item.event.EventOrTransactionId
 import io.element.android.libraries.matrix.ui.messages.reply.map
@@ -83,6 +91,7 @@ import io.element.android.libraries.recentemojis.api.AddRecentEmoji
 import io.element.android.libraries.textcomposer.model.MessageComposerMode
 import io.element.android.libraries.ui.strings.CommonStrings
 import io.element.android.services.analytics.api.AnalyticsService
+import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.CoroutineScope
@@ -97,6 +106,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 class MessagesPresenter(
     @Assisted private val navigator: MessagesNavigator,
     private val room: JoinedRoom,
+    private val matrixClient: MatrixClient,
     @Assisted private val composerPresenter: Presenter<MessageComposerState>,
     voiceMessageComposerPresenterFactory: DefaultVoiceMessageComposerPresenter.Factory,
     @Assisted private val timelinePresenter: Presenter<TimelineState>,
@@ -167,6 +177,15 @@ class MessagesPresenter(
 
         val canOpenThreadList by featureFlagService.isFeatureEnabledFlow(FeatureFlags.RoomThreadList).collectAsState(initial = false)
         val isCurrentlySharingLiveLocationInRoom by remember { liveLocationShareManager.isCurrentlySharing(room.roomId) }.collectAsState()
+        val roomMessageSearchQuery = rememberTextFieldState()
+        var isRoomMessageSearchActive by remember { mutableStateOf(false) }
+        var roomMessageSearchResults by remember { mutableStateOf<ImmutableList<RoomMessageSearchResult>>(persistentListOf()) }
+        var isSearchingRoomMessages by remember { mutableStateOf(false) }
+        var hasRoomMessageSearchError by remember { mutableStateOf(false) }
+        var hasMoreRoomMessageSearchResults by remember { mutableStateOf(false) }
+        var currentRoomMessageSearchQuery by remember { mutableStateOf("") }
+        var nextRoomMessageSearchBatch by remember { mutableStateOf<String?>(null) }
+        var roomMessageSearchGeneration by remember { mutableIntStateOf(0) }
 
         val userEventPermissions by room.permissionsAsState(UserEventPermissions.DEFAULT) { perms ->
             perms.userEventPermissions()
@@ -195,11 +214,135 @@ class MessagesPresenter(
         val composerHasFocus by remember { derivedStateOf { composerState.textEditorState.hasFocus() } }
         LaunchedEffect(hasDismissedInviteDialog, composerHasFocus, roomInfo) {
             withContext(dispatchers.io) {
-                showReinvitePrompt = !hasDismissedInviteDialog && composerHasFocus && roomInfo.isDm && roomInfo.activeMembersCount == 1L
+                val shouldOfferReinvite = !hasDismissedInviteDialog &&
+                    composerHasFocus &&
+                    roomInfo.isDm &&
+                    roomInfo.activeMembersCount == 1L
+                showReinvitePrompt = shouldOfferReinvite && room.getDirectRoomMember() != null
             }
         }
 
         val snackbarMessage by snackbarDispatcher.collectSnackbarMessageAsState()
+
+        fun resetRoomMessageSearch(clearQuery: Boolean) {
+            if (clearQuery) {
+                roomMessageSearchQuery.clearText()
+            }
+            roomMessageSearchResults = persistentListOf()
+            isSearchingRoomMessages = false
+            hasRoomMessageSearchError = false
+            hasMoreRoomMessageSearchResults = false
+            currentRoomMessageSearchQuery = ""
+            nextRoomMessageSearchBatch = null
+            roomMessageSearchGeneration++
+        }
+
+        fun MatrixMessageSearchResult.toRoomMessageSearchResult(): RoomMessageSearchResult {
+            val sender = senderDisplayName?.takeIf(String::isNotBlank) ?: senderId?.value
+            val roomTitle = roomInfo.name ?: room.roomId.value
+            return RoomMessageSearchResult(
+                eventId = eventId,
+                title = roomTitle,
+                description = sender
+                    ?.takeIf(String::isNotBlank)
+                    ?.let { "$it: $message" }
+                    ?: message,
+            )
+        }
+
+        suspend fun searchRoomMessages(searchQuery: String) {
+            val trimmedSearchQuery = searchQuery.trim()
+            val generation = ++roomMessageSearchGeneration
+            currentRoomMessageSearchQuery = trimmedSearchQuery
+            nextRoomMessageSearchBatch = null
+
+            if (trimmedSearchQuery.isEmpty()) {
+                resetRoomMessageSearch(clearQuery = false)
+                return
+            }
+
+            roomMessageSearchResults = persistentListOf()
+            isSearchingRoomMessages = true
+            hasMoreRoomMessageSearchResults = false
+            hasRoomMessageSearchError = false
+
+            val result = matrixClient.searchMessages(trimmedSearchQuery, roomId = room.roomId)
+            if (generation != roomMessageSearchGeneration) return
+
+            isSearchingRoomMessages = false
+            result
+                .onSuccess { page ->
+                    nextRoomMessageSearchBatch = page.nextBatch
+                    hasMoreRoomMessageSearchResults = page.nextBatch != null
+                    hasRoomMessageSearchError = false
+                    roomMessageSearchResults = page.results
+                        .map { result -> result.toRoomMessageSearchResult() }
+                        .toImmutableList()
+                }
+                .onFailure {
+                    nextRoomMessageSearchBatch = null
+                    hasMoreRoomMessageSearchResults = false
+                    hasRoomMessageSearchError = true
+                }
+        }
+
+        suspend fun loadMoreRoomMessages() {
+            val nextBatch = nextRoomMessageSearchBatch ?: return
+            if (isSearchingRoomMessages || currentRoomMessageSearchQuery.isEmpty()) return
+
+            val generation = roomMessageSearchGeneration
+            isSearchingRoomMessages = true
+            hasRoomMessageSearchError = false
+
+            val result = matrixClient.searchMessages(currentRoomMessageSearchQuery, nextBatch = nextBatch, roomId = room.roomId)
+            if (generation != roomMessageSearchGeneration) return
+
+            isSearchingRoomMessages = false
+            result
+                .onSuccess { page ->
+                    nextRoomMessageSearchBatch = page.nextBatch
+                    hasMoreRoomMessageSearchResults = page.nextBatch != null
+                    hasRoomMessageSearchError = false
+                    val existingResults = roomMessageSearchResults
+                    val existingEventIds = existingResults.map { it.eventId }.toSet()
+                    roomMessageSearchResults = (
+                        existingResults + page.results
+                            .filterNot { result -> existingEventIds.contains(result.eventId) }
+                            .map { result -> result.toRoomMessageSearchResult() }
+                        ).toImmutableList()
+                }
+                .onFailure {
+                    nextRoomMessageSearchBatch = null
+                    hasMoreRoomMessageSearchResults = false
+                    hasRoomMessageSearchError = true
+                }
+        }
+
+        LaunchedEffect(isRoomMessageSearchActive, roomMessageSearchQuery.text) {
+            if (isRoomMessageSearchActive) {
+                searchRoomMessages(roomMessageSearchQuery.text.toString())
+            }
+        }
+
+        fun handleRoomMessageSearchEvent(event: RoomMessageSearchEvent) {
+            when (event) {
+                RoomMessageSearchEvent.ClearQuery -> roomMessageSearchQuery.clearText()
+                RoomMessageSearchEvent.ToggleSearchVisibility -> {
+                    isRoomMessageSearchActive = !isRoomMessageSearchActive
+                    resetRoomMessageSearch(clearQuery = true)
+                }
+                is RoomMessageSearchEvent.UpdateVisibleRange -> localCoroutineScope.launch {
+                    if (event.range.last >= roomMessageSearchResults.size - 3) {
+                        loadMoreRoomMessages()
+                    }
+                }
+                is RoomMessageSearchEvent.SelectResult -> {
+                    timelineState.eventSink(TimelineEvent.FocusOnEvent(event.eventId))
+                    isRoomMessageSearchActive = false
+                    resetRoomMessageSearch(clearQuery = true)
+                }
+            }
+        }
 
         fun handleEvent(event: MessagesEvent) {
             when (event) {
@@ -279,6 +422,16 @@ class MessagesPresenter(
             roomCallState = roomCallState,
             appName = buildMeta.applicationName,
             pinnedMessagesBannerState = pinnedMessagesBannerState,
+            roomMessageSearchState = RoomMessageSearchState(
+                isSearchEnabled = true,
+                isSearchActive = isRoomMessageSearchActive,
+                query = roomMessageSearchQuery,
+                results = roomMessageSearchResults,
+                isSearching = isSearchingRoomMessages,
+                hasMoreResults = hasMoreRoomMessageSearchResults,
+                hasSearchError = hasRoomMessageSearchError,
+                eventSink = ::handleRoomMessageSearchEvent,
+            ),
             roomMemberModerationState = roomMemberModerationState,
             successorRoom = roomInfo.successorRoom,
             threads = Threads(

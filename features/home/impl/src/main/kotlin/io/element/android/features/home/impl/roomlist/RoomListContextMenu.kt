@@ -23,6 +23,7 @@ import androidx.compose.ui.tooling.preview.PreviewParameter
 import io.element.android.compound.theme.ElementTheme
 import io.element.android.compound.tokens.generated.CompoundIcons
 import io.element.android.features.home.impl.R
+import io.element.android.features.home.impl.filters.MomentHomeMuteDuration
 import io.element.android.libraries.designsystem.components.list.ListItemContent
 import io.element.android.libraries.designsystem.preview.ElementPreview
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
@@ -32,6 +33,7 @@ import io.element.android.libraries.designsystem.theme.components.ListItemStyle
 import io.element.android.libraries.designsystem.theme.components.ModalBottomSheet
 import io.element.android.libraries.designsystem.theme.components.Text
 import io.element.android.libraries.matrix.api.core.RoomId
+import io.element.android.libraries.matrix.api.core.UserId
 import io.element.android.libraries.ui.strings.CommonStrings
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -67,7 +69,24 @@ fun RoomListContextMenu(
                 eventSink(RoomListEvent.LeaveRoom(contextMenu.roomId, needsConfirmation = true))
             },
             onFavoriteChange = { isFavorite ->
+                eventSink(RoomListEvent.HideContextMenu)
                 eventSink(RoomListEvent.SetRoomIsFavorite(contextMenu.roomId, isFavorite))
+            },
+            onArchiveChange = { isArchived ->
+                eventSink(RoomListEvent.HideContextMenu)
+                eventSink(RoomListEvent.SetRoomIsArchived(contextMenu.roomId, isArchived))
+            },
+            onMuteDurationClick = { duration ->
+                eventSink(RoomListEvent.HideContextMenu)
+                eventSink(RoomListEvent.SetRoomMuteDuration(contextMenu.roomId, duration))
+            },
+            onUnmuteClick = {
+                eventSink(RoomListEvent.HideContextMenu)
+                eventSink(RoomListEvent.UnmuteRoom(contextMenu.roomId))
+            },
+            onDirectUserBlockClick = { userId, displayName, blocked ->
+                eventSink(RoomListEvent.HideContextMenu)
+                eventSink(RoomListEvent.ShowDirectUserBlockConfirmation(userId, displayName, blocked))
             },
             onClearCacheRoomClick = {
                 eventSink(RoomListEvent.HideContextMenu)
@@ -88,6 +107,10 @@ private fun RoomListModalBottomSheetContent(
     onRoomSettingsClick: () -> Unit,
     onLeaveRoomClick: () -> Unit,
     onFavoriteChange: (isFavorite: Boolean) -> Unit,
+    onArchiveChange: (isArchived: Boolean) -> Unit,
+    onMuteDurationClick: (MomentHomeMuteDuration) -> Unit,
+    onUnmuteClick: () -> Unit,
+    onDirectUserBlockClick: (UserId, String, Boolean) -> Unit,
     onRoomMarkReadClick: () -> Unit,
     onRoomMarkUnreadClick: () -> Unit,
     onClearCacheRoomClick: () -> Unit,
@@ -137,9 +160,9 @@ private fun RoomListModalBottomSheetContent(
             )
         }
         val (textResId, icon) = if (contextMenu.isFavorite) {
-            CommonStrings.common_favourited to CompoundIcons.FavouriteSolid()
+            CommonStrings.action_unpin to CompoundIcons.PinSolid()
         } else {
-            CommonStrings.common_favourite to CompoundIcons.Favourite()
+            CommonStrings.action_pin to CompoundIcons.Pin()
         }
         ListItem(
             headlineContent = {
@@ -153,14 +176,90 @@ private fun RoomListModalBottomSheetContent(
                     icon,
                 )
             ),
-            trailingContent = ListItemContent.Switch(
-                checked = contextMenu.isFavorite,
-            ),
             onClick = {
                 onFavoriteChange(!contextMenu.isFavorite)
             },
             style = ListItemStyle.Primary,
         )
+        ListItem(
+            headlineContent = {
+                Text(
+                    text = stringResource(id = if (contextMenu.isArchived) R.string.action_unarchive else R.string.action_archive),
+                    style = MaterialTheme.typography.bodyLarge,
+                )
+            },
+            leadingContent = ListItemContent.Icon(
+                iconSource = IconSource.Vector(
+                    CompoundIcons.ExportArchive(),
+                )
+            ),
+            onClick = {
+                onArchiveChange(!contextMenu.isArchived)
+            },
+            style = ListItemStyle.Primary,
+        )
+        if (contextMenu.isMuted) {
+            ListItem(
+                headlineContent = {
+                    Text(
+                        text = stringResource(id = CommonStrings.common_unmute),
+                        style = MaterialTheme.typography.bodyLarge,
+                    )
+                },
+                leadingContent = ListItemContent.Icon(
+                    iconSource = IconSource.Vector(
+                        CompoundIcons.Notifications(),
+                    )
+                ),
+                onClick = onUnmuteClick,
+                style = ListItemStyle.Primary,
+            )
+        } else {
+            MomentHomeMuteDuration.entries.forEach { duration ->
+                ListItem(
+                    headlineContent = {
+                        Text(
+                            text = stringResource(id = duration.labelRes),
+                            style = MaterialTheme.typography.bodyLarge,
+                        )
+                    },
+                    leadingContent = ListItemContent.Icon(
+                        iconSource = IconSource.Vector(
+                            CompoundIcons.NotificationsOff(),
+                        )
+                    ),
+                    onClick = {
+                        onMuteDurationClick(duration)
+                    },
+                    style = ListItemStyle.Primary,
+                )
+            }
+        }
+        if (contextMenu.isDm && contextMenu.directUserId != null && contextMenu.directUserDisplayName != null) {
+            val isBlocked = contextMenu.isDirectUserBlocked
+            ListItem(
+                headlineContent = {
+                    val textResId = if (isBlocked) {
+                        R.string.screen_home_direct_user_unblock_user
+                    } else {
+                        R.string.screen_home_direct_user_block_user
+                    }
+                    Text(
+                        text = stringResource(id = textResId),
+                        style = MaterialTheme.typography.bodyLarge,
+                    )
+                },
+                leadingContent = ListItemContent.Icon(
+                    iconSource = IconSource.Vector(
+                        CompoundIcons.Block(),
+                    )
+                ),
+                onClick = {
+                    onDirectUserBlockClick(contextMenu.directUserId, contextMenu.directUserDisplayName, !isBlocked)
+                },
+                style = if (isBlocked) ListItemStyle.Primary else ListItemStyle.Destructive,
+            )
+        }
         ListItem(
             headlineContent = {
                 Text(
@@ -230,3 +329,10 @@ internal fun RoomListContextMenuPreview(
         eventSink = {},
     )
 }
+
+private val MomentHomeMuteDuration.labelRes: Int
+    get() = when (this) {
+        MomentHomeMuteDuration.Hours8 -> R.string.action_mute_for_8_hours
+        MomentHomeMuteDuration.OneWeek -> R.string.action_mute_for_1_week
+        MomentHomeMuteDuration.Forever -> R.string.action_mute_forever
+    }

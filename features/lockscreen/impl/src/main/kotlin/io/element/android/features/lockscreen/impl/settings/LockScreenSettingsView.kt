@@ -8,21 +8,31 @@
 
 package io.element.android.features.lockscreen.impl.settings
 
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.PreviewParameter
+import androidx.compose.ui.unit.dp
+import io.element.android.compound.theme.ElementTheme
+import io.element.android.compound.tokens.generated.CompoundIcons
 import io.element.android.features.lockscreen.impl.R
+import io.element.android.features.lockscreen.impl.components.MomentLockScreenCard
+import io.element.android.features.lockscreen.impl.components.MomentLockScreenRow
+import io.element.android.features.lockscreen.impl.components.MomentLockScreenSection
+import io.element.android.features.lockscreen.impl.components.MomentLockScreenSwitchRow
+import io.element.android.features.lockscreen.impl.components.MomentLockScreenTopBar
 import io.element.android.libraries.designsystem.components.dialogs.ConfirmationDialog
-import io.element.android.libraries.designsystem.components.preferences.PreferenceCategory
-import io.element.android.libraries.designsystem.components.preferences.PreferenceDivider
-import io.element.android.libraries.designsystem.components.preferences.PreferencePage
-import io.element.android.libraries.designsystem.components.preferences.PreferenceSwitch
 import io.element.android.libraries.designsystem.preview.ElementPreview
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
-import io.element.android.libraries.designsystem.theme.components.ListItem
-import io.element.android.libraries.designsystem.theme.components.ListItemStyle
-import io.element.android.libraries.designsystem.theme.components.Text
+import io.element.android.libraries.designsystem.theme.components.Scaffold
 
 @Composable
 fun LockScreenSettingsView(
@@ -31,39 +41,59 @@ fun LockScreenSettingsView(
     onBackClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    PreferencePage(
-        title = stringResource(id = io.element.android.libraries.ui.strings.R.string.common_screen_lock),
-        onBackClick = onBackClick,
-        modifier = modifier
-    ) {
-        PreferenceCategory(showTopDivider = false) {
-            ListItem(
-                headlineContent = {
-                    Text(stringResource(id = R.string.screen_app_lock_settings_change_pin))
-                },
-                onClick = onChangePinClick,
+    Scaffold(
+        modifier = modifier.fillMaxSize(),
+        containerColor = ElementTheme.colors.bgSubtleSecondary,
+    ) { padding ->
+        Column(
+            modifier = Modifier
+                .padding(padding)
+                .consumeWindowInsets(padding)
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 20.dp)
+                .padding(top = 8.dp, bottom = 32.dp)
+                .navigationBarsPadding(),
+            verticalArrangement = Arrangement.spacedBy(28.dp),
+        ) {
+            MomentLockScreenTopBar(
+                title = stringResource(id = io.element.android.libraries.ui.strings.R.string.common_screen_lock),
+                onBackClick = onBackClick,
             )
-            PreferenceDivider()
-            if (state.showRemovePinOption) {
-                ListItem(
-                    headlineContent = {
-                        Text(stringResource(id = R.string.screen_app_lock_settings_remove_pin))
-                    },
-                    style = ListItemStyle.Destructive,
-                    onClick = {
-                        state.eventSink(LockScreenSettingsEvent.OnRemovePin)
-                    }
+            MomentLockScreenCard {
+                MomentLockScreenRow(
+                    title = stringResource(id = R.string.screen_app_lock_settings_change_pin),
+                    imageVector = CompoundIcons.KeySolid(),
+                    onClick = onChangePinClick,
+                    showDivider = state.showRemovePinOption,
                 )
+                if (state.showRemovePinOption) {
+                    MomentLockScreenRow(
+                        title = stringResource(id = R.string.screen_app_lock_settings_remove_pin),
+                        imageVector = CompoundIcons.Delete(),
+                        onClick = {
+                            state.eventSink(LockScreenSettingsEvent.OnRemovePin)
+                        },
+                        destructive = true,
+                        showDivider = false,
+                    )
+                }
             }
             if (state.showToggleBiometric) {
-                PreferenceDivider()
-                PreferenceSwitch(
-                    title = stringResource(id = R.string.screen_app_lock_settings_enable_biometric_unlock),
-                    isChecked = state.isBiometricEnabled,
-                    onCheckedChange = {
-                        state.eventSink(LockScreenSettingsEvent.ToggleBiometricAllowed)
+                MomentLockScreenSection(
+                    title = stringResource(id = R.string.screen_app_lock_biometric_authentication),
+                ) {
+                    MomentLockScreenCard {
+                        MomentLockScreenSwitchRow(
+                            title = stringResource(id = R.string.screen_app_lock_settings_enable_biometric_unlock),
+                            imageVector = CompoundIcons.LockSolid(),
+                            checked = state.isBiometricEnabled,
+                            onCheckedChange = {
+                                state.eventSink(LockScreenSettingsEvent.ToggleBiometricAllowed)
+                            },
+                            showDivider = false,
+                        )
                     }
-                )
+                }
             }
         }
     }

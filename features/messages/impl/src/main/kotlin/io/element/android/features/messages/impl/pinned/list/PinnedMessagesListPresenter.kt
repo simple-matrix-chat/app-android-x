@@ -144,6 +144,7 @@ class PinnedMessagesListPresenter(
             timelineRoomInfo = timelineRoomInfo,
             timelineProtectionState = timelineProtectionState,
             linkState = linkState,
+            hasPinnedEvents = roomInfo.pinnedEventIds.isNotEmpty(),
             displayThreadSummaries = displayThreadSummaries,
             userEventPermissions = userEventPermissions,
             timelineItems = pinnedMessageItems,
@@ -228,12 +229,16 @@ class PinnedMessagesListPresenter(
     private fun pinnedMessagesListState(
         timelineRoomInfo: TimelineRoomInfo,
         timelineProtectionState: TimelineProtectionState,
+        hasPinnedEvents: Boolean,
         displayThreadSummaries: Boolean,
         linkState: LinkState,
         userEventPermissions: UserEventPermissions,
         timelineItems: AsyncData<ImmutableList<TimelineItem>>,
         eventSink: (PinnedMessagesListEvent) -> Unit
     ): PinnedMessagesListState {
+        if (!hasPinnedEvents) {
+            return PinnedMessagesListState.Empty
+        }
         return when (timelineItems) {
             AsyncData.Uninitialized, is AsyncData.Loading -> PinnedMessagesListState.Loading
             is AsyncData.Failure -> PinnedMessagesListState.Failed

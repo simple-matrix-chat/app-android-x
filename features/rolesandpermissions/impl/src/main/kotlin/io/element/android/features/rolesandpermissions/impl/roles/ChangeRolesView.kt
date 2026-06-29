@@ -12,16 +12,20 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -33,11 +37,15 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
 import io.element.android.compound.theme.ElementTheme
+import io.element.android.compound.tokens.generated.CompoundIcons
 import io.element.android.features.rolesandpermissions.impl.R
 import io.element.android.libraries.architecture.AsyncAction
 import io.element.android.libraries.designsystem.components.async.AsyncActionView
@@ -47,19 +55,20 @@ import io.element.android.libraries.designsystem.components.avatar.Avatar
 import io.element.android.libraries.designsystem.components.avatar.AvatarData
 import io.element.android.libraries.designsystem.components.avatar.AvatarSize
 import io.element.android.libraries.designsystem.components.avatar.AvatarType
-import io.element.android.libraries.designsystem.components.button.BackButton
 import io.element.android.libraries.designsystem.components.dialogs.ConfirmationDialog
 import io.element.android.libraries.designsystem.components.dialogs.SaveChangesDialog
 import io.element.android.libraries.designsystem.preview.ElementPreview
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
 import io.element.android.libraries.designsystem.theme.components.Checkbox
 import io.element.android.libraries.designsystem.theme.components.HorizontalDivider
+import io.element.android.libraries.designsystem.theme.components.Icon
+import io.element.android.libraries.designsystem.theme.components.IconButton
 import io.element.android.libraries.designsystem.theme.components.Scaffold
 import io.element.android.libraries.designsystem.theme.components.SearchBar
 import io.element.android.libraries.designsystem.theme.components.SearchBarResultState
+import io.element.android.libraries.designsystem.theme.components.Surface
 import io.element.android.libraries.designsystem.theme.components.Text
 import io.element.android.libraries.designsystem.theme.components.TextButton
-import io.element.android.libraries.designsystem.theme.components.TopAppBar
 import io.element.android.libraries.designsystem.utils.CommonDrawables
 import io.element.android.libraries.matrix.api.core.UserId
 import io.element.android.libraries.matrix.api.room.RoomMember
@@ -86,37 +95,29 @@ fun ChangeRolesView(
             modifier = Modifier
                 .fillMaxSize()
                 .systemBarsPadding(),
+            containerColor = ElementTheme.colors.bgSubtleSecondary,
             topBar = {
                 AnimatedVisibility(visible = !state.isSearchActive) {
-                    TopAppBar(
-                        titleStr = when (state.role) {
-                            is RoomMember.Role.Owner -> stringResource(R.string.screen_room_change_role_owners_title)
-                            RoomMember.Role.Admin -> stringResource(R.string.screen_room_change_role_administrators_title)
-                            RoomMember.Role.Moderator -> stringResource(R.string.screen_room_change_role_moderators_title)
-                            RoomMember.Role.User -> error("This should never be reached")
-                        },
-                        navigationIcon = {
-                            BackButton(onClick = { state.eventSink(ChangeRolesEvent.Exit) })
-                        },
-                        actions = {
-                            TextButton(
-                                text = stringResource(CommonStrings.action_save),
-                                enabled = state.hasPendingChanges,
-                                onClick = { state.eventSink(ChangeRolesEvent.Save) }
-                            )
-                        }
+                    ChangeRolesTopBar(
+                        title = changeRolesTitle(state.role),
+                        onBackClick = { state.eventSink(ChangeRolesEvent.Exit) },
+                        onSaveClick = { state.eventSink(ChangeRolesEvent.Save) },
+                        saveEnabled = state.hasPendingChanges,
                     )
                 }
             }
         ) { paddingValues ->
             Column(
-                modifier = Modifier.padding(paddingValues),
+                modifier = Modifier
+                    .padding(paddingValues)
+                    .consumeWindowInsets(paddingValues)
+                    .fillMaxSize(),
             ) {
                 val lazyListState = rememberLazyListState()
                 SearchBar(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(bottom = 16.dp),
+                        .padding(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 12.dp),
                     placeHolderTitle = stringResource(CommonStrings.common_search_for_someone),
                     queryState = state.searchQuery,
                     active = state.isSearchActive,
@@ -124,6 +125,7 @@ fun ChangeRolesView(
                     resultState = state.searchResults,
                 ) { members ->
                     SearchResultsList(
+                        modifier = Modifier.fillMaxSize(),
                         currentRole = state.role,
                         lazyListState = lazyListState,
                         searchResults = members,
@@ -131,6 +133,7 @@ fun ChangeRolesView(
                         canRemoveMember = state.canChangeMemberRole,
                         onToggleSelection = { state.eventSink(ChangeRolesEvent.UserSelectionToggled(it.toMatrixUser())) },
                         selectedUsersList = {},
+                        contentPadding = PaddingValues(bottom = 24.dp),
                     )
                 }
                 AnimatedVisibility(
@@ -140,6 +143,7 @@ fun ChangeRolesView(
                 ) {
                     Column {
                         SearchResultsList(
+                            modifier = Modifier.fillMaxSize(),
                             currentRole = state.role,
                             lazyListState = lazyListState,
                             searchResults = (state.searchResults as? SearchBarResultState.Results)?.results ?: MembersByRole(),
@@ -147,15 +151,15 @@ fun ChangeRolesView(
                             canRemoveMember = state.canChangeMemberRole,
                             onToggleSelection = { state.eventSink(ChangeRolesEvent.UserSelectionToggled(it.toMatrixUser())) },
                             selectedUsersList = { users ->
-                                SelectedUsersRowList(
-                                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 16.dp),
+                                SelectedUsersSection(
                                     selectedUsers = users,
                                     onUserRemove = {
                                         state.eventSink(ChangeRolesEvent.UserSelectionToggled(it))
                                     },
                                     canDeselect = { state.canChangeMemberRole(it.userId) },
                                 )
-                            }
+                            },
+                            contentPadding = PaddingValues(bottom = 24.dp),
                         )
                     }
                 }
@@ -207,7 +211,66 @@ fun ChangeRolesView(
 }
 
 @Composable
+private fun changeRolesTitle(role: RoomMember.Role): String {
+    return when (role) {
+        is RoomMember.Role.Owner -> stringResource(R.string.screen_room_change_role_owners_title)
+        RoomMember.Role.Admin -> stringResource(R.string.screen_room_change_role_administrators_title)
+        RoomMember.Role.Moderator -> stringResource(R.string.screen_room_change_role_moderators_title)
+        RoomMember.Role.User -> error("This should never be reached")
+    }
+}
+
+@Composable
+private fun ChangeRolesTopBar(
+    title: String,
+    onBackClick: () -> Unit,
+    onSaveClick: () -> Unit,
+    saveEnabled: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(56.dp)
+            .padding(horizontal = 8.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        IconButton(
+            modifier = Modifier
+                .align(Alignment.CenterStart)
+                .size(48.dp),
+            onClick = onBackClick,
+        ) {
+            Icon(
+                imageVector = CompoundIcons.ChevronLeft(),
+                contentDescription = stringResource(CommonStrings.action_back),
+                tint = ElementTheme.colors.iconPrimary,
+            )
+        }
+        Text(
+            modifier = Modifier
+                .align(Alignment.Center)
+                .padding(horizontal = 72.dp)
+                .semantics { heading() },
+            text = title,
+            style = ElementTheme.typography.fontHeadingSmMedium,
+            color = ElementTheme.colors.textPrimary,
+            textAlign = TextAlign.Center,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        TextButton(
+            modifier = Modifier.align(Alignment.CenterEnd),
+            text = stringResource(CommonStrings.action_save),
+            enabled = saveEnabled,
+            onClick = onSaveClick,
+        )
+    }
+}
+
+@Composable
 private fun SearchResultsList(
+    modifier: Modifier = Modifier,
     currentRole: RoomMember.Role,
     searchResults: MembersByRole,
     selectedUsers: ImmutableList<MatrixUser>,
@@ -215,24 +278,18 @@ private fun SearchResultsList(
     onToggleSelection: (RoomMember) -> Unit,
     lazyListState: LazyListState,
     selectedUsersList: @Composable (ImmutableList<MatrixUser>) -> Unit,
+    contentPadding: PaddingValues = PaddingValues(0.dp),
 ) {
     LazyColumn(
+        modifier = modifier,
         state = lazyListState,
+        contentPadding = contentPadding,
     ) {
         item {
             selectedUsersList(selectedUsers)
         }
         if (searchResults.owners.isNotEmpty()) {
             stickyHeader { ListSectionHeader(text = stringResource(R.string.screen_room_roles_and_permissions_owners)) }
-            item {
-                Text(
-                    modifier = Modifier
-                        .padding(start = 16.dp, end = 16.dp, bottom = 8.dp),
-                    text = stringResource(R.string.screen_room_change_role_moderators_owner_section_footer),
-                    color = ElementTheme.colors.textSecondary,
-                    style = ElementTheme.typography.fontBodySmRegular,
-                )
-            }
             items(searchResults.owners, key = { it.userId }) { roomMember ->
                 ListMemberItem(
                     roomMember = roomMember,
@@ -241,21 +298,15 @@ private fun SearchResultsList(
                     selectedUsers = selectedUsers
                 )
             }
-        }
-        if (searchResults.admins.isNotEmpty()) {
-            stickyHeader { ListSectionHeader(text = stringResource(R.string.screen_room_roles_and_permissions_admins)) }
-            // Add a footer for the admin section in change role to moderator screen
-            if (currentRole == RoomMember.Role.Moderator) {
+            if (currentRole !is RoomMember.Role.Owner) {
                 item {
-                    Text(
-                        modifier = Modifier
-                            .padding(start = 16.dp, end = 16.dp, bottom = 8.dp),
-                        text = stringResource(R.string.screen_room_change_role_moderators_admin_section_footer),
-                        color = ElementTheme.colors.textSecondary,
-                        style = ElementTheme.typography.fontBodySmRegular,
-                    )
+                    ListSectionFooter(text = stringResource(R.string.screen_room_change_role_moderators_owner_section_footer))
                 }
             }
+        }
+        if (searchResults.admins.isNotEmpty()) {
+            stickyHeader { ListSectionHeader(text = stringResource(R.string.screen_room_change_role_section_administrators)) }
+            // Add a footer for the admin section in change role to moderator screen
             items(searchResults.admins, key = { it.userId }) { roomMember ->
                 ListMemberItem(
                     roomMember = roomMember,
@@ -264,9 +315,14 @@ private fun SearchResultsList(
                     selectedUsers = selectedUsers
                 )
             }
+            if (currentRole == RoomMember.Role.Moderator) {
+                item {
+                    ListSectionFooter(text = stringResource(R.string.screen_room_change_role_moderators_admin_section_footer))
+                }
+            }
         }
         if (searchResults.moderators.isNotEmpty()) {
-            stickyHeader { ListSectionHeader(text = stringResource(R.string.screen_room_roles_and_permissions_moderators)) }
+            stickyHeader { ListSectionHeader(text = stringResource(R.string.screen_room_change_role_section_moderators)) }
             items(searchResults.moderators, key = { it.userId }) { roomMember ->
                 ListMemberItem(
                     roomMember = roomMember,
@@ -277,7 +333,7 @@ private fun SearchResultsList(
             }
         }
         if (searchResults.members.isNotEmpty()) {
-            stickyHeader { ListSectionHeader(text = stringResource(R.string.screen_room_member_list_mode_members)) }
+            stickyHeader { ListSectionHeader(text = stringResource(R.string.screen_room_change_role_section_users)) }
             items(searchResults.members, key = { it.userId }) { roomMember ->
                 ListMemberItem(
                     roomMember = roomMember,
@@ -294,11 +350,27 @@ private fun SearchResultsList(
 private fun ListSectionHeader(text: String) {
     Text(
         modifier = Modifier
-            .background(ElementTheme.colors.bgCanvasDefault)
-            .padding(horizontal = 16.dp, vertical = 8.dp)
-            .fillMaxWidth(),
+            .fillMaxWidth()
+            .background(ElementTheme.colors.bgSubtleSecondary)
+            .padding(start = 24.dp, top = 14.dp, end = 24.dp, bottom = 8.dp),
         text = text,
-        style = ElementTheme.typography.fontBodyLgMedium,
+        color = ElementTheme.colors.textSecondary,
+        style = ElementTheme.typography.fontBodySmMedium,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+    )
+}
+
+@Composable
+private fun ListSectionFooter(text: String) {
+    Text(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(ElementTheme.colors.bgSubtleSecondary)
+            .padding(start = 24.dp, top = 8.dp, end = 24.dp, bottom = 12.dp),
+        text = text,
+        color = ElementTheme.colors.textSecondary,
+        style = ElementTheme.typography.fontBodySmRegular,
     )
 }
 
@@ -318,16 +390,24 @@ private fun ListMemberItem(
             )
         }
     }
-    Column {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(ElementTheme.colors.bgCanvasDefault),
+    ) {
         MemberRow(
             modifier = Modifier.clickable(enabled = canToggle, onClick = { onToggleSelection(roomMember) }),
             avatarData = roomMember.getAvatarData(size = AvatarSize.UserListItem),
             name = roomMember.getBestName(),
             userId = roomMember.userId.value.takeIf { roomMember.displayName?.isNotBlank() == true },
             isPending = roomMember.membership == RoomMembershipState.INVITE,
+            enabled = canToggle,
             trailingContent = trailingContent,
         )
-        HorizontalDivider()
+        HorizontalDivider(
+            modifier = Modifier.padding(start = 76.dp),
+            color = ElementTheme.colors.borderInteractiveSecondary.copy(alpha = 0.22f),
+        )
     }
 }
 
@@ -338,13 +418,14 @@ private fun MemberRow(
     userId: String?,
     isPending: Boolean,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
     trailingContent: @Composable (() -> Unit)? = null,
 ) {
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .heightIn(min = 56.dp)
-            .padding(start = 16.dp, top = 4.dp, end = 16.dp, bottom = 4.dp),
+            .heightIn(min = 64.dp)
+            .padding(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Avatar(
@@ -363,7 +444,7 @@ private fun MemberRow(
                     text = name,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    color = ElementTheme.colors.textPrimary,
+                    color = if (enabled) ElementTheme.colors.textPrimary else ElementTheme.colors.textDisabled,
                     style = ElementTheme.typography.fontBodyLgRegular,
                 )
                 // Invitation pending marker
@@ -372,7 +453,7 @@ private fun MemberRow(
                         modifier = Modifier.padding(start = 8.dp),
                         text = stringResource(id = R.string.screen_room_member_list_pending_status),
                         style = ElementTheme.typography.fontBodySmRegular.copy(fontStyle = FontStyle.Italic),
-                        color = ElementTheme.colors.textSecondary
+                        color = if (enabled) ElementTheme.colors.textSecondary else ElementTheme.colors.textDisabled
                     )
                 }
             }
@@ -380,7 +461,7 @@ private fun MemberRow(
             userId?.let {
                 Text(
                     text = userId,
-                    color = ElementTheme.colors.textSecondary,
+                    color = if (enabled) ElementTheme.colors.textSecondary else ElementTheme.colors.textDisabled,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     style = ElementTheme.typography.fontBodySmRegular,
@@ -388,6 +469,34 @@ private fun MemberRow(
             }
         }
         trailingContent?.invoke()
+    }
+}
+
+@Composable
+private fun SelectedUsersSection(
+    selectedUsers: ImmutableList<MatrixUser>,
+    onUserRemove: (MatrixUser) -> Unit,
+    canDeselect: (MatrixUser) -> Boolean,
+) {
+    if (selectedUsers.isEmpty()) return
+
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 16.dp, end = 16.dp, bottom = 12.dp),
+        shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp),
+        color = ElementTheme.colors.bgCanvasDefault,
+        border = BorderStroke(1.dp, ElementTheme.colors.borderDisabled),
+        shadowElevation = 2.dp,
+    ) {
+        SelectedUsersRowList(
+            modifier = Modifier.padding(top = 12.dp, bottom = 10.dp),
+            selectedUsers = selectedUsers,
+            onUserRemove = onUserRemove,
+            canDeselect = canDeselect,
+            autoScroll = true,
+            contentPadding = PaddingValues(horizontal = 16.dp),
+        )
     }
 }
 

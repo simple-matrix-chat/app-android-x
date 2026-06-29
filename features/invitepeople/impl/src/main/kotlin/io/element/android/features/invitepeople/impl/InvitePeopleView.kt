@@ -8,9 +8,11 @@
 
 package io.element.android.features.invitepeople.impl
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -18,14 +20,14 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
 import io.element.android.compound.theme.ElementTheme
@@ -43,11 +45,11 @@ import io.element.android.libraries.designsystem.preview.PreviewsDayNight
 import io.element.android.libraries.designsystem.theme.components.Button
 import io.element.android.libraries.designsystem.theme.components.HorizontalDivider
 import io.element.android.libraries.designsystem.theme.components.IconSource
-import io.element.android.libraries.designsystem.theme.components.ListSectionHeader
 import io.element.android.libraries.designsystem.theme.components.ModalBottomSheet
 import io.element.android.libraries.designsystem.theme.components.OutlinedButton
 import io.element.android.libraries.designsystem.theme.components.SearchBar
 import io.element.android.libraries.designsystem.theme.components.SearchBarResultState
+import io.element.android.libraries.designsystem.theme.components.Surface
 import io.element.android.libraries.designsystem.theme.components.Text
 import io.element.android.libraries.matrix.api.user.MatrixUser
 import io.element.android.libraries.matrix.ui.components.CheckableUserRow
@@ -99,14 +101,16 @@ private fun InvitePeopleContentView(
 ) {
     Column(
         modifier = modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         fun toggleUser(user: MatrixUser) {
             state.eventSink(DefaultInvitePeopleEvents.ToggleUser(user))
         }
 
         InvitePeopleSearchBar(
-            modifier = Modifier.imePadding().fillMaxWidth(),
+            modifier = Modifier
+                .imePadding()
+                .fillMaxWidth(),
             queryState = state.searchQuery,
             showLoader = state.showSearchLoader,
             selectedUsers = state.selectedUsers,
@@ -123,37 +127,41 @@ private fun InvitePeopleContentView(
         )
 
         if (!state.isSearchActive) {
-            if (state.selectedUsers.isNotEmpty()) {
-                SelectedUsersRowList(
-                    modifier = Modifier.fillMaxWidth(),
-                    selectedUsers = state.selectedUsers,
-                    autoScroll = true,
-                    onUserRemove = ::toggleUser,
-                    contentPadding = PaddingValues(all = 16.dp),
-                )
-            }
-            if (state.suggestions.isNotEmpty()) {
-                LazyColumn {
+            LazyColumn(
+                modifier = Modifier.weight(1f),
+                contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 24.dp),
+                verticalArrangement = Arrangement.spacedBy(20.dp),
+            ) {
+                if (state.selectedUsers.isNotEmpty()) {
                     item {
-                        ListSectionHeader(
-                            title = stringResource(id = CommonStrings.common_suggestions),
-                            hasDivider = false,
+                        MomentInvitePeopleSelectedUsersCard(
+                            selectedUsers = state.selectedUsers,
+                            onUserRemove = ::toggleUser,
                         )
                     }
-                    itemsIndexed(state.suggestions) { index, invitableUser ->
-                        CheckableUserRow(
-                            checked = invitableUser.isSelected,
-                            onCheckedChange = {
-                                state.eventSink(DefaultInvitePeopleEvents.ToggleUser(invitableUser.matrixUser))
-                            },
-                            data = CheckableUserRowData.Resolved(
-                                avatarData = invitableUser.matrixUser.getAvatarData(AvatarSize.UserListItem),
-                                name = invitableUser.matrixUser.getBestName(),
-                                subtext = invitableUser.matrixUser.userId.value,
-                            ),
-                        )
-                        if (index < state.suggestions.lastIndex) {
-                            HorizontalDivider()
+                }
+                if (state.suggestions.isNotEmpty()) {
+                    item {
+                        MomentInvitePeopleSection(
+                            title = stringResource(id = CommonStrings.common_suggestions),
+                        ) {
+                            state.suggestions.forEachIndexed { index, invitableUser ->
+                                MomentInvitePeopleUserRow(
+                                    checked = invitableUser.isSelected,
+                                    enabled = true,
+                                    data = CheckableUserRowData.Resolved(
+                                        avatarData = invitableUser.matrixUser.getAvatarData(AvatarSize.UserListItem),
+                                        name = invitableUser.matrixUser.getBestName(),
+                                        subtext = invitableUser.matrixUser.userId.value,
+                                    ),
+                                    onCheckedChange = {
+                                        state.eventSink(DefaultInvitePeopleEvents.ToggleUser(invitableUser.matrixUser))
+                                    },
+                                )
+                                if (index < state.suggestions.lastIndex) {
+                                    MomentInvitePeopleDivider()
+                                }
+                            }
                         }
                     }
                 }
@@ -209,49 +217,133 @@ private fun InvitePeopleSearchBar(
             }
         },
         resultHandler = { results ->
-            Text(
-                text = stringResource(id = CommonStrings.common_search_results),
-                style = ElementTheme.typography.fontBodyLgMedium,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(start = 16.dp, top = 12.dp, end = 16.dp, bottom = 8.dp)
-            )
-
-            LazyColumn {
-                itemsIndexed(results) { index, invitableUser ->
-                    val invitedOrJoined = invitableUser.isAlreadyInvited || invitableUser.isAlreadyJoined
-                    val isUnresolved = invitableUser.isUnresolved && !invitedOrJoined
-                    val enabled = isUnresolved || !invitedOrJoined
-                    val data = if (isUnresolved) {
-                        CheckableUserRowData.Unresolved(
-                            avatarData = invitableUser.matrixUser.getAvatarData(AvatarSize.UserListItem),
-                            id = invitableUser.matrixUser.userId.value,
-                        )
-                    } else {
-                        CheckableUserRowData.Resolved(
-                            avatarData = invitableUser.matrixUser.getAvatarData(AvatarSize.UserListItem),
-                            name = invitableUser.matrixUser.getBestName(),
-                            subtext = when {
-                                // If they're already invited or joined we show that information
-                                invitableUser.isAlreadyJoined -> stringResource(R.string.screen_invite_users_already_a_member)
-                                invitableUser.isAlreadyInvited -> stringResource(R.string.screen_invite_users_already_invited)
-                                // Otherwise show the ID, unless that's already used for their name
-                                invitableUser.matrixUser.displayName.isNullOrEmpty()
-                                    .not() -> invitableUser.matrixUser.userId.value
-                                else -> null
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(bottom = 24.dp),
+            ) {
+                item {
+                    MomentInvitePeopleSection(
+                        title = stringResource(id = CommonStrings.common_search_results),
+                        modifier = Modifier.padding(start = 20.dp, top = 12.dp, end = 20.dp),
+                    ) {
+                        results.forEachIndexed { index, invitableUser ->
+                            val invitedOrJoined = invitableUser.isAlreadyInvited || invitableUser.isAlreadyJoined
+                            val isUnresolved = invitableUser.isUnresolved && !invitedOrJoined
+                            val enabled = isUnresolved || !invitedOrJoined
+                            val data = if (isUnresolved) {
+                                CheckableUserRowData.Unresolved(
+                                    avatarData = invitableUser.matrixUser.getAvatarData(AvatarSize.UserListItem),
+                                    id = invitableUser.matrixUser.userId.value,
+                                )
+                            } else {
+                                CheckableUserRowData.Resolved(
+                                    avatarData = invitableUser.matrixUser.getAvatarData(AvatarSize.UserListItem),
+                                    name = invitableUser.matrixUser.getBestName(),
+                                    subtext = when {
+                                        // If they're already invited or joined we show that information
+                                        invitableUser.isAlreadyJoined -> stringResource(R.string.screen_invite_users_already_a_member)
+                                        invitableUser.isAlreadyInvited -> stringResource(R.string.screen_invite_users_already_invited)
+                                        // Otherwise show the ID, unless that's already used for their name
+                                        invitableUser.matrixUser.displayName.isNullOrEmpty()
+                                            .not() -> invitableUser.matrixUser.userId.value
+                                        else -> null
+                                    }
+                                )
                             }
-                        )
+                            MomentInvitePeopleUserRow(
+                                checked = invitableUser.isSelected || invitedOrJoined,
+                                enabled = enabled,
+                                data = data,
+                                onCheckedChange = { onToggleUser(invitableUser.matrixUser) },
+                            )
+                            if (index < results.lastIndex) {
+                                MomentInvitePeopleDivider()
+                            }
+                        }
                     }
-                    CheckableUserRow(
-                        checked = invitableUser.isSelected || invitedOrJoined,
-                        enabled = enabled,
-                        data = data,
-                        onCheckedChange = { onToggleUser(invitableUser.matrixUser) },
-                        modifier = Modifier.fillMaxWidth()
-                    )
                 }
             }
         },
+    )
+}
+
+@Composable
+private fun MomentInvitePeopleSelectedUsersCard(
+    selectedUsers: ImmutableList<MatrixUser>,
+    onUserRemove: (MatrixUser) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    MomentInvitePeopleCard(modifier = modifier) {
+        SelectedUsersRowList(
+            modifier = Modifier.fillMaxWidth(),
+            selectedUsers = selectedUsers,
+            autoScroll = true,
+            onUserRemove = onUserRemove,
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 14.dp),
+        )
+    }
+}
+
+@Composable
+private fun MomentInvitePeopleSection(
+    title: String,
+    modifier: Modifier = Modifier,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Text(
+            modifier = Modifier.padding(horizontal = 8.dp),
+            text = title,
+            style = ElementTheme.typography.fontBodyMdMedium,
+            color = ElementTheme.colors.textSecondary,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        MomentInvitePeopleCard(content = content)
+    }
+}
+
+@Composable
+private fun MomentInvitePeopleCard(
+    modifier: Modifier = Modifier,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(28.dp),
+        color = ElementTheme.colors.bgCanvasDefault,
+        border = BorderStroke(1.dp, ElementTheme.colors.borderDisabled),
+        shadowElevation = 3.dp,
+    ) {
+        Column(content = content)
+    }
+}
+
+@Composable
+private fun MomentInvitePeopleUserRow(
+    checked: Boolean,
+    enabled: Boolean,
+    data: CheckableUserRowData,
+    onCheckedChange: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    CheckableUserRow(
+        modifier = modifier.fillMaxWidth(),
+        checked = checked,
+        enabled = enabled,
+        data = data,
+        onCheckedChange = { onCheckedChange() },
+    )
+}
+
+@Composable
+private fun MomentInvitePeopleDivider() {
+    HorizontalDivider(
+        modifier = Modifier.padding(start = 72.dp),
+        color = ElementTheme.colors.borderDisabled,
     )
 }
 

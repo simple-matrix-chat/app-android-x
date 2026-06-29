@@ -9,6 +9,7 @@
 package io.element.android.features.messages.impl.timeline.components
 
 import androidx.annotation.StringRes
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
@@ -18,16 +19,14 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Icon
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import io.element.android.compound.theme.ElementTheme
 import io.element.android.compound.tokens.generated.CompoundIcons
 import io.element.android.features.messages.impl.timeline.TimelineRoomInfo
@@ -36,10 +35,13 @@ import io.element.android.features.messages.impl.timeline.aTimelineRoomInfo
 import io.element.android.features.messages.impl.timeline.model.TimelineItem
 import io.element.android.features.messages.impl.timeline.model.event.RtcNotificationState
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemRtcNotificationContent
+import io.element.android.libraries.designsystem.components.avatar.Avatar
+import io.element.android.libraries.designsystem.components.avatar.AvatarType
 import io.element.android.libraries.designsystem.modifiers.onKeyboardContextMenuAction
 import io.element.android.libraries.designsystem.preview.ElementPreview
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
-import io.element.android.libraries.designsystem.text.toDp
+import io.element.android.libraries.designsystem.theme.components.Icon
+import io.element.android.libraries.designsystem.theme.components.Text
 import io.element.android.libraries.matrix.api.notification.CallIntent
 import io.element.android.libraries.ui.strings.CommonStrings
 
@@ -51,10 +53,13 @@ internal fun TimelineItemCallNotifyView(
     onLongClick: (TimelineItem.Event) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val shape = RoundedCornerShape(8.dp)
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .border(1.dp, ElementTheme.colors.borderInteractiveSecondary, RoundedCornerShape(8.dp))
+            .clip(shape)
+            .background(ElementTheme.colors.bgCanvasDefault)
+            .border(1.dp, ElementTheme.colors.borderInteractiveSecondary, shape)
             .combinedClickable(
                 enabled = true,
                 onClick = {},
@@ -66,25 +71,47 @@ internal fun TimelineItemCallNotifyView(
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(
-            modifier = Modifier.size(20.sp.toDp()),
-            imageVector = getIcon(timelineRoomInfo, content),
+        Avatar(
+            avatarData = event.senderAvatar,
+            avatarType = AvatarType.User,
             contentDescription = null,
-            tint = ElementTheme.colors.iconSecondary,
         )
 
-        Text(
+        Column(
             modifier = Modifier.weight(1f),
-            text = stringResource(getTextRes(timelineRoomInfo, content)),
-            style = ElementTheme.typography.fontBodyMdRegular,
-            color = ElementTheme.colors.textSecondary,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            Text(
+                text = event.safeSenderName,
+                style = ElementTheme.typography.fontBodyLgMedium,
+                color = ElementTheme.colors.textPrimary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(
+                    modifier = Modifier.size(20.dp),
+                    imageVector = getIcon(timelineRoomInfo, content),
+                    contentDescription = null,
+                    tint = ElementTheme.colors.iconSecondary,
+                )
+                Text(
+                    modifier = Modifier.weight(1f, fill = false),
+                    text = stringResource(getTextRes(timelineRoomInfo, content)),
+                    style = ElementTheme.typography.fontBodyMdRegular,
+                    color = ElementTheme.colors.textSecondary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
 
         Text(
             text = event.sentTime,
-            style = ElementTheme.typography.fontBodyMdRegular,
+            style = ElementTheme.typography.fontBodyXsRegular,
             color = ElementTheme.colors.textSecondary,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,

@@ -42,8 +42,66 @@ class EditDefaultNotificationSettingsPresenterTest {
                 it.mode == RoomNotificationMode.MENTIONS_AND_KEYWORDS_ONLY
             }.last()
             assertThat(loadedState.mode).isEqualTo(RoomNotificationMode.MENTIONS_AND_KEYWORDS_ONLY)
-
             assertThat(loadedState.displayMentionsOnlyDisclaimer).isFalse()
+            assertThat(
+                notificationSettingsService.getDefaultRoomNotificationModeRequests.contains(
+                    FakeNotificationSettingsService.DefaultRoomNotificationModeRequest(
+                        isEncrypted = false,
+                        isOneToOne = false,
+                    )
+                )
+            ).isTrue()
+            assertThat(
+                notificationSettingsService.getDefaultRoomNotificationModeRequests.contains(
+                    FakeNotificationSettingsService.DefaultRoomNotificationModeRequest(
+                        isEncrypted = true,
+                        isOneToOne = false,
+                    )
+                )
+            ).isTrue()
+        }
+    }
+
+    @Test
+    fun `present - mode is null when encrypted and unencrypted defaults differ`() = runTest {
+        val notificationSettingsService = FakeNotificationSettingsService(
+            initialGroupDefaultMode = RoomNotificationMode.ALL_MESSAGES,
+            initialEncryptedGroupDefaultMode = RoomNotificationMode.MENTIONS_AND_KEYWORDS_ONLY,
+            getRoomsWithUserDefinedRulesResult = { Result.success(emptyList()) },
+        )
+        val presenter = createEditDefaultNotificationSettingPresenter(notificationSettingsService)
+        presenter.test {
+            val loadedState = consumeItemsUntilPredicate {
+                notificationSettingsService.getDefaultRoomNotificationModeRequests.containsAll(
+                    listOf(
+                        FakeNotificationSettingsService.DefaultRoomNotificationModeRequest(
+                            isEncrypted = false,
+                            isOneToOne = false,
+                        ),
+                        FakeNotificationSettingsService.DefaultRoomNotificationModeRequest(
+                            isEncrypted = true,
+                            isOneToOne = false,
+                        ),
+                    )
+                )
+            }.last()
+            assertThat(loadedState.mode).isNull()
+        }
+    }
+
+    @Test
+    fun `present - displays mentions only warning when encrypted push is unsupported`() = runTest {
+        val notificationSettingsService = FakeNotificationSettingsService(
+            getRoomsWithUserDefinedRulesResult = { Result.success(emptyList()) },
+        ).apply {
+            givenCanHomeServerPushEncryptedEventsToDeviceResult(Result.success(false))
+        }
+        val presenter = createEditDefaultNotificationSettingPresenter(notificationSettingsService)
+        presenter.test {
+            val loadedState = consumeItemsUntilPredicate {
+                it.displayMentionsOnlyDisclaimer
+            }.last()
+            assertThat(loadedState.displayMentionsOnlyDisclaimer).isTrue()
         }
     }
 
@@ -143,10 +201,11 @@ class EditDefaultNotificationSettingsPresenterTest {
 
     @Test
     fun `present - edit default notification setting`() = runTest {
+        val notificationSettingsService = FakeNotificationSettingsService(
+            getRoomsWithUserDefinedRulesResult = { Result.success(emptyList()) },
+        )
         val presenter = createEditDefaultNotificationSettingPresenter(
-            notificationSettingsService = FakeNotificationSettingsService(
-                getRoomsWithUserDefinedRulesResult = { Result.success(emptyList()) },
-            ),
+            notificationSettingsService = notificationSettingsService,
         )
         presenter.test {
             awaitItem().eventSink(EditDefaultNotificationSettingStateEvents.SetNotificationMode(RoomNotificationMode.ALL_MESSAGES))
@@ -154,6 +213,20 @@ class EditDefaultNotificationSettingsPresenterTest {
                 it.mode == RoomNotificationMode.ALL_MESSAGES
             }.last()
             assertThat(loadedState.mode).isEqualTo(RoomNotificationMode.ALL_MESSAGES)
+            assertThat(notificationSettingsService.setDefaultRoomNotificationModeRequests).isEqualTo(
+                listOf(
+                    FakeNotificationSettingsService.SetDefaultRoomNotificationModeRequest(
+                        isEncrypted = true,
+                        mode = RoomNotificationMode.ALL_MESSAGES,
+                        isDm = false,
+                    ),
+                    FakeNotificationSettingsService.SetDefaultRoomNotificationModeRequest(
+                        isEncrypted = false,
+                        mode = RoomNotificationMode.ALL_MESSAGES,
+                        isDm = false,
+                    ),
+                )
+            )
         }
     }
 

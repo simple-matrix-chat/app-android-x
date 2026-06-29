@@ -48,6 +48,7 @@ open class RoomListStateProvider : PreviewParameterProvider<RoomListState> {
 internal fun aRoomListState(
     contextMenu: RoomListState.ContextMenu = RoomListState.ContextMenu.Hidden,
     declineInviteMenu: RoomListState.DeclineInviteMenu = RoomListState.DeclineInviteMenu.Hidden,
+    directUserBlockConfirmation: RoomListState.DirectUserBlockConfirmation = RoomListState.DirectUserBlockConfirmation.Hidden,
     leaveRoomState: LeaveRoomState = aLeaveRoomState(),
     searchState: RoomListSearchState = aRoomListSearchState(),
     filtersState: RoomListFiltersState = aRoomListFiltersState(),
@@ -60,6 +61,7 @@ internal fun aRoomListState(
 ) = RoomListState(
     contextMenu = contextMenu,
     declineInviteMenu = declineInviteMenu,
+    directUserBlockConfirmation = directUserBlockConfirmation,
     leaveRoomState = leaveRoomState,
     filtersState = filtersState,
     searchState = searchState,

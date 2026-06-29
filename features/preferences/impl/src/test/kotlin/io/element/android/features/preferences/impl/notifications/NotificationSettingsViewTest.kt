@@ -11,10 +11,14 @@
 package io.element.android.features.preferences.impl.notifications
 
 import androidx.activity.ComponentActivity
+import androidx.annotation.StringRes
 import androidx.compose.ui.test.AndroidComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.v2.runAndroidComposeUiTest
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.element.android.features.preferences.impl.R
@@ -60,7 +64,7 @@ class NotificationSettingsViewTest {
                 ),
                 onTroubleshootNotificationsClick = it
             )
-            clickOn(R.string.troubleshoot_notifications_entry_point_title)
+            scrollToAndClickOn(R.string.troubleshoot_notifications_entry_point_title)
         }
         eventsRecorder.assertSingle(NotificationSettingsEvents.RefreshSystemNotificationsEnabled)
     }
@@ -76,7 +80,7 @@ class NotificationSettingsViewTest {
                 ),
                 onOpenEditDefault = it
             )
-            clickOn(R.string.screen_notification_settings_group_chats)
+            scrollToAndClickOn(R.string.screen_notification_settings_group_chats)
         }
         eventsRecorder.assertSingle(NotificationSettingsEvents.RefreshSystemNotificationsEnabled)
     }
@@ -92,7 +96,7 @@ class NotificationSettingsViewTest {
                 ),
                 onOpenEditDefault = it
             )
-            clickOn(R.string.screen_notification_settings_direct_chats)
+            scrollToAndClickOn(R.string.screen_notification_settings_direct_chats)
         }
         eventsRecorder.assertSingle(NotificationSettingsEvents.RefreshSystemNotificationsEnabled)
     }
@@ -117,7 +121,7 @@ class NotificationSettingsViewTest {
                 eventSink = eventsRecorder
             ),
         )
-        clickOn(R.string.screen_notification_settings_enable_notifications)
+        scrollToAndClickOn(R.string.screen_notification_settings_enable_notifications)
         eventsRecorder.assertList(
             listOf(
                 NotificationSettingsEvents.RefreshSystemNotificationsEnabled,
@@ -146,11 +150,40 @@ class NotificationSettingsViewTest {
                 eventSink = eventsRecorder
             ),
         )
-        clickOn(R.string.screen_notification_settings_room_mention_label)
+        scrollToAndClickOn(R.string.screen_notification_settings_room_mention_label)
         eventsRecorder.assertList(
             listOf(
                 NotificationSettingsEvents.RefreshSystemNotificationsEnabled,
                 NotificationSettingsEvents.SetAtRoomNotificationsEnabled(!initialState)
+            )
+        )
+    }
+
+    @Config(qualifiers = "h1024dp")
+    @Test
+    fun `clicking on disable call notifications emits the expected events`() {
+        testCallToggle(true)
+    }
+
+    @Config(qualifiers = "h1024dp")
+    @Test
+    fun `clicking on enable call notifications emits the expected events`() {
+        testCallToggle(false)
+    }
+
+    private fun testCallToggle(initialState: Boolean) = runAndroidComposeUiTest {
+        val eventsRecorder = EventsRecorder<NotificationSettingsEvents>()
+        setNotificationSettingsView(
+            state = aValidNotificationSettingsState(
+                callNotificationsEnabled = initialState,
+                eventSink = eventsRecorder
+            ),
+        )
+        scrollToAndClickOn(R.string.screen_notification_settings_calls_label)
+        eventsRecorder.assertList(
+            listOf(
+                NotificationSettingsEvents.RefreshSystemNotificationsEnabled,
+                NotificationSettingsEvents.SetCallNotificationsEnabled(!initialState)
             )
         )
     }
@@ -175,11 +208,34 @@ class NotificationSettingsViewTest {
                 eventSink = eventsRecorder
             ),
         )
-        clickOn(R.string.screen_notification_settings_invite_for_me_label)
+        scrollToAndClickOn(R.string.screen_notification_settings_invite_for_me_label)
         eventsRecorder.assertList(
             listOf(
                 NotificationSettingsEvents.RefreshSystemNotificationsEnabled,
                 NotificationSettingsEvents.SetInviteForMeNotificationsEnabled(!initialState)
+            )
+        )
+    }
+
+    @Test
+    fun `with configuration mismatch, clicking continue emits the expected event`() = runAndroidComposeUiTest {
+        val eventsRecorder = EventsRecorder<NotificationSettingsEvents>()
+        setNotificationSettingsView(
+            state = aValidNotificationSettingsState(
+                inconsistentSettings = listOf(
+                    NotificationSettingsState.InconsistentSetting(
+                        isOneToOne = false,
+                        isEncrypted = true,
+                    )
+                ),
+                eventSink = eventsRecorder,
+            ),
+        )
+        clickOn(CommonStrings.action_continue)
+        eventsRecorder.assertList(
+            listOf(
+                NotificationSettingsEvents.RefreshSystemNotificationsEnabled,
+                NotificationSettingsEvents.FixConfigurationMismatch,
             )
         )
     }
@@ -212,7 +268,7 @@ class NotificationSettingsViewTest {
                 eventSink = eventsRecorder
             ),
         )
-        clickOn(R.string.screen_advanced_settings_push_provider_android)
+        scrollToAndClickOn(R.string.screen_advanced_settings_push_provider_android)
         eventsRecorder.assertList(
             listOf(
                 NotificationSettingsEvents.RefreshSystemNotificationsEnabled,
@@ -239,6 +295,13 @@ class NotificationSettingsViewTest {
             )
         )
     }
+}
+
+private fun AndroidComposeUiTest<ComponentActivity>.scrollToAndClickOn(@StringRes res: Int) {
+    val text = activity!!.getString(res)
+    onNode(hasText(text) and hasClickAction())
+        .performScrollTo()
+        .performClick()
 }
 
 private fun AndroidComposeUiTest<ComponentActivity>.setNotificationSettingsView(

@@ -86,7 +86,6 @@ class UserProfileFlowNode(
                             )
                         )
                     }
-
                 }
                 val params = UserProfileNode.UserProfileInputs(userId = inputs.userId)
                 createNode<UserProfileNode>(buildContext, listOf(callback, params))

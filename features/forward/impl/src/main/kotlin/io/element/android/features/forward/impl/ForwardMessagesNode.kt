@@ -66,6 +66,10 @@ class ForwardMessagesNode(
                 presenter.onRoomSelected(roomIds)
             }
 
+            override fun onRoomSelected(roomIds: List<RoomId>, comment: String?) {
+                presenter.onRoomSelected(roomIds, comment)
+            }
+
             override fun onCancel() {
                 callback.onDone(emptyList())
             }

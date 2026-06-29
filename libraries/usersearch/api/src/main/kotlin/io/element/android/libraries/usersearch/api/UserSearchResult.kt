@@ -13,6 +13,7 @@ import io.element.android.libraries.matrix.api.user.MatrixUser
 data class UserSearchResult(
     val matrixUser: MatrixUser,
     val isUnresolved: Boolean = false,
+    val subtitle: String? = null,
 )
 
 data class UserSearchResultState(

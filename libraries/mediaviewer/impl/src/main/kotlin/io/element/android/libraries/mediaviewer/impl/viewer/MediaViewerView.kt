@@ -14,9 +14,11 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -25,15 +27,17 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.LocalTextStyle
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -50,6 +54,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.layout.onVisibilityChanged
@@ -74,15 +79,14 @@ import io.element.android.libraries.audio.api.AudioFocus
 import io.element.android.libraries.core.mimetype.MimeTypes.isMimeTypeVideo
 import io.element.android.libraries.designsystem.components.async.AsyncFailure
 import io.element.android.libraries.designsystem.components.async.AsyncLoading
-import io.element.android.libraries.designsystem.components.button.BackButton
 import io.element.android.libraries.designsystem.components.dialogs.RetryDialog
 import io.element.android.libraries.designsystem.preview.ElementPreviewDark
 import io.element.android.libraries.designsystem.theme.components.HorizontalDivider
 import io.element.android.libraries.designsystem.theme.components.Icon
 import io.element.android.libraries.designsystem.theme.components.IconButton
 import io.element.android.libraries.designsystem.theme.components.Scaffold
+import io.element.android.libraries.designsystem.theme.components.Surface
 import io.element.android.libraries.designsystem.theme.components.Text
-import io.element.android.libraries.designsystem.theme.components.TopAppBar
 import io.element.android.libraries.designsystem.utils.hasCompactHeightWindowSize
 import io.element.android.libraries.designsystem.utils.snackbar.SnackbarHost
 import io.element.android.libraries.designsystem.utils.snackbar.rememberSnackbarHostState
@@ -152,23 +156,9 @@ fun MediaViewerView(
                         )
                     }
                     else -> {
-                        TopAppBar(
-                            title = {
-                                if (currentData is MediaViewerPageData.Loading) {
-                                    Text(
-                                        modifier = Modifier.semantics {
-                                            heading()
-                                        },
-                                        text = stringResource(id = CommonStrings.common_loading_more),
-                                        style = ElementTheme.typography.fontBodyMdMedium,
-                                        color = ElementTheme.colors.textPrimary,
-                                    )
-                                }
-                            },
-                            colors = TopAppBarDefaults.topAppBarColors(
-                                containerColor = bgCanvasWithTransparency,
-                            ),
-                            navigationIcon = { BackButton(onClick = onBackClick) },
+                        MediaViewerLoadingTopBar(
+                            isLoading = currentData is MediaViewerPageData.Loading,
+                            onBackClick = onBackClick,
                         )
                     }
                 }
@@ -491,69 +481,155 @@ private fun MediaViewerTopBar(
     val actionsEnabled = downloadedMedia.isSuccess()
     val senderName = data.mediaInfo.senderName
     val dateSent = data.mediaInfo.dateSent
-    TopAppBar(
-        title = {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .statusBarsPadding()
+            .height(64.dp)
+            .padding(horizontal = 12.dp),
+    ) {
+        Surface(
+            modifier = Modifier
+                .align(Alignment.CenterStart)
+                .size(44.dp),
+            shape = RoundedCornerShape(22.dp),
+            color = bgCanvasWithTransparency,
+            border = BorderStroke(0.5.dp, ElementTheme.colors.borderDisabled.copy(alpha = 0.4f)),
+        ) {
+            IconButton(onClick = onBackClick) {
+                Icon(
+                    imageVector = CompoundIcons.ChevronLeft(),
+                    contentDescription = stringResource(id = CommonStrings.action_back),
+                    tint = ElementTheme.colors.iconPrimary,
+                )
+            }
+        }
+        Box(
+            modifier = Modifier
+                .align(Alignment.Center)
+                .fillMaxWidth()
+                .padding(horizontal = 156.dp),
+            contentAlignment = Alignment.Center,
+        ) {
             if (senderName != null && dateSent != null) {
                 Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
+                    horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     Text(
                         modifier = Modifier.semantics {
                             heading()
                         },
                         text = senderName,
-                        style = ElementTheme.typography.fontBodyMdMedium,
+                        style = ElementTheme.typography.fontBodySmMedium,
                         color = ElementTheme.colors.textPrimary,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
                     Text(
                         text = dateSent,
-                        style = ElementTheme.typography.fontBodySmRegular,
+                        style = ElementTheme.typography.fontBodyXsMedium,
                         color = ElementTheme.colors.textPrimary,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
                 }
             }
-        },
-        colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = bgCanvasWithTransparency,
-        ),
-        navigationIcon = { BackButton(onClick = onBackClick) },
-        actions = {
-            IconButton(
-                onClick = onShareClick,
-                enabled = actionsEnabled,
-            ) {
-                Icon(
+        }
+        Surface(
+            modifier = Modifier.align(Alignment.CenterEnd),
+            shape = RoundedCornerShape(22.dp),
+            color = bgCanvasWithTransparency,
+            border = BorderStroke(0.5.dp, ElementTheme.colors.borderDisabled.copy(alpha = 0.4f)),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                MediaViewerTopBarAction(
                     imageVector = CompoundIcons.ShareAndroid(),
                     contentDescription = stringResource(id = CommonStrings.action_share),
+                    enabled = actionsEnabled,
+                    onClick = onShareClick,
                 )
-            }
-            IconButton(
-                onClick = onSaveClick,
-                enabled = actionsEnabled,
-            ) {
-                Icon(
+                MediaViewerTopBarAction(
                     imageVector = CompoundIcons.Download(),
                     contentDescription = stringResource(id = CommonStrings.action_download),
-                )
-            }
-            if (canShowInfo) {
-                IconButton(
-                    onClick = onInfoClick,
                     enabled = actionsEnabled,
-                ) {
-                    Icon(
+                    onClick = onSaveClick,
+                )
+                if (canShowInfo) {
+                    MediaViewerTopBarAction(
                         imageVector = CompoundIcons.Info(),
                         contentDescription = stringResource(id = CommonStrings.a11y_view_details),
+                        enabled = actionsEnabled,
+                        onClick = onInfoClick,
                     )
                 }
             }
         }
-    )
+    }
+}
+
+@Composable
+private fun MediaViewerLoadingTopBar(
+    isLoading: Boolean,
+    onBackClick: () -> Unit,
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .statusBarsPadding()
+            .height(64.dp)
+            .padding(horizontal = 12.dp),
+    ) {
+        Surface(
+            modifier = Modifier
+                .align(Alignment.CenterStart)
+                .size(44.dp),
+            shape = RoundedCornerShape(22.dp),
+            color = bgCanvasWithTransparency,
+            border = BorderStroke(0.5.dp, ElementTheme.colors.borderDisabled.copy(alpha = 0.4f)),
+        ) {
+            IconButton(onClick = onBackClick) {
+                Icon(
+                    imageVector = CompoundIcons.ChevronLeft(),
+                    contentDescription = stringResource(id = CommonStrings.action_back),
+                    tint = ElementTheme.colors.iconPrimary,
+                )
+            }
+        }
+        if (isLoading) {
+            Text(
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .semantics {
+                        heading()
+                    },
+                text = stringResource(id = CommonStrings.common_loading_more),
+                style = ElementTheme.typography.fontBodySmMedium,
+                color = ElementTheme.colors.textPrimary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+}
+
+@Composable
+private fun MediaViewerTopBarAction(
+    imageVector: ImageVector,
+    contentDescription: String,
+    enabled: Boolean,
+    onClick: () -> Unit,
+) {
+    IconButton(
+        modifier = Modifier.size(44.dp),
+        onClick = onClick,
+        enabled = enabled,
+    ) {
+        Icon(
+            imageVector = imageVector,
+            contentDescription = contentDescription,
+            tint = if (enabled) ElementTheme.colors.iconPrimary else ElementTheme.colors.iconDisabled,
+        )
+    }
 }
 
 @Composable

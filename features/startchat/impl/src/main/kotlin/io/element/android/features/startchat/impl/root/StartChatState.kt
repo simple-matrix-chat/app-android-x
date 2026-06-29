@@ -11,10 +11,14 @@ package io.element.android.features.startchat.impl.root
 import io.element.android.features.startchat.impl.userlist.UserListState
 import io.element.android.libraries.architecture.AsyncAction
 import io.element.android.libraries.matrix.api.core.RoomId
+import io.element.android.libraries.usersearch.api.UserSearchResult
+import kotlinx.collections.immutable.ImmutableList
 
 data class StartChatState(
     val applicationName: String,
     val userListState: UserListState,
+    val phonebookContacts: ImmutableList<UserSearchResult>,
     val startDmAction: AsyncAction<RoomId>,
+    val createMomentRoomAction: AsyncAction<RoomId>,
     val eventSink: (StartChatEvents) -> Unit,
 )

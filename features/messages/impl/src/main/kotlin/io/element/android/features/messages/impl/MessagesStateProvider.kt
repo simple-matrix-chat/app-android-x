@@ -8,6 +8,7 @@
 
 package io.element.android.features.messages.impl
 
+import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.ui.tooling.preview.PreviewParameterProvider
 import io.element.android.features.messages.api.timeline.voicemessages.composer.VoiceMessageComposerState
 import io.element.android.features.messages.api.timeline.voicemessages.composer.aVoiceMessageComposerState
@@ -20,6 +21,9 @@ import io.element.android.features.messages.impl.messagecomposer.MessageComposer
 import io.element.android.features.messages.impl.messagecomposer.aMessageComposerState
 import io.element.android.features.messages.impl.pinned.banner.PinnedMessagesBannerState
 import io.element.android.features.messages.impl.pinned.banner.aLoadedPinnedMessagesBannerState
+import io.element.android.features.messages.impl.search.RoomMessageSearchEvent
+import io.element.android.features.messages.impl.search.RoomMessageSearchResult
+import io.element.android.features.messages.impl.search.RoomMessageSearchState
 import io.element.android.features.messages.impl.timeline.TimelineState
 import io.element.android.features.messages.impl.timeline.aTimelineItemList
 import io.element.android.features.messages.impl.timeline.aTimelineState
@@ -42,6 +46,7 @@ import io.element.android.libraries.architecture.AsyncData
 import io.element.android.libraries.designsystem.components.avatar.AvatarData
 import io.element.android.libraries.designsystem.components.avatar.AvatarSize
 import io.element.android.libraries.designsystem.preview.ROOM_NAME
+import io.element.android.libraries.matrix.api.core.EventId
 import io.element.android.libraries.matrix.api.core.RoomId
 import io.element.android.libraries.matrix.api.core.ThreadId
 import io.element.android.libraries.matrix.api.room.tombstone.SuccessorRoom
@@ -73,6 +78,14 @@ open class MessagesStateProvider : PreviewParameterProvider<MessagesState> {
                 pinnedMessagesBannerState = aLoadedPinnedMessagesBannerState(
                     knownPinnedMessagesCount = 4,
                     currentPinnedMessageIndex = 0,
+                ),
+            ),
+            aMessagesState(
+                roomMessageSearchState = aRoomMessageSearchState(
+                    isSearchEnabled = true,
+                    isSearchActive = true,
+                    query = "message",
+                    results = persistentListOf(aRoomMessageSearchResult()),
                 ),
             ),
             aMessagesState(isCurrentlySharingLiveLocationInRoom = true),
@@ -110,6 +123,7 @@ fun aMessagesState(
     showReinvitePrompt: Boolean = false,
     roomCallState: RoomCallState = aStandByCallState(),
     pinnedMessagesBannerState: PinnedMessagesBannerState = aLoadedPinnedMessagesBannerState(),
+    roomMessageSearchState: RoomMessageSearchState = aRoomMessageSearchState(),
     roomMemberModerationState: RoomMemberModerationState = aRoomMemberModerationState(),
     successorRoom: SuccessorRoom? = null,
     threads: MessagesState.Threads = MessagesState.Threads(
@@ -140,11 +154,42 @@ fun aMessagesState(
     roomCallState = roomCallState,
     appName = "Element",
     pinnedMessagesBannerState = pinnedMessagesBannerState,
+    roomMessageSearchState = roomMessageSearchState,
     roomMemberModerationState = roomMemberModerationState,
     successorRoom = successorRoom,
     threads = threads,
     showLiveLocationShareBanner = isCurrentlySharingLiveLocationInRoom,
     eventSink = eventSink,
+)
+
+fun aRoomMessageSearchState(
+    isSearchEnabled: Boolean = false,
+    isSearchActive: Boolean = false,
+    query: String = "",
+    results: ImmutableList<RoomMessageSearchResult> = persistentListOf(),
+    isSearching: Boolean = false,
+    hasMoreResults: Boolean = false,
+    hasSearchError: Boolean = false,
+    eventSink: (RoomMessageSearchEvent) -> Unit = {},
+) = RoomMessageSearchState(
+    isSearchEnabled = isSearchEnabled,
+    isSearchActive = isSearchActive,
+    query = TextFieldState(initialText = query),
+    results = results,
+    isSearching = isSearching,
+    hasMoreResults = hasMoreResults,
+    hasSearchError = hasSearchError,
+    eventSink = eventSink,
+)
+
+fun aRoomMessageSearchResult(
+    eventId: EventId = EventId("\$event"),
+    title: String = "Alice",
+    description: String = "Search result message",
+) = RoomMessageSearchResult(
+    eventId = eventId,
+    title = title,
+    description = description,
 )
 
 fun aRoomMemberModerationState(

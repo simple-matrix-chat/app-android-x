@@ -10,7 +10,6 @@
 
 package io.element.android.features.messages.impl
 
-import androidx.lifecycle.Lifecycle
 import com.google.common.truth.Truth.assertThat
 import im.vector.app.features.analytics.plan.PinUnpinAction
 import io.element.android.features.location.test.FakeActiveLiveLocationShareManager
@@ -24,6 +23,8 @@ import io.element.android.features.messages.impl.messagecomposer.MessageComposer
 import io.element.android.features.messages.impl.messagecomposer.MessageComposerState
 import io.element.android.features.messages.impl.messagecomposer.aMessageComposerState
 import io.element.android.features.messages.impl.pinned.banner.aLoadedPinnedMessagesBannerState
+import io.element.android.features.messages.impl.search.RoomMessageSearchEvent
+import io.element.android.features.messages.impl.search.RoomMessageSearchResult
 import io.element.android.features.messages.impl.threads.list.aThreadListItem
 import io.element.android.features.messages.impl.timeline.FakeMarkAsFullyRead
 import io.element.android.features.messages.impl.timeline.MarkAsFullyRead
@@ -65,6 +66,8 @@ import io.element.android.libraries.matrix.api.room.RoomMembersState
 import io.element.android.libraries.matrix.api.room.RoomMembershipState
 import io.element.android.libraries.matrix.api.room.StateEventType
 import io.element.android.libraries.matrix.api.room.tombstone.SuccessorRoom
+import io.element.android.libraries.matrix.api.search.MatrixMessageSearchPage
+import io.element.android.libraries.matrix.api.search.MatrixMessageSearchResult
 import io.element.android.libraries.matrix.api.timeline.Timeline
 import io.element.android.libraries.matrix.api.timeline.item.TimelineItemDebugInfo
 import io.element.android.libraries.matrix.api.timeline.item.event.EventOrTransactionId
@@ -78,7 +81,7 @@ import io.element.android.libraries.matrix.test.A_SESSION_ID
 import io.element.android.libraries.matrix.test.A_SESSION_ID_2
 import io.element.android.libraries.matrix.test.A_THREAD_ID
 import io.element.android.libraries.matrix.test.A_USER_ID
-import io.element.android.libraries.matrix.test.A_USER_ID_2
+import io.element.android.libraries.matrix.test.FakeMatrixClient
 import io.element.android.libraries.matrix.test.core.aBuildMeta
 import io.element.android.libraries.matrix.test.permalink.FakePermalinkParser
 import io.element.android.libraries.matrix.test.room.FakeBaseRoom
@@ -96,7 +99,6 @@ import io.element.android.libraries.textcomposer.model.TextEditorState
 import io.element.android.libraries.textcomposer.model.aTextEditorStateMarkdown
 import io.element.android.services.analytics.test.FakeAnalyticsService
 import io.element.android.tests.testutils.EventsRecorder
-import io.element.android.tests.testutils.FakeLifecycleOwner
 import io.element.android.tests.testutils.WarmUpRule
 import io.element.android.tests.testutils.consumeItemsUntilPredicate
 import io.element.android.tests.testutils.consumeItemsUntilTimeout
@@ -139,6 +141,151 @@ class MessagesPresenterTest {
             assertThat(initialState.inviteProgress).isEqualTo(AsyncData.Uninitialized)
             assertThat(initialState.showReinvitePrompt).isFalse()
             assertThat(initialState.showLiveLocationShareBanner).isFalse()
+            assertThat(initialState.roomMessageSearchState.isSearchEnabled).isTrue()
+        }
+    }
+
+    @Test
+    fun `present - room message search is enabled in non-DM rooms`() = runTest {
+        val room = FakeJoinedRoom(
+            baseRoom = FakeBaseRoom(
+                roomPermissions = roomPermissions(),
+            ).apply {
+                givenRoomInfo(aRoomInfo(isDm = false))
+            },
+            typingNoticeResult = { Result.success(Unit) },
+        )
+        val presenter = createMessagesPresenter(joinedRoom = room)
+
+        presenter.testWithLifecycleOwner {
+            val initialState = awaitItem()
+            assertThat(initialState.roomMessageSearchState.isSearchEnabled).isTrue()
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `present - room message search loads results for current room`() = runTest {
+        val eventId = EventId("\$room-search-event")
+        val searchCalls = mutableListOf<Triple<String, String?, RoomId?>>()
+        val matrixClient = FakeMatrixClient(
+            searchMessagesResult = { searchTerm, nextBatch, roomId ->
+                searchCalls.add(Triple(searchTerm, nextBatch, roomId))
+                Result.success(
+                    MatrixMessageSearchPage(
+                        results = listOf(aMatrixMessageSearchResult(eventId = eventId)),
+                        nextBatch = null,
+                    )
+                )
+            }
+        )
+        val room = FakeJoinedRoom(
+            baseRoom = FakeBaseRoom(
+                roomPermissions = roomPermissions(),
+            ).apply {
+                givenRoomInfo(aRoomInfo(id = A_ROOM_ID, isDm = false, name = "Tech central"))
+            },
+            typingNoticeResult = { Result.success(Unit) },
+        )
+        val presenter = createMessagesPresenter(
+            joinedRoom = room,
+            matrixClient = matrixClient,
+        )
+
+        presenter.testWithLifecycleOwner {
+            awaitItem().roomMessageSearchState.eventSink(RoomMessageSearchEvent.ToggleSearchVisibility)
+            val activeState = consumeItemsUntilPredicate { state -> state.roomMessageSearchState.isSearchActive }.last()
+            activeState.roomMessageSearchState.query.edit { append("hello") }
+
+            val resultState = consumeItemsUntilPredicate { state -> state.roomMessageSearchState.results.isNotEmpty() }.last()
+            assertThat(searchCalls).containsExactly(Triple("hello", null, A_ROOM_ID))
+            assertThat(resultState.roomMessageSearchState.results.single())
+                .isEqualTo(RoomMessageSearchResult(eventId = eventId, title = "Tech central", description = "Alice: hello from search"))
+        }
+    }
+
+    @Test
+    fun `present - room message search loads more when near bottom`() = runTest {
+        val eventId1 = EventId("\$room-search-event-1")
+        val eventId2 = EventId("\$room-search-event-2")
+        val requestedBatches = mutableListOf<String?>()
+        val matrixClient = FakeMatrixClient(
+            searchMessagesResult = { _, nextBatch, roomId ->
+                assertThat(roomId).isEqualTo(A_ROOM_ID)
+                requestedBatches.add(nextBatch)
+                if (nextBatch == null) {
+                    Result.success(
+                        MatrixMessageSearchPage(
+                            results = listOf(aMatrixMessageSearchResult(eventId = eventId1)),
+                            nextBatch = "next",
+                        )
+                    )
+                } else {
+                    Result.success(
+                        MatrixMessageSearchPage(
+                            results = listOf(aMatrixMessageSearchResult(eventId = eventId2)),
+                            nextBatch = null,
+                        )
+                    )
+                }
+            }
+        )
+        val room = FakeJoinedRoom(
+            baseRoom = FakeBaseRoom(
+                roomPermissions = roomPermissions(),
+            ).apply {
+                givenRoomInfo(aRoomInfo(id = A_ROOM_ID, isDm = false))
+            },
+            typingNoticeResult = { Result.success(Unit) },
+        )
+        val presenter = createMessagesPresenter(
+            joinedRoom = room,
+            matrixClient = matrixClient,
+        )
+
+        presenter.testWithLifecycleOwner {
+            awaitItem().roomMessageSearchState.eventSink(RoomMessageSearchEvent.ToggleSearchVisibility)
+            val activeState = consumeItemsUntilPredicate { state -> state.roomMessageSearchState.isSearchActive }.last()
+            activeState.roomMessageSearchState.query.edit { append("hello") }
+            val firstPageState = consumeItemsUntilPredicate { state ->
+                state.roomMessageSearchState.results.size == 1 && state.roomMessageSearchState.hasMoreResults
+            }.last()
+
+            firstPageState.roomMessageSearchState.eventSink(RoomMessageSearchEvent.UpdateVisibleRange(0..10))
+            advanceUntilIdle()
+
+            val secondPageState = consumeItemsUntilPredicate { state -> state.roomMessageSearchState.results.size == 2 }.last()
+            assertThat(secondPageState.roomMessageSearchState.hasMoreResults).isFalse()
+            assertThat(requestedBatches).containsExactly(null, "next").inOrder()
+        }
+    }
+
+    @Test
+    fun `present - room message search result selection focuses timeline event`() = runTest {
+        val eventId = EventId("\$room-search-event")
+        val timelineEvents = mutableListOf<TimelineEvent>()
+        val room = FakeJoinedRoom(
+            baseRoom = FakeBaseRoom(
+                roomPermissions = roomPermissions(),
+            ).apply {
+                givenRoomInfo(aRoomInfo(isDm = false))
+            },
+            typingNoticeResult = { Result.success(Unit) },
+        )
+        val presenter = createMessagesPresenter(
+            joinedRoom = room,
+            timelineEventSink = { timelineEvents.add(it) },
+        )
+
+        presenter.testWithLifecycleOwner {
+            awaitItem().roomMessageSearchState.eventSink(RoomMessageSearchEvent.ToggleSearchVisibility)
+            val activeState = consumeItemsUntilPredicate { state -> state.roomMessageSearchState.isSearchActive }.last()
+
+            activeState.roomMessageSearchState.eventSink(RoomMessageSearchEvent.SelectResult(eventId))
+
+            assertThat(timelineEvents).containsExactly(TimelineEvent.FocusOnEvent(eventId))
+            val closedState = awaitItem()
+            assertThat(closedState.roomMessageSearchState.isSearchActive).isFalse()
         }
     }
 
@@ -593,6 +740,7 @@ class MessagesPresenterTest {
         val room = FakeJoinedRoom(
             baseRoom = FakeBaseRoom(
                 roomPermissions = roomPermissions(),
+                getDirectRoomMemberResult = { aRoomMember(userId = UserId("@other:server.org"), displayName = "Other") },
             ).apply {
                 givenRoomInfo(aRoomInfo(isDm = true, joinedMembersCount = 1, activeMembersCount = 1))
             },
@@ -614,6 +762,28 @@ class MessagesPresenterTest {
             skipItems(1)
             val dismissedState = awaitItem()
             assertThat(dismissedState.showReinvitePrompt).isFalse()
+        }
+    }
+
+    @Test
+    fun `present - doesn't show reinvite prompt in self direct room`() = runTest {
+        val room = FakeJoinedRoom(
+            baseRoom = FakeBaseRoom(
+                roomPermissions = roomPermissions(),
+                getDirectRoomMemberResult = { null },
+            ).apply {
+                givenRoomInfo(aRoomInfo(isDm = true, joinedMembersCount = 1, activeMembersCount = 1))
+            },
+            typingNoticeResult = { Result.success(Unit) },
+        )
+        val presenter = createMessagesPresenter(joinedRoom = room)
+        presenter.testWithLifecycleOwner {
+            val initialState = awaitItem()
+            assertThat(initialState.showReinvitePrompt).isFalse()
+            (initialState.composerState.textEditorState as TextEditorState.Markdown).state.hasFocus = true
+            skipItems(1)
+            val focusedState = awaitItem()
+            assertThat(focusedState.showReinvitePrompt).isFalse()
         }
     }
 
@@ -1290,6 +1460,7 @@ class MessagesPresenterTest {
             typingNoticeResult = { Result.success(Unit) },
         ),
         navigator: FakeMessagesNavigator = FakeMessagesNavigator(),
+        matrixClient: FakeMatrixClient = FakeMatrixClient(),
         clipboardHelper: FakeClipboardHelper = FakeClipboardHelper(),
         analyticsService: FakeAnalyticsService = FakeAnalyticsService(),
         timelineEventSink: (TimelineEvent) -> Unit = {},
@@ -1312,6 +1483,7 @@ class MessagesPresenterTest {
         return MessagesPresenter(
             navigator = navigator,
             room = joinedRoom,
+            matrixClient = matrixClient,
             composerPresenter = messageComposerPresenter,
             voiceMessageComposerPresenterFactory = FakeDefaultVoiceMessageComposerPresenterFactory(backgroundScope),
             timelinePresenter = { aTimelineState(eventSink = timelineEventSink) },
@@ -1340,3 +1512,18 @@ class MessagesPresenterTest {
         )
     }
 }
+
+private fun aMatrixMessageSearchResult(
+    roomId: RoomId = A_ROOM_ID,
+    eventId: EventId = AN_EVENT_ID,
+    senderId: UserId = A_USER_ID,
+    senderDisplayName: String = "Alice",
+    message: String = "hello from search",
+) = MatrixMessageSearchResult(
+    roomId = roomId,
+    eventId = eventId,
+    senderId = senderId,
+    senderDisplayName = senderDisplayName,
+    message = message,
+    originServerTimestamp = null,
+)

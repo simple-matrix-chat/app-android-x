@@ -10,10 +10,13 @@ package io.element.android.features.preferences.impl
 
 import androidx.arch.core.executor.testing.InstantTaskExecutorRule
 import com.bumble.appyx.core.modality.BuildContext
+import com.bumble.appyx.core.node.EmptyNodeView
+import com.bumble.appyx.core.node.Node
 import com.bumble.appyx.testing.junit4.util.MainDispatcherRule
 import com.google.common.truth.Truth.assertThat
 import io.element.android.features.deactivation.test.FakeAccountDeactivationEntryPoint
 import io.element.android.features.licenses.test.FakeOpenSourceLicensesEntryPoint
+import io.element.android.features.linknewdevice.api.LinkNewDeviceEntryPoint
 import io.element.android.features.lockscreen.test.FakeLockScreenEntryPoint
 import io.element.android.features.logout.test.FakeLogoutEntryPoint
 import io.element.android.features.preferences.api.PreferencesEntryPoint
@@ -44,11 +47,13 @@ class DefaultPreferencesEntryPointTest {
                 notificationTroubleShootEntryPoint = FakeNotificationTroubleShootEntryPoint(),
                 pushHistoryEntryPoint = FakePushHistoryEntryPoint(),
                 logoutEntryPoint = FakeLogoutEntryPoint(),
+                linkNewDeviceEntryPoint = FakeLinkNewDeviceEntryPoint(),
                 openSourceLicensesEntryPoint = FakeOpenSourceLicensesEntryPoint(),
                 accountDeactivationEntryPoint = FakeAccountDeactivationEntryPoint(),
             )
         }
         val callback = object : PreferencesEntryPoint.Callback {
+            override fun navigateToChatsTab() = lambdaError()
             override fun navigateToAddAccount() = lambdaError()
             override fun navigateToBugReport() = lambdaError()
             override fun navigateToRoomNotificationSettings(roomId: RoomId) = lambdaError()
@@ -77,4 +82,16 @@ class DefaultPreferencesEntryPointTest {
         assertThat(PreferencesEntryPoint.InitialTarget.NotificationTroubleshoot.toNavTarget())
             .isEqualTo(PreferencesFlowNode.NavTarget.TroubleshootNotifications)
     }
+}
+
+private class FakeLinkNewDeviceEntryPoint : LinkNewDeviceEntryPoint {
+    override fun createNode(
+        parentNode: Node,
+        buildContext: BuildContext,
+        callback: LinkNewDeviceEntryPoint.Callback,
+    ): Node = object : Node(
+        buildContext = buildContext,
+        plugins = emptyList(),
+        view = EmptyNodeView,
+    ) {}
 }

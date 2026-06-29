@@ -8,24 +8,26 @@
 
 package io.element.android.features.preferences.impl.notifications.edit
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.tooling.preview.PreviewParameter
+import androidx.compose.ui.unit.dp
+import io.element.android.compound.theme.ElementTheme
 import io.element.android.features.preferences.impl.R
 import io.element.android.libraries.designsystem.components.async.AsyncActionView
-import io.element.android.libraries.designsystem.components.avatar.Avatar
-import io.element.android.libraries.designsystem.components.avatar.AvatarType
-import io.element.android.libraries.designsystem.components.list.ListItemContent
-import io.element.android.libraries.designsystem.components.preferences.PreferenceCategory
-import io.element.android.libraries.designsystem.components.preferences.PreferencePage
 import io.element.android.libraries.designsystem.preview.ElementPreview
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
-import io.element.android.libraries.designsystem.theme.components.ListItem
-import io.element.android.libraries.designsystem.theme.components.Text
+import io.element.android.libraries.designsystem.theme.components.Scaffold
 import io.element.android.libraries.matrix.api.core.RoomId
 import io.element.android.libraries.matrix.api.room.RoomNotificationMode
 import io.element.android.libraries.ui.strings.CommonStrings
@@ -46,81 +48,112 @@ fun EditDefaultNotificationSettingView(
     } else {
         R.string.screen_notification_settings_group_chats
     }
-    PreferencePage(
-        modifier = modifier,
-        onBackClick = onBackClick,
-        title = stringResource(id = title)
-    ) {
-        // Only ALL_MESSAGES and MENTIONS_AND_KEYWORDS_ONLY are valid global defaults.
-        val validModes = listOf(RoomNotificationMode.ALL_MESSAGES, RoomNotificationMode.MENTIONS_AND_KEYWORDS_ONLY)
-
-        val categoryTitle = if (state.isOneToOne) {
-            R.string.screen_notification_settings_edit_screen_direct_section_header
-        } else {
-            R.string.screen_notification_settings_edit_screen_group_section_header
-        }
-        PreferenceCategory(
-            title = stringResource(id = categoryTitle),
-            showTopDivider = false,
+    Scaffold(
+        modifier = modifier.fillMaxSize(),
+        containerColor = ElementTheme.colors.bgSubtleSecondary,
+    ) { padding ->
+        Column(
+            modifier = Modifier
+                .padding(padding)
+                .consumeWindowInsets(padding)
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 20.dp)
+                .padding(top = 8.dp, bottom = 32.dp)
+                .navigationBarsPadding(),
+            verticalArrangement = Arrangement.spacedBy(28.dp),
         ) {
-            if (state.mode != null) {
+            MomentNotificationEditTopBar(
+                title = stringResource(id = title),
+                onBackClick = onBackClick,
+            )
+            // Only ALL_MESSAGES and MENTIONS_AND_KEYWORDS_ONLY are valid global defaults.
+            val validModes = listOf(RoomNotificationMode.ALL_MESSAGES, RoomNotificationMode.MENTIONS_AND_KEYWORDS_ONLY)
+            val rowsEnabled = state.mode != null && !state.changeNotificationSettingAction.isLoading()
+            val categoryTitle = if (state.isOneToOne) {
+                R.string.screen_notification_settings_edit_screen_direct_section_header
+            } else {
+                R.string.screen_notification_settings_edit_screen_group_section_header
+            }
+            MomentNotificationEditSection(
+                title = stringResource(id = categoryTitle),
+            ) {
                 Column(modifier = Modifier.selectableGroup()) {
-                    validModes.forEach { item ->
-                        DefaultNotificationSettingOption(
-                            mode = item,
-                            isSelected = state.mode == item,
-                            displayMentionsOnlyDisclaimer = state.displayMentionsOnlyDisclaimer,
-                            onSelectOption = { state.eventSink(EditDefaultNotificationSettingStateEvents.SetNotificationMode(it)) }
+                    validModes.forEachIndexed { index, item ->
+                        MomentNotificationDefaultModeRow(
+                            title = getTitleForDefaultNotificationMode(item),
+                            description = getDefaultNotificationModeDescription(
+                                mode = item,
+                                displayMentionsOnlyDisclaimer = state.displayMentionsOnlyDisclaimer
+                            ),
+                            selected = state.pendingMode == null && state.mode == item,
+                            enabled = rowsEnabled,
+                            loading = state.pendingMode == item,
+                            onSelect = { state.eventSink(EditDefaultNotificationSettingStateEvents.SetNotificationMode(item)) },
                         )
+                        if (index != validModes.lastIndex) {
+                            MomentNotificationEditDivider()
+                        }
                     }
                 }
             }
-        }
-        if (state.roomsWithUserDefinedMode.isNotEmpty()) {
-            PreferenceCategory(title = stringResource(id = R.string.screen_notification_settings_edit_custom_settings_section_title)) {
-                state.roomsWithUserDefinedMode.forEach { summary ->
-                    val subtitle = when (summary.notificationMode) {
-                        RoomNotificationMode.ALL_MESSAGES -> stringResource(id = R.string.screen_notification_settings_edit_mode_all_messages)
-                        RoomNotificationMode.MENTIONS_AND_KEYWORDS_ONLY -> {
-                            stringResource(id = R.string.screen_notification_settings_edit_mode_mentions_and_keywords)
+
+            if (state.roomsWithUserDefinedMode.isNotEmpty()) {
+                MomentNotificationEditSection(
+                    title = stringResource(id = R.string.screen_notification_settings_edit_custom_settings_section_title),
+                ) {
+                    state.roomsWithUserDefinedMode.forEachIndexed { index, summary ->
+                        MomentNotificationCustomRoomRow(
+                            summary = summary,
+                            title = summary.name ?: stringResource(id = CommonStrings.common_no_room_name),
+                            modeLabel = getTitleForRoomNotificationMode(summary.notificationMode),
+                            onClick = {
+                                openRoomNotificationSettings(summary.roomId)
+                            }
+                        )
+                        if (index != state.roomsWithUserDefinedMode.lastIndex) {
+                            MomentNotificationEditDivider(start = 84.dp)
                         }
-                        RoomNotificationMode.MUTE -> stringResource(id = CommonStrings.common_mute)
-                        null -> ""
                     }
-                    ListItem(
-                        headlineContent = {
-                            val roomName = summary.name
-                            Text(
-                                text = roomName ?: stringResource(id = CommonStrings.common_no_room_name),
-                                fontStyle = FontStyle.Italic.takeIf { roomName == null }
-                            )
-                        },
-                        supportingContent = {
-                            Text(text = subtitle)
-                        },
-                        leadingContent = ListItemContent.Custom {
-                            Avatar(
-                                avatarData = summary.avatarData,
-                                avatarType = AvatarType.Room(
-                                    heroes = summary.heroesAvatar,
-                                ),
-                            )
-                        },
-                        onClick = {
-                            openRoomNotificationSettings(summary.roomId)
-                        }
-                    )
                 }
             }
+
+            AsyncActionView(
+                async = state.changeNotificationSettingAction,
+                errorMessage = { stringResource(R.string.screen_notification_settings_edit_failed_updating_default_mode) },
+                onErrorDismiss = { state.eventSink(EditDefaultNotificationSettingStateEvents.ClearError) },
+                onSuccess = {},
+            )
         }
-        AsyncActionView(
-            async = state.changeNotificationSettingAction,
-            errorMessage = { stringResource(R.string.screen_notification_settings_edit_failed_updating_default_mode) },
-            onErrorDismiss = { state.eventSink(EditDefaultNotificationSettingStateEvents.ClearError) },
-            onSuccess = {},
-        )
     }
 }
+
+@Composable
+private fun getTitleForDefaultNotificationMode(mode: RoomNotificationMode) =
+    when (mode) {
+        RoomNotificationMode.ALL_MESSAGES -> stringResource(id = R.string.screen_notification_settings_edit_mode_all_messages)
+        RoomNotificationMode.MENTIONS_AND_KEYWORDS_ONLY -> stringResource(id = R.string.screen_notification_settings_edit_mode_mentions_and_keywords)
+        RoomNotificationMode.MUTE -> stringResource(id = CommonStrings.common_mute)
+    }
+
+@Composable
+private fun getDefaultNotificationModeDescription(
+    mode: RoomNotificationMode,
+    displayMentionsOnlyDisclaimer: Boolean,
+) = when {
+    mode == RoomNotificationMode.MENTIONS_AND_KEYWORDS_ONLY && displayMentionsOnlyDisclaimer -> {
+        stringResource(id = R.string.screen_notification_settings_mentions_only_disclaimer)
+    }
+    else -> null
+}
+
+@Composable
+private fun getTitleForRoomNotificationMode(mode: RoomNotificationMode?) =
+    when (mode) {
+        RoomNotificationMode.ALL_MESSAGES -> stringResource(id = R.string.screen_notification_settings_edit_mode_all_messages)
+        RoomNotificationMode.MENTIONS_AND_KEYWORDS_ONLY -> stringResource(id = R.string.screen_notification_settings_edit_mode_mentions_and_keywords)
+        RoomNotificationMode.MUTE -> stringResource(id = CommonStrings.common_mute)
+        null -> ""
+    }
 
 @PreviewsDayNight
 @Composable

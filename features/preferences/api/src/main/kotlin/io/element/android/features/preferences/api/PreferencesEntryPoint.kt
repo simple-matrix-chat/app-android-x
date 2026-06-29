@@ -43,6 +43,7 @@ interface PreferencesEntryPoint : FeatureEntryPoint {
     ): Node
 
     interface Callback : Plugin {
+        fun navigateToChatsTab()
         fun navigateToAddAccount()
         fun navigateToBugReport()
         fun navigateToRoomNotificationSettings(roomId: RoomId)

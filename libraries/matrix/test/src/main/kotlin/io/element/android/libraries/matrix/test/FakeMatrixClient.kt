@@ -17,16 +17,19 @@ import io.element.android.libraries.matrix.api.core.RoomAlias
 import io.element.android.libraries.matrix.api.core.RoomId
 import io.element.android.libraries.matrix.api.core.RoomIdOrAlias
 import io.element.android.libraries.matrix.api.core.SessionId
+import io.element.android.libraries.matrix.api.core.ThreadId
 import io.element.android.libraries.matrix.api.core.UserId
 import io.element.android.libraries.matrix.api.createroom.CreateRoomParameters
 import io.element.android.libraries.matrix.api.encryption.EncryptionService
 import io.element.android.libraries.matrix.api.linknewdevice.LinkDesktopHandler
 import io.element.android.libraries.matrix.api.linknewdevice.LinkMobileHandler
 import io.element.android.libraries.matrix.api.media.MatrixMediaLoader
+import io.element.android.libraries.matrix.api.media.MatrixStickerInfo
 import io.element.android.libraries.matrix.api.media.MediaPreviewService
 import io.element.android.libraries.matrix.api.notification.NotificationService
 import io.element.android.libraries.matrix.api.notificationsettings.NotificationSettingsService
 import io.element.android.libraries.matrix.api.oauth.AccountManagementAction
+import io.element.android.libraries.matrix.api.privacy.MatrixMomentPrivacySettings
 import io.element.android.libraries.matrix.api.pusher.PushersService
 import io.element.android.libraries.matrix.api.room.BaseRoom
 import io.element.android.libraries.matrix.api.room.JoinedRoom
@@ -37,9 +40,16 @@ import io.element.android.libraries.matrix.api.room.alias.ResolvedRoomAlias
 import io.element.android.libraries.matrix.api.room.location.BeaconInfoUpdate
 import io.element.android.libraries.matrix.api.roomdirectory.RoomDirectoryService
 import io.element.android.libraries.matrix.api.roomlist.RoomListService
+import io.element.android.libraries.matrix.api.search.MatrixMessageSearchPage
+import io.element.android.libraries.matrix.api.session.DeleteSessionDeviceResult
+import io.element.android.libraries.matrix.api.session.MatrixSessionDevice
 import io.element.android.libraries.matrix.api.spaces.SpaceService
 import io.element.android.libraries.matrix.api.sync.SlidingSyncVersion
 import io.element.android.libraries.matrix.api.sync.SyncService
+import io.element.android.libraries.matrix.api.user.MatrixMomentUserSearchMatch
+import io.element.android.libraries.matrix.api.user.MatrixProfileLink
+import io.element.android.libraries.matrix.api.user.MatrixProfileUsername
+import io.element.android.libraries.matrix.api.user.MatrixPublicProfile
 import io.element.android.libraries.matrix.api.user.MatrixSearchUserResults
 import io.element.android.libraries.matrix.api.user.MatrixUser
 import io.element.android.libraries.matrix.api.verification.SessionVerificationService
@@ -88,6 +98,35 @@ class FakeMatrixClient(
     override val roomMembershipObserver: RoomMembershipObserver = RoomMembershipObserver(),
     private val homeserverCapabilitiesProvider: FakeHomeserverCapabilitiesProvider = FakeHomeserverCapabilitiesProvider(),
     private val accountManagementUrlResult: (AccountManagementAction?) -> Result<String?> = { lambdaError() },
+    private val getAccountDataResult: (String) -> Result<String?> = { Result.success(null) },
+    private val setAccountDataResult: (String, String) -> Result<Unit> = { _, _ -> Result.success(Unit) },
+    private var syncMomentPrivacySettingsResult: (MatrixMomentPrivacySettings) -> Result<Unit> = { Result.success(Unit) },
+    private val searchMessagesResult: (String, String?, RoomId?) -> Result<MatrixMessageSearchPage> = { _, _, _ ->
+        Result.success(MatrixMessageSearchPage(emptyList(), null))
+    },
+    private val searchMomentUsersResult: (String, Int, String?) -> Result<List<MatrixMomentUserSearchMatch>> = { _, _, _ ->
+        Result.success(emptyList())
+    },
+    private val getProfileStatusResult: (UserId) -> Result<String> = { Result.success("") },
+    private var setProfileStatusResult: (String) -> Result<Unit> = { Result.success(Unit) },
+    private val getProfileUsernameResult: (UserId) -> Result<String> = { Result.success("") },
+    private var setProfileUsernameResult: (String, String) -> Result<String> = { username, _ -> Result.success(MatrixProfileUsername.normalize(username)) },
+    private val getPublicProfileResult: (UserId) -> Result<MatrixPublicProfile?> = { Result.success(null) },
+    private val createUserProfileLinkResult: (UserId) -> Result<String?> = { Result.success(MatrixProfileLink.fallbackUserLink(it)) },
+    private val getSessionDevicesResult: () -> Result<List<MatrixSessionDevice>> = {
+        Result.success(
+            listOf(
+                MatrixSessionDevice(
+                    deviceId = deviceId,
+                    displayName = deviceId.value,
+                    lastSeenIp = null,
+                    lastSeenTimestamp = null,
+                    isCurrent = true,
+                )
+            )
+        )
+    },
+    private val deleteSessionDeviceResult: (DeviceId) -> Result<DeleteSessionDeviceResult> = { Result.success(DeleteSessionDeviceResult.Deleted) },
     private val resolveRoomAliasResult: (RoomAlias) -> Result<Optional<ResolvedRoomAlias>> = {
         Result.success(
             Optional.of(ResolvedRoomAlias(A_ROOM_ID, emptyList()))
@@ -118,11 +157,25 @@ class FakeMatrixClient(
     private val getDatabaseSizesLambda: () -> Result<SdkStoreSizes> = { lambdaError() },
     private val resetWellKnownConfigLambda: () -> Result<Unit> = { lambdaError() },
 ) : MatrixClient {
+    data class SentSticker(
+        val roomId: RoomId,
+        val body: String,
+        val url: String,
+        val info: MatrixStickerInfo,
+        val threadRootId: ThreadId?,
+    )
+
     var setDisplayNameCalled: Boolean = false
         private set
     var uploadAvatarCalled: Boolean = false
         private set
     var removeAvatarCalled: Boolean = false
+        private set
+    var setProfileStatusCalled: Boolean = false
+        private set
+    var setProfileUsernameCalled: Boolean = false
+        private set
+    var latestSyncedMomentPrivacySettings: MatrixMomentPrivacySettings? = null
         private set
 
     private val _userProfile: MutableStateFlow<MatrixUser> = MutableStateFlow(MatrixUser(sessionId, userDisplayName, userAvatarUrl))
@@ -135,9 +188,20 @@ class FakeMatrixClient(
     private val searchUserResults = mutableMapOf<String, Result<MatrixSearchUserResults>>()
     private val getProfileResults = mutableMapOf<UserId, Result<MatrixUser>>()
     private var uploadMediaResult: Result<String> = Result.success(AN_AVATAR_URL)
+    private var sendStickerResult: Result<Unit> = Result.success(Unit)
+    val sentStickers = mutableListOf<SentSticker>()
     private var setDisplayNameResult: Result<Unit> = Result.success(Unit)
     private var uploadAvatarResult: Result<Unit> = Result.success(Unit)
     private var removeAvatarResult: Result<Unit> = Result.success(Unit)
+    private var profileStatus: String? = null
+
+    var latestCreateRoomParameters: CreateRoomParameters? = null
+        private set
+    private var profileUsername: String? = null
+    private var publicProfile: MatrixPublicProfile? = null
+    private var userProfileLink: String? = null
+    private val accountData = mutableMapOf<String, String>()
+    private var sessionDevices: List<MatrixSessionDevice>? = null
     var joinRoomLambda: (RoomId) -> Result<RoomInfo?> = {
         Result.success(null)
     }
@@ -177,6 +241,7 @@ class FakeMatrixClient(
     }
 
     override suspend fun createRoom(createRoomParams: CreateRoomParameters): Result<RoomId> = simulateLongTask {
+        latestCreateRoomParameters = createRoomParams
         return createRoomResult
     }
 
@@ -190,6 +255,14 @@ class FakeMatrixClient(
 
     override suspend fun searchUsers(searchTerm: String, limit: Long): Result<MatrixSearchUserResults> {
         return searchUserResults[searchTerm] ?: Result.failure(IllegalStateException("No response defined for $searchTerm"))
+    }
+
+    override suspend fun searchMomentUsers(query: String, limit: Int, defaultCountry: String?): Result<List<MatrixMomentUserSearchMatch>> {
+        return searchMomentUsersResult(query, limit, defaultCountry)
+    }
+
+    override suspend fun searchMessages(searchTerm: String, nextBatch: String?, roomId: RoomId?): Result<MatrixMessageSearchPage> {
+        return searchMessagesResult(searchTerm, nextBatch, roomId)
     }
 
     override suspend fun getCacheSize(): Long {
@@ -220,8 +293,75 @@ class FakeMatrixClient(
         return Result.success(result)
     }
 
+    override suspend fun getProfileStatus(): Result<String> = getProfileStatus(sessionId)
+
+    override suspend fun getProfileStatus(userId: UserId): Result<String> = simulateLongTask {
+        return profileStatus?.let { Result.success(it) } ?: getProfileStatusResult(userId)
+    }
+
+    override suspend fun setProfileStatus(status: String): Result<Unit> = simulateLongTask {
+        setProfileStatusCalled = true
+        val result = setProfileStatusResult(status)
+        if (result.isSuccess) {
+            profileStatus = status.trim()
+        }
+        return result
+    }
+
+    override suspend fun getProfileUsername(userId: UserId): Result<String> = simulateLongTask {
+        return profileUsername?.let { Result.success(it) } ?: getProfileUsernameResult(userId)
+    }
+
+    override suspend fun setProfileUsername(username: String, displayName: String): Result<String> = simulateLongTask {
+        setProfileUsernameCalled = true
+        val result = setProfileUsernameResult(username, displayName)
+        result.onSuccess {
+            profileUsername = it
+        }
+        return result
+    }
+
+    override suspend fun getPublicProfile(userId: UserId): Result<MatrixPublicProfile?> = simulateLongTask {
+        return publicProfile?.let { Result.success(it) } ?: getPublicProfileResult(userId)
+    }
+
+    override suspend fun createUserProfileLink(userId: UserId): Result<String?> = simulateLongTask {
+        return userProfileLink?.let { Result.success(it) } ?: createUserProfileLinkResult(userId)
+    }
+
     override suspend fun getAccountManagementUrl(action: AccountManagementAction?): Result<String?> = simulateLongTask {
         accountManagementUrlResult(action)
+    }
+
+    override suspend fun getAccountData(eventType: String): Result<String?> = simulateLongTask {
+        accountData[eventType]?.let { return@simulateLongTask Result.success(it) }
+        return@simulateLongTask getAccountDataResult(eventType)
+    }
+
+    override suspend fun setAccountData(eventType: String, content: String): Result<Unit> = simulateLongTask {
+        val result = setAccountDataResult(eventType, content)
+        if (result.isSuccess) {
+            accountData[eventType] = content
+        }
+        return@simulateLongTask result
+    }
+
+    override suspend fun syncMomentPrivacySettings(settings: MatrixMomentPrivacySettings): Result<Unit> = simulateLongTask {
+        latestSyncedMomentPrivacySettings = settings
+        return@simulateLongTask syncMomentPrivacySettingsResult(settings)
+    }
+
+    override suspend fun getSessionDevices(): Result<List<MatrixSessionDevice>> = simulateLongTask {
+        return sessionDevices?.let { Result.success(it) } ?: getSessionDevicesResult()
+    }
+
+    override suspend fun deleteSessionDevice(deviceId: DeviceId): Result<DeleteSessionDeviceResult> = simulateLongTask {
+        val result = deleteSessionDeviceResult(deviceId)
+        if (result.getOrNull() == DeleteSessionDeviceResult.Deleted) {
+            sessionDevices = (sessionDevices ?: getSessionDevicesResult().getOrNull()).orEmpty()
+                .filterNot { it.deviceId == deviceId }
+        }
+        return@simulateLongTask result
     }
 
     override suspend fun uploadMedia(
@@ -229,6 +369,23 @@ class FakeMatrixClient(
         data: ByteArray,
     ): Result<String> {
         return uploadMediaResult
+    }
+
+    override suspend fun sendSticker(
+        roomId: RoomId,
+        body: String,
+        url: String,
+        info: MatrixStickerInfo,
+        threadRootId: ThreadId?,
+    ): Result<Unit> {
+        sentStickers += SentSticker(
+            roomId = roomId,
+            body = body,
+            url = url,
+            info = info,
+            threadRootId = threadRootId,
+        )
+        return sendStickerResult
     }
 
     override suspend fun setDisplayName(displayName: String): Result<Unit> = simulateLongTask {
@@ -290,6 +447,10 @@ class FakeMatrixClient(
         uploadMediaResult = result
     }
 
+    fun givenSendStickerResult(result: Result<Unit>) {
+        sendStickerResult = result
+    }
+
     fun givenSetDisplayNameResult(result: Result<Unit>) {
         setDisplayNameResult = result
     }
@@ -300,6 +461,46 @@ class FakeMatrixClient(
 
     fun givenRemoveAvatarResult(result: Result<Unit>) {
         removeAvatarResult = result
+    }
+
+    fun givenProfileStatus(status: String?) {
+        profileStatus = status
+    }
+
+    fun givenSetProfileStatusResult(result: Result<Unit>) {
+        setProfileStatusResult = { result }
+    }
+
+    fun givenProfileUsername(username: String?) {
+        profileUsername = username
+    }
+
+    fun givenSetProfileUsernameResult(result: Result<String>) {
+        setProfileUsernameResult = { _, _ -> result }
+    }
+
+    fun givenPublicProfile(profile: MatrixPublicProfile?) {
+        publicProfile = profile
+    }
+
+    fun givenUserProfileLink(link: String?) {
+        userProfileLink = link
+    }
+
+    fun givenAccountData(eventType: String, content: String?) {
+        if (content == null) {
+            accountData.remove(eventType)
+        } else {
+            accountData[eventType] = content
+        }
+    }
+
+    fun givenSyncMomentPrivacySettingsResult(result: Result<Unit>) {
+        syncMomentPrivacySettingsResult = { result }
+    }
+
+    fun givenSessionDevices(devices: List<MatrixSessionDevice>) {
+        sessionDevices = devices
     }
 
     private val visitedRoomsId: MutableList<RoomId> = mutableListOf()

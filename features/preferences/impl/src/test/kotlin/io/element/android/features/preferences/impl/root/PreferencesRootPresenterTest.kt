@@ -15,6 +15,11 @@ import com.google.common.truth.Truth.assertThat
 import io.element.android.features.enterprise.api.SessionEnterpriseService
 import io.element.android.features.enterprise.test.FakeSessionEnterpriseService
 import io.element.android.features.logout.api.direct.aDirectLogoutState
+import io.element.android.features.preferences.impl.notifications.FakeSystemNotificationsEnabledProvider
+import io.element.android.features.preferences.impl.notifications.SystemNotificationsEnabledProvider
+import io.element.android.features.preferences.impl.privacy.MomentPrivacyAccess
+import io.element.android.features.preferences.impl.privacy.MomentPrivacySettings
+import io.element.android.features.preferences.impl.privacy.MomentVisibilityAccess
 import io.element.android.features.preferences.impl.utils.ShowDeveloperSettingsProvider
 import io.element.android.features.rageshake.api.RageshakeFeatureAvailability
 import io.element.android.libraries.core.meta.BuildType
@@ -33,10 +38,14 @@ import io.element.android.libraries.matrix.test.A_USER_ID_2
 import io.element.android.libraries.matrix.test.A_USER_NAME
 import io.element.android.libraries.matrix.test.FakeMatrixClient
 import io.element.android.libraries.matrix.test.core.aBuildMeta
+import io.element.android.libraries.pushstore.api.UserPushStoreFactory
+import io.element.android.libraries.pushstore.test.userpushstore.FakeUserPushStore
+import io.element.android.libraries.pushstore.test.userpushstore.FakeUserPushStoreFactory
 import io.element.android.libraries.sessionstorage.api.SessionStore
 import io.element.android.libraries.sessionstorage.test.InMemorySessionStore
 import io.element.android.libraries.sessionstorage.test.aSessionData
 import io.element.android.tests.testutils.WarmUpRule
+import io.element.android.tests.testutils.consumeItemsUntilPredicate
 import io.element.android.tests.testutils.lambda.lambdaRecorder
 import io.element.android.tests.testutils.lambda.value
 import io.element.android.tests.testutils.test
@@ -51,6 +60,8 @@ import org.junit.Test
 class PreferencesRootPresenterTest {
     @get:Rule
     val warmUpRule = WarmUpRule()
+
+    private val momentPrivacyAccountDataType = "io.moment.privacy"
 
     @Test
     fun `present - initial state`() = runTest {
@@ -94,7 +105,9 @@ class PreferencesRootPresenterTest {
             assertThat(loadedState.nbOfBlockedUsers).isEqualTo(0)
             assertThat(loadedState.directLogoutState).isEqualTo(aDirectLogoutState())
             assertThat(loadedState.snackbarMessage).isNull()
-            val finalState = awaitItem()
+            val finalState = consumeItemsUntilPredicate {
+                it.accountManagementUrl == "tweaked null url"
+            }.last()
             accountManagementUrlResult.assertions().isCalledOnce()
                 .with(value(null))
             assertThat(finalState.accountManagementUrl).isEqualTo("tweaked null url")
@@ -274,18 +287,86 @@ class PreferencesRootPresenterTest {
         }
     }
 
+    @Test
+    fun `present - loads Moment privacy root summary`() = runTest {
+        val matrixClient = FakeMatrixClient(
+            canDeactivateAccountResult = { true },
+            accountManagementUrlResult = { Result.success(null) },
+        ).apply {
+            givenAccountData(
+                momentPrivacyAccountDataType,
+                MomentPrivacySettings(
+                    directMessages = MomentPrivacyAccess.ContactsOnly,
+                    groupInvites = MomentPrivacyAccess.ContactsOnly,
+                    avatarVisibility = MomentVisibilityAccess.ContactsOnly,
+                    phoneVisibility = MomentPrivacyAccess.ContactsOnly,
+                    presenceVisibility = MomentVisibilityAccess.ContactsOnly,
+                ).toJson()
+            )
+        }
+
+        createPresenter(matrixClient = matrixClient).test {
+            val state = consumeItemsUntilPredicate {
+                it.momentPrivacySummary == MomentPrivacySummary.ContactsOnly
+            }.last()
+            assertThat(state.momentPrivacySummary).isEqualTo(MomentPrivacySummary.ContactsOnly)
+        }
+    }
+
+    @Test
+    fun `present - loads Moment profile status summary`() = runTest {
+        val matrixClient = FakeMatrixClient(
+            canDeactivateAccountResult = { true },
+            accountManagementUrlResult = { Result.success(null) },
+        ).apply {
+            givenProfileStatus("Available")
+        }
+
+        createPresenter(matrixClient = matrixClient).test {
+            val state = consumeItemsUntilPredicate {
+                it.profileStatus == "Available"
+            }.last()
+            assertThat(state.profileStatus).isEqualTo("Available")
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `present - exposes Moment notification summary from app and system settings`() = runTest {
+        val userPushStore = FakeUserPushStore().apply {
+            setNotificationEnabledForDevice(true)
+        }
+
+        createPresenter(
+            matrixClient = FakeMatrixClient(
+                canDeactivateAccountResult = { true },
+                accountManagementUrlResult = { Result.success(null) },
+            ),
+            userPushStoreFactory = FakeUserPushStoreFactory { userPushStore },
+            systemNotificationsEnabledProvider = FakeSystemNotificationsEnabledProvider(enabled = false),
+        ).test {
+            val state = awaitItem()
+            assertThat(state.momentNotificationsSummary).isEqualTo(MomentNotificationsSummary.Disabled)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
     private suspend fun <T> ReceiveTurbine<T>.awaitFirstItem(): T {
         skipItems(1)
         return awaitItem()
     }
 
     private fun createPresenter(
-        matrixClient: FakeMatrixClient = FakeMatrixClient(),
+        matrixClient: FakeMatrixClient = FakeMatrixClient(
+            accountManagementUrlResult = { Result.success(null) },
+        ),
         showDeveloperSettingsProvider: ShowDeveloperSettingsProvider = ShowDeveloperSettingsProvider(aBuildMeta(BuildType.DEBUG)),
         rageshakeFeatureAvailability: RageshakeFeatureAvailability = RageshakeFeatureAvailability { flowOf(true) },
         featureFlagService: FeatureFlagService = FakeFeatureFlagService(),
         sessionStore: SessionStore = InMemorySessionStore(),
         sessionEnterpriseService: SessionEnterpriseService = FakeSessionEnterpriseService(),
+        userPushStoreFactory: UserPushStoreFactory = FakeUserPushStoreFactory(),
+        systemNotificationsEnabledProvider: SystemNotificationsEnabledProvider = FakeSystemNotificationsEnabledProvider(),
     ) = PreferencesRootPresenter(
         matrixClient = matrixClient,
         versionFormatter = FakeVersionFormatter(),
@@ -296,5 +377,7 @@ class PreferencesRootPresenterTest {
         featureFlagService = featureFlagService,
         sessionStore = sessionStore,
         sessionEnterpriseService = sessionEnterpriseService,
+        userPushStoreFactory = userPushStoreFactory,
+        systemNotificationsEnabledProvider = systemNotificationsEnabledProvider,
     )
 }

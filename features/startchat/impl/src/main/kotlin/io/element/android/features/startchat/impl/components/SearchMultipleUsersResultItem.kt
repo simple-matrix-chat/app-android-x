@@ -37,7 +37,7 @@ fun SearchMultipleUsersResultItem(
     } else {
         CheckableUserRowData.Resolved(
             name = searchResult.matrixUser.getBestName(),
-            subtext = if (searchResult.matrixUser.displayName.isNullOrEmpty()) null else searchResult.matrixUser.userId.value,
+            subtext = searchResult.subtitle ?: if (searchResult.matrixUser.displayName.isNullOrEmpty()) null else searchResult.matrixUser.userId.value,
             avatarData = searchResult.matrixUser.getAvatarData(AvatarSize.UserListItem),
         )
     }
@@ -68,6 +68,15 @@ internal fun SearchMultipleUsersResultItemPreview() = ElementThemedPreview {
                 isUnresolved = false
             ),
             isUserSelected = true,
+            onCheckedChange = {}
+        )
+        HorizontalDivider()
+        SearchMultipleUsersResultItem(
+            searchResult = UserSearchResult(
+                matrixUser = aMatrixUser(displayName = "Alice Johnson"),
+                subtitle = "+79991234567",
+            ),
+            isUserSelected = false,
             onCheckedChange = {}
         )
         HorizontalDivider()

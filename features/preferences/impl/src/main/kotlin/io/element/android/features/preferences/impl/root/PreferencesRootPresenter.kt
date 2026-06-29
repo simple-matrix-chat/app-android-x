@@ -21,6 +21,10 @@ import androidx.compose.runtime.setValue
 import dev.zacsweers.metro.Inject
 import io.element.android.features.enterprise.api.SessionEnterpriseService
 import io.element.android.features.logout.api.direct.DirectLogoutState
+import io.element.android.features.preferences.impl.notifications.SystemNotificationsEnabledProvider
+import io.element.android.features.preferences.impl.privacy.MomentPrivacyAccess
+import io.element.android.features.preferences.impl.privacy.MomentPrivacySettings
+import io.element.android.features.preferences.impl.privacy.MomentVisibilityAccess
 import io.element.android.features.preferences.impl.utils.ShowDeveloperSettingsProvider
 import io.element.android.features.rageshake.api.RageshakeFeatureAvailability
 import io.element.android.libraries.architecture.Presenter
@@ -31,6 +35,7 @@ import io.element.android.libraries.featureflag.api.FeatureFlags
 import io.element.android.libraries.matrix.api.MatrixClient
 import io.element.android.libraries.matrix.api.core.UserId
 import io.element.android.libraries.matrix.api.user.MatrixUser
+import io.element.android.libraries.pushstore.api.UserPushStoreFactory
 import io.element.android.libraries.sessionstorage.api.SessionStore
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
@@ -39,6 +44,8 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
+
+private const val MOMENT_PRIVACY_ACCOUNT_DATA_TYPE = "io.moment.privacy"
 
 @Inject
 class PreferencesRootPresenter(
@@ -51,6 +58,8 @@ class PreferencesRootPresenter(
     private val featureFlagService: FeatureFlagService,
     private val sessionStore: SessionStore,
     private val sessionEnterpriseService: SessionEnterpriseService,
+    private val userPushStoreFactory: UserPushStoreFactory,
+    private val systemNotificationsEnabledProvider: SystemNotificationsEnabledProvider,
 ) : Presenter<PreferencesRootState> {
     @Composable
     override fun present(): PreferencesRootState {
@@ -59,6 +68,12 @@ class PreferencesRootPresenter(
         LaunchedEffect(Unit) {
             // Force a refresh of the profile
             matrixClient.getUserProfile()
+        }
+        var profileStatus by remember { mutableStateOf("") }
+        LaunchedEffect(matrixUser.value.userId) {
+            profileStatus = matrixClient.getProfileStatus(matrixUser.value.userId)
+                .getOrDefault("")
+                .trim()
         }
 
         val isMultiAccountEnabled by remember {
@@ -100,6 +115,26 @@ class PreferencesRootPresenter(
 
         val showLabsItem = remember { featureFlagService.getAvailableFeatures(isInLabs = true).isNotEmpty() }
 
+        var momentPrivacySummary by remember { mutableStateOf(MomentPrivacySummary.Everyone) }
+        LaunchedEffect(Unit) {
+            momentPrivacySummary = matrixClient.getAccountData(MOMENT_PRIVACY_ACCOUNT_DATA_TYPE)
+                .map { content -> MomentPrivacySettings.fromJson(content).rootSummary() }
+                .getOrDefault(MomentPrivacySummary.Everyone)
+        }
+
+        val userPushStore = remember { userPushStoreFactory.getOrCreate(matrixClient.sessionId) }
+        val appNotificationsEnabled by remember {
+            userPushStore.getNotificationEnabledForDevice()
+        }.collectAsState(initial = false)
+        val systemNotificationsEnabled = remember { systemNotificationsEnabledProvider.notificationsEnabled() }
+        val momentNotificationsSummary = remember(appNotificationsEnabled, systemNotificationsEnabled) {
+            if (appNotificationsEnabled && systemNotificationsEnabled) {
+                MomentNotificationsSummary.Enabled
+            } else {
+                MomentNotificationsSummary.Disabled
+            }
+        }
+
         val directLogoutState = directLogoutPresenter.present()
 
         LaunchedEffect(Unit) {
@@ -121,6 +156,7 @@ class PreferencesRootPresenter(
 
         return PreferencesRootState(
             myUser = matrixUser.value,
+            profileStatus = profileStatus,
             version = remember { versionFormatter.get() },
             deviceId = matrixClient.deviceId,
             isMultiAccountEnabled = isMultiAccountEnabled,
@@ -131,6 +167,8 @@ class PreferencesRootPresenter(
             canDeactivateAccount = canDeactivateAccount,
             nbOfBlockedUsers = nbOfBlockedUsers,
             showLabsItem = showLabsItem,
+            momentPrivacySummary = momentPrivacySummary,
+            momentNotificationsSummary = momentNotificationsSummary,
             directLogoutState = directLogoutState,
             snackbarMessage = snackbarMessage,
             eventSink = ::handleEvent,
@@ -145,5 +183,21 @@ class PreferencesRootPresenter(
             ?.let {
                 sessionEnterpriseService.tweakMasUrl(it)
             }
+    }
+}
+
+private fun MomentPrivacySettings.rootSummary(): MomentPrivacySummary {
+    return when {
+        directMessages == MomentPrivacyAccess.Everyone &&
+            groupInvites == MomentPrivacyAccess.Everyone &&
+            avatarVisibility == MomentVisibilityAccess.Everyone &&
+            phoneVisibility == MomentPrivacyAccess.Everyone &&
+            presenceVisibility == MomentVisibilityAccess.Everyone -> MomentPrivacySummary.Everyone
+        directMessages == MomentPrivacyAccess.ContactsOnly &&
+            groupInvites == MomentPrivacyAccess.ContactsOnly &&
+            avatarVisibility == MomentVisibilityAccess.ContactsOnly &&
+            phoneVisibility == MomentPrivacyAccess.ContactsOnly &&
+            presenceVisibility == MomentVisibilityAccess.ContactsOnly -> MomentPrivacySummary.ContactsOnly
+        else -> MomentPrivacySummary.Custom
     }
 }

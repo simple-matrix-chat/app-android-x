@@ -14,6 +14,7 @@ import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.AndroidComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.v2.runAndroidComposeUiTest
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -24,10 +25,10 @@ import io.element.android.features.userprofile.shared.UserProfileView
 import io.element.android.features.userprofile.shared.aUserProfileState
 import io.element.android.libraries.architecture.AsyncData
 import io.element.android.libraries.matrix.api.core.RoomId
+import io.element.android.libraries.matrix.api.core.UserId
 import io.element.android.libraries.matrix.api.notification.CallIntent
 import io.element.android.libraries.matrix.test.AN_AVATAR_URL
 import io.element.android.libraries.matrix.test.A_ROOM_ID
-import io.element.android.libraries.matrix.test.A_USER_ID
 import io.element.android.libraries.matrix.test.A_USER_NAME
 import io.element.android.libraries.testtags.TestTags
 import io.element.android.libraries.ui.strings.CommonStrings
@@ -79,12 +80,35 @@ class UserProfileViewTest {
 
     @Test
     fun `on Share clicked - the expected callback is called`() = runAndroidComposeUiTest {
-        ensureCalledOnce { callback ->
+        val profileShareText = "Daniel\nmoment://profile?user=%40daniel%3Adomain.com"
+        ensureCalledOnceWithParam<String?>(profileShareText) { callback ->
             setUserProfileView(
+                state = aUserProfileState(profileShareText = profileShareText),
                 onShareUser = callback,
             )
             clickOn(CommonStrings.action_share)
         }
+    }
+
+    @Test
+    fun `when profile share text is missing - share action is not shown`() = runAndroidComposeUiTest {
+        setUserProfileView(
+            state = aUserProfileState(profileShareText = null),
+        )
+
+        onNodeWithText(activity!!.getString(CommonStrings.action_share)).assertDoesNotExist()
+    }
+
+    @Test
+    fun `when display name is present - matrix user id is not shown in identity card`() = runAndroidComposeUiTest {
+        setUserProfileView(
+            state = aUserProfileState(
+                userId = UserId("@daniel:domain.com"),
+                userName = "Daniel",
+            ),
+        )
+
+        onNodeWithText("@daniel:domain.com").assertDoesNotExist()
     }
 
     @Test
@@ -101,7 +125,19 @@ class UserProfileViewTest {
     }
 
     @Test
-    fun `on Call clicked - the expected callback is called`() = runAndroidComposeUiTest {
+    fun `when call is available - video is not shown as a top-level action`() = runAndroidComposeUiTest {
+        setUserProfileView(
+            state = aUserProfileState(
+                dmRoomId = A_ROOM_ID,
+                canCall = true,
+            ),
+        )
+
+        onNodeWithText(activity!!.getString(CommonStrings.common_video)).assertDoesNotExist()
+    }
+
+    @Test
+    fun `on Start voice call clicked - the expected callback is called`() = runAndroidComposeUiTest {
         ensureCalledOnceWithTwoParams(A_ROOM_ID, CallIntent.AUDIO) { callback ->
             setUserProfileView(
                 state = aUserProfileState(
@@ -111,11 +147,12 @@ class UserProfileViewTest {
                 onStartCall = callback,
             )
             clickOn(CommonStrings.action_call)
+            clickOn(CommonStrings.a11y_start_voice_call)
         }
     }
 
     @Test
-    fun `on Video Call clicked - the expected callback is called`() = runAndroidComposeUiTest {
+    fun `on Start video call clicked - the expected callback is called`() = runAndroidComposeUiTest {
         ensureCalledOnceWithTwoParams(A_ROOM_ID, CallIntent.VIDEO) { callback ->
             setUserProfileView(
                 state = aUserProfileState(
@@ -124,7 +161,8 @@ class UserProfileViewTest {
                 ),
                 onStartCall = callback,
             )
-            clickOn(CommonStrings.common_video)
+            clickOn(CommonStrings.action_call)
+            clickOn(CommonStrings.a11y_start_video_call)
         }
     }
 
@@ -208,14 +246,13 @@ class UserProfileViewTest {
         clickOn(CommonStrings.action_cancel)
         eventsRecorder.assertSingle(UserProfileEvents.ClearConfirmationDialog)
     }
-
 }
 
 private fun AndroidComposeUiTest<ComponentActivity>.setUserProfileView(
     state: UserProfileState = aUserProfileState(
         eventSink = EventsRecorder(expectEvents = false),
     ),
-    onShareUser: () -> Unit = EnsureNeverCalled(),
+    onShareUser: (String?) -> Unit = EnsureNeverCalledWithParam(),
     onDmStarted: (RoomId) -> Unit = EnsureNeverCalledWithParam(),
     onStartCall: (RoomId, CallIntent) -> Unit = EnsureNeverCalledWithTwoParams(),
     goBack: () -> Unit = EnsureNeverCalled(),

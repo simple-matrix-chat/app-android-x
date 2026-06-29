@@ -9,35 +9,31 @@
 package io.element.android.features.home.impl.filters
 
 import io.element.android.features.home.impl.R
-import io.element.android.libraries.matrix.api.roomlist.RoomListFilter as MatrixRoomListFilter
+import io.element.android.features.home.impl.model.RoomListRoomSummary
+import io.element.android.features.home.impl.model.RoomSummaryDisplayType
 
 /**
  * Enum class representing the different filters that can be applied to the room list.
  * Order is important, it'll be used as initial order in the UI.
  */
 enum class RoomListFilter(val stringResource: Int) {
-    Unread(R.string.screen_roomlist_filter_unreads),
-    People(R.string.screen_roomlist_filter_people),
-    Rooms(R.string.screen_roomlist_filter_rooms),
-    Favourites(R.string.screen_roomlist_filter_favourites),
-    Invites(R.string.screen_roomlist_filter_invites);
-
-    val incompatibleFilters: Set<RoomListFilter>
-        get() = when (this) {
-            Rooms -> setOf(People, Invites)
-            People -> setOf(Rooms, Invites)
-            Unread -> setOf(Invites)
-            Favourites -> setOf(Invites)
-            Invites -> setOf(Rooms, People, Unread, Favourites)
-        }
+    Direct(R.string.screen_roomlist_filter_direct),
+    Groups(R.string.screen_roomlist_filter_groups),
+    Channels(R.string.screen_roomlist_filter_channels),
+    Archived(R.string.screen_roomlist_filter_archived),
 }
 
-fun RoomListFilter.into(): MatrixRoomListFilter {
-    return when (this) {
-        RoomListFilter.Rooms -> MatrixRoomListFilter.Category.Group
-        RoomListFilter.People -> MatrixRoomListFilter.Category.People
-        RoomListFilter.Unread -> MatrixRoomListFilter.Unread
-        RoomListFilter.Favourites -> MatrixRoomListFilter.Favorite
-        RoomListFilter.Invites -> MatrixRoomListFilter.Invite
+fun RoomListRoomSummary.matches(filter: RoomListFilter?): Boolean {
+    if (filter == null) {
+        return displayType != RoomSummaryDisplayType.ROOM || !isArchived
+    }
+    if (displayType != RoomSummaryDisplayType.ROOM || isSpace) {
+        return false
+    }
+    return when (filter) {
+        RoomListFilter.Direct -> !isArchived && momentHomeRoomType == MomentHomeRoomType.Direct
+        RoomListFilter.Groups -> !isArchived && momentHomeRoomType == MomentHomeRoomType.Group
+        RoomListFilter.Channels -> !isArchived && momentHomeRoomType == MomentHomeRoomType.Channel
+        RoomListFilter.Archived -> isArchived
     }
 }

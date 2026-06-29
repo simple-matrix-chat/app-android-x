@@ -15,6 +15,7 @@ import io.element.android.libraries.matrix.api.core.RoomId
 import io.element.android.libraries.matrix.api.room.ForwardEventException
 import io.element.android.libraries.matrix.impl.roomlist.roomOrNull
 import io.element.android.libraries.matrix.impl.timeline.runWithTimelineListenerRegistered
+import io.element.android.libraries.matrix.impl.util.MessageEventContent
 import kotlinx.coroutines.withTimeout
 import org.matrix.rustcomponents.sdk.MsgLikeKind
 import org.matrix.rustcomponents.sdk.RoomListService
@@ -41,6 +42,7 @@ class RoomContentForwarder(
         fromTimeline: Timeline,
         eventId: EventId,
         toRoomIds: List<RoomId>,
+        comment: String? = null,
         timeoutMs: Long = 5000L
     ) {
         val messageLikeContent = (fromTimeline.getEventTimelineItemByEventId(eventId.value).content as? TimelineItemContent.MsgLike)?.content
@@ -50,14 +52,25 @@ class RoomContentForwarder(
             ?: throw ForwardEventException(toRoomIds)
 
         val targetRooms = toRoomIds.mapNotNull { roomId -> roomListService.roomOrNull(roomId.value) }
+        val trimmedComment = comment?.trim()?.takeIf { it.isNotEmpty() }
         val failedForwardingTo = mutableSetOf<RoomId>()
         targetRooms.parallelMap { room ->
             room.use { targetRoom ->
                 runCatchingExceptions {
                     // Sending a message requires a registered timeline listener
-                    targetRoom.timeline().runWithTimelineListenerRegistered {
+                    val targetTimeline = targetRoom.timeline()
+                    targetTimeline.runWithTimelineListenerRegistered {
                         withTimeout(timeoutMs.milliseconds) {
-                            targetRoom.timeline().send(contentWithoutRelationFromMessage(content))
+                            targetTimeline.send(contentWithoutRelationFromMessage(content))
+                            trimmedComment?.let { comment ->
+                                MessageEventContent.from(
+                                    body = comment,
+                                    htmlBody = null,
+                                    intentionalMentions = emptyList(),
+                                ).use { commentContent ->
+                                    targetTimeline.send(commentContent)
+                                }
+                            }
                         }
                     }
                 }

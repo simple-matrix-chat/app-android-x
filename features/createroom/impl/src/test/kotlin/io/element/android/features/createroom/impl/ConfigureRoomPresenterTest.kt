@@ -25,12 +25,14 @@ import io.element.android.libraries.featureflag.api.FeatureFlags
 import io.element.android.libraries.featureflag.test.FakeFeatureFlagService
 import io.element.android.libraries.matrix.api.MatrixClient
 import io.element.android.libraries.matrix.api.core.RoomId
+import io.element.android.libraries.matrix.api.createroom.MomentRoomKind
 import io.element.android.libraries.matrix.api.room.RoomInfo
 import io.element.android.libraries.matrix.api.room.alias.ResolvedRoomAlias
 import io.element.android.libraries.matrix.api.room.alias.RoomAliasHelper
 import io.element.android.libraries.matrix.api.room.join.JoinRule
 import io.element.android.libraries.matrix.api.room.powerlevels.RoomPowerLevels
 import io.element.android.libraries.matrix.api.room.powerlevels.RoomPowerLevelsValues
+import io.element.android.libraries.matrix.api.roomdirectory.RoomVisibility
 import io.element.android.libraries.matrix.test.AN_AVATAR_URL
 import io.element.android.libraries.matrix.test.AN_EXCEPTION
 import io.element.android.libraries.matrix.test.A_MESSAGE
@@ -212,6 +214,59 @@ class ConfigureRoomPresenterTest {
             val stateAfterCreateRoom = awaitItem()
             assertThat(stateAfterCreateRoom.createRoomAction).isInstanceOf(AsyncAction.Success::class.java)
             assertThat(stateAfterCreateRoom.createRoomAction.dataOrNull()).isEqualTo(createRoomResult.getOrNull())
+        }
+    }
+
+    @Test
+    fun `present - trigger create room action for Moment group`() = runTest {
+        val matrixClient = createMatrixClient()
+        val presenter = createConfigureRoomPresenter(
+            momentRoomKind = MomentRoomKind.Group,
+            matrixClient = matrixClient,
+        )
+        presenter.test {
+            val initialState = initialState()
+            val createRoomResult = Result.success(RoomId("!createRoomResult:domain"))
+
+            matrixClient.givenCreateRoomResult(createRoomResult)
+
+            initialState.eventSink(ConfigureRoomEvents.CreateRoom)
+            assertThat(awaitItem().createRoomAction).isInstanceOf(AsyncAction.Loading::class.java)
+            assertThat(awaitItem().createRoomAction).isInstanceOf(AsyncAction.Success::class.java)
+
+            val createRoomParameters = matrixClient.latestCreateRoomParameters
+            assertThat(createRoomParameters?.momentRoomKind).isEqualTo(MomentRoomKind.Group)
+            assertThat(createRoomParameters?.visibility).isEqualTo(RoomVisibility.Private)
+            assertThat(createRoomParameters?.isEncrypted).isFalse()
+        }
+    }
+
+    @Test
+    fun `present - trigger create room action for Moment channel`() = runTest {
+        val matrixClient = createMatrixClient()
+        val presenter = createConfigureRoomPresenter(
+            momentRoomKind = MomentRoomKind.Channel,
+            matrixClient = matrixClient,
+        )
+        presenter.test {
+            var state = initialState()
+            val createRoomResult = Result.success(RoomId("!createRoomResult:domain"))
+
+            matrixClient.givenCreateRoomResult(createRoomResult)
+            while (state.config.visibilityState !is RoomVisibilityState.Public) {
+                state = awaitItem()
+            }
+            state.eventSink(ConfigureRoomEvents.RoomNameChanged("Announcements"))
+            state = awaitItem()
+
+            state.eventSink(ConfigureRoomEvents.CreateRoom)
+            assertThat(awaitItem().createRoomAction).isInstanceOf(AsyncAction.Loading::class.java)
+            assertThat(awaitItem().createRoomAction).isInstanceOf(AsyncAction.Success::class.java)
+
+            val createRoomParameters = matrixClient.latestCreateRoomParameters
+            assertThat(createRoomParameters?.momentRoomKind).isEqualTo(MomentRoomKind.Channel)
+            assertThat(createRoomParameters?.visibility).isEqualTo(RoomVisibility.Public)
+            assertThat(createRoomParameters?.isEncrypted).isFalse()
         }
     }
 
@@ -545,6 +600,7 @@ class ConfigureRoomPresenterTest {
     private fun createConfigureRoomPresenter(
         isSpace: Boolean = false,
         initialParenSpaceId: RoomId? = null,
+        momentRoomKind: MomentRoomKind? = null,
         roomAliasHelper: RoomAliasHelper = FakeRoomAliasHelper(),
         dataStore: CreateRoomConfigStore = CreateRoomConfigStore(roomAliasHelper),
         matrixClient: MatrixClient = createMatrixClient(),
@@ -557,6 +613,7 @@ class ConfigureRoomPresenterTest {
     ) = ConfigureRoomPresenter(
         isSpace = isSpace,
         initialParentSpaceId = initialParenSpaceId,
+        momentRoomKind = momentRoomKind,
         dataStore = dataStore,
         matrixClient = matrixClient,
         mediaPickerProvider = pickerProvider,

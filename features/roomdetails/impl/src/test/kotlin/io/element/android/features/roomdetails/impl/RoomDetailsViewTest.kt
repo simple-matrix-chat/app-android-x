@@ -13,10 +13,9 @@ package io.element.android.features.roomdetails.impl
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.AndroidComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
-import androidx.compose.ui.test.onAllNodesWithText
-import androidx.compose.ui.test.onLast
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.v2.runAndroidComposeUiTest
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -285,6 +284,20 @@ class RoomDetailsViewTest {
 
     @Config(qualifiers = "h1500dp")
     @Test
+    fun `self direct room does not show leave or report actions`() = runAndroidComposeUiTest {
+        setRoomDetailView(
+            state = aRoomDetailsState(
+                canLeaveRoom = false,
+                canReportRoom = true,
+                eventSink = EventsRecorder(expectEvents = false),
+            ),
+        )
+        onNodeWithText(activity!!.getString(CommonStrings.action_leave_room)).assertDoesNotExist()
+        onNodeWithText("Report room").assertDoesNotExist()
+    }
+
+    @Config(qualifiers = "h1500dp")
+    @Test
     fun `click on report room  invokes expected callback`() = runAndroidComposeUiTest {
         ensureCalledOnce { callback ->
             setRoomDetailView(
@@ -329,20 +342,29 @@ class RoomDetailsViewTest {
 
     @Config(qualifiers = "h1024dp")
     @Test
-    fun `click on invite invokes the expected callback`() = runAndroidComposeUiTest {
+    fun `dm room details does not show invite row`() = runAndroidComposeUiTest {
+        setRoomDetailView(
+            state = aRoomDetailsState(
+                eventSink = EventsRecorder(expectEvents = false),
+                roomType = RoomDetailsType.Dm(
+                    aDmRoomMember(userId = UserId("@other:local.org")),
+                ),
+                roomMemberDetailsState = aUserProfileState(userId = A_USER_ID),
+                canInvite = true,
+            ),
+        )
+        onNodeWithText(activity!!.getString(R.string.screen_room_details_invite_title)).assertDoesNotExist()
+    }
+
+    @Config(qualifiers = "h1024dp")
+    @Test
+    fun `click on security and privacy invokes the expected callback`() = runAndroidComposeUiTest {
         ensureCalledOnce { callback ->
             setRoomDetailView(
-                state = aRoomDetailsState(
-                    eventSink = EventsRecorder(expectEvents = false),
-                    roomType = RoomDetailsType.Dm(
-                        aDmRoomMember(userId = UserId("@other:local.org")),
-                    ),
-                    roomMemberDetailsState = aUserProfileState(userId = A_USER_ID),
-                    canInvite = true,
-                ),
-                invitePeople = callback,
+                state = aRoomDetailsState(displaySecurityAndPrivacySettings = true),
+                openSecurityAndPrivacy = callback,
             )
-            onAllNodesWithText(activity!!.getString(R.string.screen_room_details_invite_title)).onLast().performClick()
+            clickOn(R.string.screen_room_details_security_and_privacy_title)
         }
     }
 }
@@ -361,6 +383,7 @@ private fun AndroidComposeUiTest<ComponentActivity>.setRoomDetailView(
     openPollHistory: () -> Unit = EnsureNeverCalled(),
     openMediaGallery: () -> Unit = EnsureNeverCalled(),
     openAdminSettings: () -> Unit = EnsureNeverCalled(),
+    openSecurityAndPrivacy: () -> Unit = EnsureNeverCalled(),
     onJoinCallClick: (CallIntent) -> Unit = EnsureNeverCalledWithParam(),
     onPinnedMessagesClick: () -> Unit = EnsureNeverCalled(),
     onKnockRequestsClick: () -> Unit = EnsureNeverCalled(),
@@ -380,6 +403,7 @@ private fun AndroidComposeUiTest<ComponentActivity>.setRoomDetailView(
             openPollHistory = openPollHistory,
             openMediaGallery = openMediaGallery,
             openAdminSettings = openAdminSettings,
+            openSecurityAndPrivacy = openSecurityAndPrivacy,
             onJoinCallClick = onJoinCallClick,
             onPinnedMessagesClick = onPinnedMessagesClick,
             onKnockRequestsClick = onKnockRequestsClick,

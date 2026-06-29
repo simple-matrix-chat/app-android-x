@@ -131,8 +131,10 @@ internal fun PollAnswerView(
             }
             Spacer(modifier = Modifier.height(10.dp))
             LinearProgressIndicator(
-                modifier = Modifier.fillMaxWidth(),
-                color = if (answerItem.isWinner) ElementTheme.colors.textSuccessPrimary else answerItem.isEnabled.toEnabledColor(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(6.dp),
+                color = if (answerItem.isWinner) ElementTheme.colors.textActionAccent else answerItem.isEnabled.toEnabledColor(),
                 progress = {
                     when {
                         answerItem.showVotes -> answerItem.percentage

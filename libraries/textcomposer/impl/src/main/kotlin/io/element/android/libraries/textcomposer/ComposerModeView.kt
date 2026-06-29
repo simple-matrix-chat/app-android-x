@@ -13,6 +13,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -27,6 +28,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
 import io.element.android.compound.theme.ElementTheme
@@ -35,7 +37,9 @@ import io.element.android.libraries.designsystem.preview.ElementPreview
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
 import io.element.android.libraries.designsystem.theme.components.Icon
 import io.element.android.libraries.designsystem.theme.components.Text
+import io.element.android.libraries.matrix.api.timeline.item.event.getDisambiguatedDisplayName
 import io.element.android.libraries.matrix.ui.messages.reply.InReplyToDetails
+import io.element.android.libraries.matrix.ui.messages.reply.InReplyToPlacement
 import io.element.android.libraries.matrix.ui.messages.reply.InReplyToView
 import io.element.android.libraries.textcomposer.model.MessageComposerMode
 import io.element.android.libraries.ui.strings.CommonStrings
@@ -45,6 +49,7 @@ internal fun ComposerModeView(
     composerMode: MessageComposerMode.Special,
     onResetComposerMode: () -> Unit,
     modifier: Modifier = Modifier,
+    usesMomentStyle: Boolean = false,
 ) {
     when (composerMode) {
         is MessageComposerMode.Edit -> {
@@ -52,6 +57,7 @@ internal fun ComposerModeView(
                 text = stringResource(CommonStrings.common_editing),
                 modifier = modifier,
                 onResetComposerMode = onResetComposerMode,
+                usesMomentStyle = usesMomentStyle,
             )
         }
         is MessageComposerMode.EditCaption -> {
@@ -61,6 +67,7 @@ internal fun ComposerModeView(
                 ),
                 modifier = modifier,
                 onResetComposerMode = onResetComposerMode,
+                usesMomentStyle = usesMomentStyle,
             )
         }
         is MessageComposerMode.Reply -> {
@@ -69,6 +76,7 @@ internal fun ComposerModeView(
                 replyToDetails = composerMode.replyToDetails,
                 hideImage = composerMode.hideImage,
                 onResetComposerMode = onResetComposerMode,
+                usesMomentStyle = usesMomentStyle,
             )
         }
     }
@@ -79,7 +87,36 @@ private fun EditingModeView(
     onResetComposerMode: () -> Unit,
     text: String,
     modifier: Modifier = Modifier,
+    usesMomentStyle: Boolean,
 ) {
+    if (usesMomentStyle) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = modifier
+                .fillMaxWidth()
+                .padding(top = 8.dp, start = 16.dp, end = 8.dp)
+        ) {
+            Icon(
+                imageVector = CompoundIcons.EditSolid(),
+                contentDescription = null,
+                tint = ElementTheme.colors.textPrimary,
+                modifier = Modifier.size(16.dp),
+            )
+            Text(
+                text = text,
+                style = ElementTheme.typography.fontBodySmMedium,
+                textAlign = TextAlign.Start,
+                color = ElementTheme.colors.textPrimary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f),
+            )
+            CloseComposerModeButton(onResetComposerMode = onResetComposerMode)
+        }
+        return
+    }
+
     Row(
         horizontalArrangement = Arrangement.spacedBy(4.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -133,7 +170,43 @@ private fun ReplyToModeView(
     hideImage: Boolean,
     onResetComposerMode: () -> Unit,
     modifier: Modifier = Modifier,
+    usesMomentStyle: Boolean,
 ) {
+    if (usesMomentStyle) {
+        Column(
+            modifier = modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = replyTitle(replyToDetails),
+                    style = ElementTheme.typography.fontBodySmMedium,
+                    textAlign = TextAlign.Start,
+                    color = ElementTheme.colors.textPrimary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f),
+                )
+                CloseComposerModeButton(onResetComposerMode = onResetComposerMode)
+            }
+            val currentDensity = LocalDensity.current
+            val hasLowResolution = currentDensity.density * currentDensity.fontScale >= MAX_SCALING_VALUE
+            val maxReplyContentLines = if (hasLowResolution) 1 else 2
+            InReplyToView(
+                inReplyTo = replyToDetails,
+                hideImage = hideImage,
+                maxLines = maxReplyContentLines,
+                placement = InReplyToPlacement.Composer,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+        return
+    }
+
     Row(
         modifier
             .clip(RoundedCornerShape(6.dp))
@@ -149,23 +222,42 @@ private fun ReplyToModeView(
             inReplyTo = replyToDetails,
             hideImage = hideImage,
             maxLines = maxReplyContentLines,
+            placement = InReplyToPlacement.Composer,
             modifier = Modifier.weight(1f),
         )
-        Icon(
-            imageVector = CompoundIcons.Close(),
-            contentDescription = stringResource(CommonStrings.action_close),
-            tint = ElementTheme.colors.iconSecondary,
-            modifier = Modifier
-                .padding(end = 4.dp, top = 4.dp, start = 8.dp, bottom = 16.dp)
-                .size(16.dp)
-                .clickable(
-                    enabled = true,
-                    onClick = onResetComposerMode,
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = ripple(bounded = false)
-                ),
-        )
+        CloseComposerModeButton(onResetComposerMode = onResetComposerMode)
     }
+}
+
+@Composable
+private fun replyTitle(replyToDetails: InReplyToDetails): String {
+    val senderName = when (replyToDetails) {
+        is InReplyToDetails.Ready -> replyToDetails.senderProfile.getDisambiguatedDisplayName(replyToDetails.senderId)
+        is InReplyToDetails.Error,
+        is InReplyToDetails.Loading -> stringResource(CommonStrings.common_loading)
+    }
+    return stringResource(CommonStrings.common_replying_to, senderName)
+}
+
+@Composable
+private fun CloseComposerModeButton(
+    onResetComposerMode: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Icon(
+        imageVector = CompoundIcons.Close(),
+        contentDescription = stringResource(CommonStrings.action_close),
+        tint = ElementTheme.colors.iconSecondary,
+        modifier = modifier
+            .size(40.dp)
+            .clickable(
+                enabled = true,
+                onClick = onResetComposerMode,
+                interactionSource = remember { MutableInteractionSource() },
+                indication = ripple(bounded = false)
+            )
+            .padding(12.dp),
+    )
 }
 
 @PreviewsDayNight

@@ -31,13 +31,13 @@ fun DateItemView(
     Text(
         modifier = modifier
             .fillMaxWidth()
-            .padding(12.dp)
+            .padding(vertical = 16.dp)
             .semantics {
                 heading()
             },
         text = item.formattedDate,
         textAlign = TextAlign.Center,
-        style = ElementTheme.typography.fontBodyMdMedium,
+        style = ElementTheme.typography.fontBodySmMedium,
         color = ElementTheme.colors.textPrimary,
     )
 }

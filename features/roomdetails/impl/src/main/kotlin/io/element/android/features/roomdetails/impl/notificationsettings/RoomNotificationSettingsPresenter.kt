@@ -89,7 +89,7 @@ class RoomNotificationSettingsPresenter(
             getDefaultRoomNotificationMode(defaultRoomNotificationMode)
             fetchNotificationSettings(pendingRoomNotificationMode, roomNotificationSettings)
             observeNotificationSettings(pendingRoomNotificationMode, roomNotificationSettings)
-            shouldDisplayMentionsOnlyDisclaimer = false
+            shouldDisplayMentionsOnlyDisclaimer = shouldDisplayMentionsOnlyDisclaimer()
         }
 
         fun handleEvent(event: RoomNotificationSettingsEvent) {
@@ -151,7 +151,11 @@ class RoomNotificationSettingsPresenter(
     ) = launch {
         suspend {
             pendingModeState.value = null
-            notificationSettingsService.getRoomNotificationSettings(room.roomId, isEncrypted = false, room.isDm()).getOrThrow()
+            notificationSettingsService.getRoomNotificationSettings(
+                roomId = room.roomId,
+                isEncrypted = room.isEncrypted(),
+                isOneToOne = room.isOneToOne(),
+            ).getOrThrow()
         }.runCatchingUpdatingState(roomNotificationSettings)
     }
 
@@ -159,8 +163,8 @@ class RoomNotificationSettingsPresenter(
         defaultRoomNotificationMode: MutableState<RoomNotificationMode?>
     ) = launch {
         defaultRoomNotificationMode.value = notificationSettingsService.getDefaultRoomNotificationMode(
-            isEncrypted = false,
-            room.isDm()
+            isEncrypted = room.isEncrypted(),
+            isOneToOne = room.isOneToOne(),
         ).getOrThrow()
     }
 
@@ -194,5 +198,20 @@ class RoomNotificationSettingsPresenter(
             }
             result.getOrThrow()
         }.runCatchingUpdatingState(action)
+    }
+
+    private suspend fun shouldDisplayMentionsOnlyDisclaimer(): Boolean {
+        if (!room.isEncrypted()) return false
+        return notificationSettingsService.canHomeServerPushEncryptedEventsToDevice()
+            .map { canPushEncryptedEventsToDevice -> !canPushEncryptedEventsToDevice }
+            .getOrDefault(false)
+    }
+
+    private fun JoinedRoom.isEncrypted(): Boolean {
+        return info().isEncrypted == true
+    }
+
+    private fun JoinedRoom.isOneToOne(): Boolean {
+        return info().activeMembersCount == 2L
     }
 }

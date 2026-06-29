@@ -11,27 +11,44 @@
 package io.element.android.features.home.impl
 
 import androidx.activity.compose.BackHandler
+import androidx.annotation.StringRes
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FabPosition
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
@@ -49,6 +66,7 @@ import io.element.android.features.home.impl.components.RoomListMenuAction
 import io.element.android.features.home.impl.model.RoomListRoomSummary
 import io.element.android.features.home.impl.roomlist.RoomListContextMenu
 import io.element.android.features.home.impl.roomlist.RoomListDeclineInviteMenu
+import io.element.android.features.home.impl.roomlist.RoomListDirectUserBlockConfirmationDialog
 import io.element.android.features.home.impl.roomlist.RoomListEvent
 import io.element.android.features.home.impl.roomlist.RoomListState
 import io.element.android.features.home.impl.search.RoomListSearchView
@@ -59,24 +77,23 @@ import io.element.android.features.home.impl.spaces.HomeSpacesView
 import io.element.android.libraries.androidutils.throttler.FirstThrottler
 import io.element.android.libraries.designsystem.preview.ElementPreview
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
-import io.element.android.libraries.designsystem.theme.components.FloatingActionButton
-import io.element.android.libraries.designsystem.theme.components.HorizontalFloatingToolbar
-import io.element.android.libraries.designsystem.theme.components.HorizontalFloatingToolbarItem
-import io.element.android.libraries.designsystem.theme.components.HorizontalFloatingToolbarSeparator
 import io.element.android.libraries.designsystem.theme.components.Icon
 import io.element.android.libraries.designsystem.theme.components.Scaffold
 import io.element.android.libraries.designsystem.utils.snackbar.SnackbarHost
 import io.element.android.libraries.designsystem.utils.snackbar.rememberSnackbarHostState
+import io.element.android.libraries.matrix.api.core.EventId
 import io.element.android.libraries.matrix.api.core.RoomId
-import io.element.android.libraries.ui.strings.CommonStrings
+import io.element.android.libraries.matrix.api.user.MatrixUser
 import kotlinx.coroutines.launch
 
 @Composable
 fun HomeView(
     homeState: HomeState,
-    onRoomClick: (RoomId) -> Unit,
+    onRoomClick: (RoomId, EventId?) -> Unit,
+    onUserClick: (MatrixUser) -> Unit,
     onSettingsClick: () -> Unit,
     onStartChatClick: () -> Unit,
+    onOpenContactsClick: () -> Unit,
     onCreateSpaceClick: () -> Unit,
     onRoomSettingsClick: (roomId: RoomId) -> Unit,
     onMenuActionClick: (RoomListMenuAction) -> Unit,
@@ -107,26 +124,32 @@ fun HomeView(
                 onDeclineAndBlockClick = onDeclineInviteAndBlockUser,
             )
         }
+        if (state.directUserBlockConfirmation is RoomListState.DirectUserBlockConfirmation.Shown) {
+            RoomListDirectUserBlockConfirmationDialog(
+                confirmation = state.directUserBlockConfirmation,
+                eventSink = state.eventSink,
+            )
+        }
 
         leaveRoomView()
 
         HomeScaffold(
             state = homeState,
-            onRoomClick = { if (firstThrottler.canHandle()) onRoomClick(it) },
+            onRoomClick = { if (firstThrottler.canHandle()) onRoomClick(it, null) },
             onOpenSettings = { if (firstThrottler.canHandle()) onSettingsClick() },
             onStartChatClick = { if (firstThrottler.canHandle()) onStartChatClick() },
+            onOpenContactsClick = { if (firstThrottler.canHandle()) onOpenContactsClick() },
             onCreateSpaceClick = { if (firstThrottler.canHandle()) onCreateSpaceClick() },
-            onMenuActionClick = onMenuActionClick,
         )
         // This overlaid view will only be visible when state.displaySearchResults is true
         RoomListSearchView(
             state = state.searchState,
             eventSink = state.eventSink,
             hideInvitesAvatars = state.hideInvitesAvatars,
-            onRoomClick = { if (firstThrottler.canHandle()) onRoomClick(it) },
+            onRoomClick = { roomId, eventId -> if (firstThrottler.canHandle()) onRoomClick(roomId, eventId) },
+            onUserClick = { user -> if (firstThrottler.canHandle()) onUserClick(user) },
             modifier = Modifier
                 .fillMaxSize()
-                .background(ElementTheme.colors.bgCanvasDefault)
         )
         acceptDeclineInviteView()
     }
@@ -139,11 +162,11 @@ private fun HomeScaffold(
     onRoomClick: (RoomId) -> Unit,
     onOpenSettings: () -> Unit,
     onStartChatClick: () -> Unit,
+    onOpenContactsClick: () -> Unit,
     onCreateSpaceClick: () -> Unit,
-    onMenuActionClick: (RoomListMenuAction) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    fun onRoomClick(room: RoomListRoomSummary) {
+    fun onRoomSummaryClick(room: RoomListRoomSummary) {
         onRoomClick(room.roomId)
     }
 
@@ -176,7 +199,8 @@ private fun HomeScaffold(
                 showAvatarIndicator = state.showAvatarIndicator,
                 areSearchResultsDisplayed = roomListState.searchState.isSearchActive,
                 onToggleSearch = { roomListState.eventSink(RoomListEvent.ToggleSearchResults) },
-                onMenuActionClick = onMenuActionClick,
+                onStartChatClick = onStartChatClick,
+                onOpenContactsClick = onOpenContactsClick,
                 onOpenSettings = onOpenSettings,
                 onAccountSwitch = {
                     state.eventSink(HomeEvent.SwitchToAccount(it))
@@ -185,7 +209,6 @@ private fun HomeScaffold(
                 displayFilters = state.displayRoomListFilters,
                 filtersState = roomListState.filtersState,
                 spaceFiltersState = roomListState.spaceFiltersState,
-                canReportBug = state.canReportBug,
                 modifier = Modifier.hazeEffect(
                     state = hazeState,
                     style = HazeMaterials.thick(),
@@ -196,35 +219,22 @@ private fun HomeScaffold(
             val coroutineScope = rememberCoroutineScope()
             HomeBottomBar(
                 currentHomeNavigationBarItem = state.currentHomeNavigationBarItem,
-                onItemClick = { item ->
+                onChatsClick = {
                     // scroll to top if selecting the same item
-                    if (item == state.currentHomeNavigationBarItem) {
-                        val lazyListStateTarget = when (item) {
-                            HomeNavigationBarItem.Chats -> roomsLazyListState
-                            HomeNavigationBarItem.Spaces -> spacesLazyListState
-                        }
+                    if (state.currentHomeNavigationBarItem == HomeNavigationBarItem.Chats) {
                         coroutineScope.launch {
-                            if (lazyListStateTarget.firstVisibleItemIndex > 10) {
-                                lazyListStateTarget.scrollToItem(10)
+                            if (roomsLazyListState.firstVisibleItemIndex > 10) {
+                                roomsLazyListState.scrollToItem(10)
                             }
                             // Also reset the scrollBehavior height offset as it's not triggered by programmatic scrolls
                             scrollBehavior.state.heightOffset = 0f
-                            lazyListStateTarget.animateScrollToItem(0)
+                            roomsLazyListState.animateScrollToItem(0)
                         }
                     } else {
-                        state.eventSink(HomeEvent.SelectHomeNavigationBarItem(item))
+                        state.eventSink(HomeEvent.SelectHomeNavigationBarItem(HomeNavigationBarItem.Chats))
                     }
                 },
-                floatingActionButton = {
-                    when (state.currentHomeNavigationBarItem) {
-                        HomeNavigationBarItem.Chats -> {
-                            HomeFloatingActionButton(onStartChatClick, CommonStrings.action_create_room)
-                        }
-                        HomeNavigationBarItem.Spaces -> {
-                            HomeFloatingActionButton(onCreateSpaceClick, CommonStrings.action_create_space)
-                        }
-                    }
-                },
+                onProfileClick = onOpenSettings,
             )
         },
         floatingActionButtonPosition = FabPosition.Center,
@@ -241,7 +251,7 @@ private fun HomeScaffold(
                         lazyListState = roomsLazyListState,
                         hideInvitesAvatars = roomListState.hideInvitesAvatars,
                         eventSink = roomListState.eventSink,
-                        onRoomClick = ::onRoomClick,
+                        onRoomClick = ::onRoomSummaryClick,
                         onCreateRoomClick = onStartChatClick,
                         contentPadding = contentPadding,
                         modifier = Modifier
@@ -284,43 +294,89 @@ private fun HomeScaffold(
 }
 
 @Composable
-private fun HomeFloatingActionButton(
-    onClick: () -> Unit,
-    contentDescription: Int,
+private fun HomeBottomBar(
+    currentHomeNavigationBarItem: HomeNavigationBarItem,
+    onChatsClick: () -> Unit,
+    onProfileClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    FloatingActionButton(onClick = onClick, modifier = modifier) {
-        Icon(
-            imageVector = CompoundIcons.Plus(),
-            contentDescription = stringResource(id = contentDescription),
+    Row(
+        modifier = modifier
+            .zIndex(1f)
+            .shadow(
+                elevation = 12.dp,
+                shape = CircleShape,
+                ambientColor = Color.Black.copy(alpha = 0.12f),
+                spotColor = Color.Black.copy(alpha = 0.12f),
+            )
+            .clip(CircleShape)
+            .background(ElementTheme.colors.bgCanvasDefaultLevel1)
+            .border(
+                width = 1.dp,
+                color = ElementTheme.colors.borderInteractiveSecondary.copy(alpha = 0.55f),
+                shape = CircleShape,
+            )
+            .padding(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        MomentHomeBottomBarButton(
+            item = MomentHomeBottomBarItem.Chats,
+            isSelected = currentHomeNavigationBarItem == HomeNavigationBarItem.Chats,
+            onClick = onChatsClick,
+        )
+        MomentHomeBottomBarButton(
+            item = MomentHomeBottomBarItem.Profile,
+            isSelected = false,
+            onClick = onProfileClick,
         )
     }
 }
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun HomeBottomBar(
-    currentHomeNavigationBarItem: HomeNavigationBarItem,
-    onItemClick: (HomeNavigationBarItem) -> Unit,
+private fun MomentHomeBottomBarButton(
+    item: MomentHomeBottomBarItem,
+    isSelected: Boolean,
+    onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    floatingActionButton: (@Composable () -> Unit)?,
 ) {
-    HorizontalFloatingToolbar(
-        floatingActionButton = floatingActionButton,
+    val label = stringResource(item.labelRes)
+    Box(
         modifier = modifier
-            .zIndex(1f),
-    ) {
-        HomeNavigationBarItem.entries.forEachIndexed { index, item ->
-            if (index > 0) {
-                HorizontalFloatingToolbarSeparator()
-            }
-            val isSelected = currentHomeNavigationBarItem == item
-            HorizontalFloatingToolbarItem(
-                icon = item.icon(isSelected),
-                tooltipLabel = stringResource(item.labelRes),
-                isSelected = isSelected,
-                onClick = { onItemClick(item) },
+            .width(64.dp)
+            .height(44.dp)
+            .clip(CircleShape)
+            .background(if (isSelected) ElementTheme.colors.bgSubtleSecondary else Color.Transparent)
+            .clickable(
+                role = Role.Tab,
+                onClick = onClick,
             )
+            .semantics {
+                contentDescription = label
+                selected = isSelected
+            },
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            modifier = Modifier.size(24.dp),
+            imageVector = item.icon(isSelected),
+            contentDescription = null,
+            tint = if (isSelected) ElementTheme.colors.iconPrimary else ElementTheme.colors.iconSecondary,
+        )
+    }
+}
+
+private enum class MomentHomeBottomBarItem(
+    @StringRes val labelRes: Int,
+) {
+    Chats(R.string.screen_home_tab_chats),
+    Profile(R.string.screen_home_tab_profile);
+
+    @Composable
+    fun icon(isSelected: Boolean): ImageVector {
+        return when (this) {
+            Chats -> if (isSelected) CompoundIcons.ChatSolid() else CompoundIcons.Chat()
+            Profile -> if (isSelected) CompoundIcons.UserProfileSolid() else CompoundIcons.UserProfile()
         }
     }
 }
@@ -332,9 +388,11 @@ internal fun RoomListRoomSummary.contentType() = displayType.ordinal
 internal fun HomeViewPreview(@PreviewParameter(HomeStateProvider::class) state: HomeState) = ElementPreview {
     HomeView(
         homeState = state,
-        onRoomClick = {},
+        onRoomClick = { _, _ -> },
+        onUserClick = {},
         onSettingsClick = {},
         onStartChatClick = {},
+        onOpenContactsClick = {},
         onCreateSpaceClick = {},
         onRoomSettingsClick = {},
         onReportRoomClick = {},
@@ -350,9 +408,11 @@ internal fun HomeViewPreview(@PreviewParameter(HomeStateProvider::class) state: 
 internal fun HomeViewA11yPreview() = ElementPreview {
     HomeView(
         homeState = aHomeState(),
-        onRoomClick = {},
+        onRoomClick = { _, _ -> },
+        onUserClick = {},
         onSettingsClick = {},
         onStartChatClick = {},
+        onOpenContactsClick = {},
         onCreateSpaceClick = {},
         onRoomSettingsClick = {},
         onReportRoomClick = {},

@@ -15,7 +15,6 @@ import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import dev.zacsweers.metro.Inject
@@ -26,7 +25,6 @@ import io.element.android.libraries.architecture.Presenter
 import io.element.android.libraries.architecture.map
 import io.element.android.libraries.core.coroutine.CoroutineDispatchers
 import io.element.android.libraries.matrix.api.room.JoinedRoom
-import io.element.android.libraries.matrix.api.room.RoomMember
 import io.element.android.libraries.matrix.api.room.RoomMembersState
 import io.element.android.libraries.matrix.api.room.RoomMembershipState
 import io.element.android.libraries.matrix.api.room.powerlevels.permissionsAsState
@@ -48,7 +46,8 @@ class RoomMemberListPresenter(
     override fun present(): RoomMemberListState {
         val searchQuery = rememberTextFieldState()
         val membersState by room.membersStateFlow.collectAsState()
-        val canInvite by room.permissionsAsState(false) { perms -> perms.canOwnUserInvite() }
+        val isDirectRoom = remember { room.info().isDirect }
+        val canInvite by room.permissionsAsState(false) { perms -> perms.canOwnUserInvite() && !isDirectRoom }
         val roomModerationState = roomMembersModerationPresenter.present()
 
         var selectedSection by remember { mutableStateOf(SelectedSection.MEMBERS) }

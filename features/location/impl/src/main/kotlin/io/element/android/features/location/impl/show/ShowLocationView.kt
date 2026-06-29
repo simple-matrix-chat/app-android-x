@@ -11,9 +11,7 @@
 package io.element.android.features.location.impl.show
 
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -121,10 +119,6 @@ fun ShowLocationView(
         },
         sheetContent = { sheetPaddings ->
             val coroutineScope = rememberCoroutineScope()
-            if (!state.isSheetDraggable) {
-                // If sheet is draggable the DragHandle has already some padding
-                Spacer(Modifier.height(20.dp))
-            }
             if (state.locationShares.isEmpty()) {
                 Text(
                     text = stringResource(CommonStrings.screen_live_location_sheet_nobody_sharing),
@@ -132,16 +126,12 @@ fun ShowLocationView(
                     color = ElementTheme.colors.textPrimary,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(all = 16.dp),
+                        .padding(horizontal = 16.dp)
+                        .padding(top = if (state.isSheetDraggable) 8.dp else 29.dp, bottom = 25.dp),
                     textAlign = TextAlign.Center,
                 )
             } else {
-                Text(
-                    text = stringResource(CommonStrings.screen_static_location_sheet_title),
-                    style = ElementTheme.typography.fontBodyLgMedium,
-                    color = ElementTheme.colors.textPrimary,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                )
+                MomentShowLocationSheetTitle(isSheetDraggable = state.isSheetDraggable)
                 LazyColumn {
                     items(state.locationShares) { locationShare ->
                         LocationShareRow(
@@ -184,6 +174,22 @@ fun ShowLocationView(
                     .padding(all = 16.dp),
             )
         }
+    )
+}
+
+@Composable
+private fun MomentShowLocationSheetTitle(
+    isSheetDraggable: Boolean,
+) {
+    Text(
+        text = stringResource(CommonStrings.screen_static_location_sheet_title),
+        style = ElementTheme.typography.fontBodyLgMedium,
+        color = ElementTheme.colors.textPrimary,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+            .padding(top = if (isSheetDraggable) 8.dp else 29.dp, bottom = 13.dp),
+        textAlign = TextAlign.Center,
     )
 }
 

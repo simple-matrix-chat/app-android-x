@@ -15,13 +15,16 @@ import io.element.android.features.messages.impl.timeline.diff.TimelineItemsCach
 import io.element.android.features.messages.impl.timeline.factories.event.TimelineItemEventFactory
 import io.element.android.features.messages.impl.timeline.factories.virtual.TimelineItemVirtualFactory
 import io.element.android.features.messages.impl.timeline.groups.TimelineItemGrouper
+import io.element.android.features.messages.impl.timeline.model.ReadReceiptData
 import io.element.android.features.messages.impl.timeline.model.TimelineItem
+import io.element.android.features.messages.impl.timeline.model.TimelineItemReadReceipts
 import io.element.android.libraries.androidutils.diff.DiffCacheUpdater
 import io.element.android.libraries.androidutils.diff.MutableListDiffCache
 import io.element.android.libraries.core.coroutine.CoroutineDispatchers
 import io.element.android.libraries.matrix.api.room.RoomMember
 import io.element.android.libraries.matrix.api.timeline.MatrixTimelineItem
 import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -95,7 +98,7 @@ class TimelineItemsFactory(
                 newTimelineItemStates.add(updatedItem)
             }
         }
-        val result = timelineItemGrouper.group(newTimelineItemStates).toImmutableList()
+        val result = timelineItemGrouper.group(newTimelineItemStates.applyEffectiveReadReceipts()).toImmutableList()
         this._timelineItems.emit(result)
     }
 
@@ -112,5 +115,34 @@ class TimelineItemsFactory(
             }
         diffCache[index] = timelineItem
         return timelineItem
+    }
+
+    private fun List<TimelineItem>.applyEffectiveReadReceipts(): List<TimelineItem> {
+        val latestReadReceiptsByUserId = LinkedHashMap<String, ReadReceiptData>()
+        val readReceiptUserIds = mutableListOf<String>()
+
+        return map { timelineItem ->
+            if (timelineItem is TimelineItem.Event) {
+                timelineItem.readReceiptState.receipts.forEach { receipt ->
+                    val userId = receipt.avatarData.id
+                    if (latestReadReceiptsByUserId[userId] == null) {
+                        latestReadReceiptsByUserId[userId] = receipt
+                        readReceiptUserIds.add(userId)
+                    }
+                }
+
+                timelineItem.copy(
+                    readReceiptState = TimelineItemReadReceipts(
+                        receipts = if (timelineItem.isMine && readReceiptUserIds.isNotEmpty()) {
+                            readReceiptUserIds.mapNotNull(latestReadReceiptsByUserId::get).toImmutableList()
+                        } else {
+                            persistentListOf()
+                        }
+                    )
+                )
+            } else {
+                timelineItem
+            }
+        }
     }
 }

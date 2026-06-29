@@ -13,6 +13,8 @@ import com.google.common.truth.Truth.assertThat
 import io.element.android.libraries.androidutils.file.TemporaryUriDeleter
 import io.element.android.libraries.architecture.AsyncAction
 import io.element.android.libraries.matrix.api.MatrixClient
+import io.element.android.libraries.matrix.api.user.MatrixProfileUsernameException
+import io.element.android.libraries.matrix.api.user.MatrixPublicProfile
 import io.element.android.libraries.matrix.api.user.MatrixUser
 import io.element.android.libraries.matrix.test.AN_AVATAR_URL
 import io.element.android.libraries.matrix.test.A_USER_ID
@@ -109,6 +111,89 @@ class EditUserProfilePresenterTest {
             )
             assertThat(initialState.saveButtonEnabled).isFalse()
             assertThat(initialState.saveAction).isInstanceOf(AsyncAction.Uninitialized::class.java)
+        }
+    }
+
+    @Test
+    fun `present - loads profile status`() = runTest {
+        val matrixClient = FakeMatrixClient().apply {
+            givenProfileStatus("Busy")
+        }
+        val presenter = createEditUserProfilePresenter(matrixClient = matrixClient)
+        presenter.test {
+            awaitItem()
+            val loadedState = consumeItemsUntilPredicate { it.status == "Busy" }.last()
+            assertThat(loadedState.status).isEqualTo("Busy")
+        }
+    }
+
+    @Test
+    fun `present - loads profile username`() = runTest {
+        val matrixClient = FakeMatrixClient().apply {
+            givenProfileUsername("alice")
+        }
+        val presenter = createEditUserProfilePresenter(matrixClient = matrixClient)
+        presenter.test {
+            awaitItem()
+            val loadedState = consumeItemsUntilPredicate { it.showProfileUsername && it.username == "alice" }.last()
+            assertThat(loadedState.username).isEqualTo("alice")
+            assertThat(loadedState.showProfileUsername).isTrue()
+        }
+    }
+
+    @Test
+    fun `present - loads public profile identity and link`() = runTest {
+        val matrixClient = FakeMatrixClient().apply {
+            givenPublicProfile(
+                MatrixPublicProfile(
+                    userId = A_USER_ID,
+                    displayName = "Alice",
+                    username = "alice",
+                    phoneNumber = "+12025550101",
+                )
+            )
+            givenUserProfileLink("https://unmoment.app/l/aliceprofile")
+        }
+        val user = aMatrixUser(id = A_USER_ID.value, displayName = "Alice", avatarUrl = AN_AVATAR_URL)
+        val presenter = createEditUserProfilePresenter(
+            matrixClient = matrixClient,
+            matrixUser = user,
+        )
+        presenter.test {
+            awaitItem()
+            val loadedState = consumeItemsUntilPredicate {
+                it.phoneNumber == "+12025550101" &&
+                    it.profileShareText == "Alice\nhttps://unmoment.app/l/aliceprofile"
+            }.last()
+            assertThat(loadedState.phoneNumber).isEqualTo("+12025550101")
+            assertThat(loadedState.profileShareText).isEqualTo("Alice\nhttps://unmoment.app/l/aliceprofile")
+        }
+    }
+
+    @Test
+    fun `present - hides profile username if homeserver does not support it`() = runTest {
+        val matrixClient = FakeMatrixClient(
+            getProfileUsernameResult = { Result.failure(MatrixProfileUsernameException.Unsupported) },
+        )
+        val presenter = createEditUserProfilePresenter(matrixClient = matrixClient)
+        presenter.test {
+            val initialState = awaitItem()
+            assertThat(initialState.showProfileUsername).isFalse()
+            assertThat(initialState.username).isEmpty()
+            consumeItemsUntilTimeout()
+        }
+    }
+
+    @Test
+    fun `present - validates profile username`() = runTest {
+        val presenter = createEditUserProfilePresenter()
+        presenter.test {
+            awaitItem()
+            val loadedState = consumeItemsUntilPredicate { it.showProfileUsername }.last()
+            loadedState.eventSink(EditUserProfileEvent.UpdateUsername("ab"))
+            val updatedState = consumeItemsUntilPredicate { it.usernameError == EditUserProfileUsernameError.TooShort }.last()
+            assertThat(updatedState.username).isEqualTo("ab")
+            assertThat(updatedState.saveButtonEnabled).isFalse()
         }
     }
 
@@ -354,6 +439,52 @@ class EditUserProfilePresenterTest {
     }
 
     @Test
+    fun `present - save changes profile status if different`() = runTest {
+        val matrixClient = FakeMatrixClient().apply {
+            givenProfileStatus("Busy")
+        }
+        val user = aMatrixUser(id = A_USER_ID.value, displayName = "Name", avatarUrl = AN_AVATAR_URL)
+        val presenter = createEditUserProfilePresenter(
+            matrixClient = matrixClient,
+            matrixUser = user,
+        )
+        presenter.test {
+            awaitItem()
+            val loadedState = consumeItemsUntilPredicate { it.status == "Busy" }.last()
+            loadedState.eventSink(EditUserProfileEvent.UpdateStatus("Traveling"))
+            val updatedState = consumeItemsUntilPredicate { it.status == "Traveling" }.last()
+            updatedState.eventSink(EditUserProfileEvent.Save)
+            consumeItemsUntilPredicate { matrixClient.setProfileStatusCalled }
+            assertThat(matrixClient.setProfileStatusCalled).isTrue()
+            assertThat(matrixClient.getProfileStatus().getOrThrow()).isEqualTo("Traveling")
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `present - save changes profile username if different`() = runTest {
+        val matrixClient = FakeMatrixClient().apply {
+            givenProfileUsername("alice")
+        }
+        val user = aMatrixUser(id = A_USER_ID.value, displayName = "Name", avatarUrl = AN_AVATAR_URL)
+        val presenter = createEditUserProfilePresenter(
+            matrixClient = matrixClient,
+            matrixUser = user,
+        )
+        presenter.test {
+            awaitItem()
+            val loadedState = consumeItemsUntilPredicate { it.showProfileUsername && it.username == "alice" }.last()
+            loadedState.eventSink(EditUserProfileEvent.UpdateUsername("@Bob_User"))
+            val updatedState = consumeItemsUntilPredicate { it.username == "bob_user" }.last()
+            updatedState.eventSink(EditUserProfileEvent.Save)
+            consumeItemsUntilPredicate { matrixClient.setProfileUsernameCalled }
+            assertThat(matrixClient.setProfileUsernameCalled).isTrue()
+            assertThat(matrixClient.getProfileUsername(A_USER_ID).getOrThrow()).isEqualTo("bob_user")
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
     fun `present - save does not change room details if they're the same trimmed`() = runTest {
         val matrixClient = FakeMatrixClient()
         val user = aMatrixUser(id = A_USER_ID.value, displayName = "Name", avatarUrl = AN_AVATAR_URL)
@@ -410,6 +541,7 @@ class EditUserProfilePresenterTest {
                 initialState.eventSink(EditUserProfileEvent.Save)
                 consumeItemsUntilPredicate { matrixClient.uploadAvatarCalled }
                 assertThat(matrixClient.uploadAvatarCalled).isTrue()
+                cancelAndIgnoreRemainingEvents()
             }
         } finally {
             tmpFile.delete()
@@ -506,9 +638,11 @@ class EditUserProfilePresenterTest {
             val initialState = awaitItem()
             initialState.eventSink(event)
             initialState.eventSink(EditUserProfileEvent.Save)
-            skipItems(1)
-            assertThat(awaitItem().saveAction).isInstanceOf(AsyncAction.Loading::class.java)
-            assertThat(awaitItem().saveAction).isInstanceOf(AsyncAction.Failure::class.java)
+            val loadingState = consumeItemsUntilPredicate { it.saveAction is AsyncAction.Loading }.last()
+            assertThat(loadingState.saveAction).isInstanceOf(AsyncAction.Loading::class.java)
+            val failureState = consumeItemsUntilPredicate { it.saveAction is AsyncAction.Failure }.last()
+            assertThat(failureState.saveAction).isInstanceOf(AsyncAction.Failure::class.java)
+            cancelAndIgnoreRemainingEvents()
         }
     }
 

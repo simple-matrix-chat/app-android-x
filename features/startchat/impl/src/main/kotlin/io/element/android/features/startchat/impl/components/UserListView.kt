@@ -9,6 +9,7 @@
 package io.element.android.features.startchat.impl.components
 
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.lazy.LazyColumn
@@ -40,6 +41,8 @@ fun UserListView(
     onDeselectUser: (MatrixUser) -> Unit,
     modifier: Modifier = Modifier,
     showBackButton: Boolean = true,
+    placeHolderTitle: String = stringResource(CommonStrings.common_search_for_someone),
+    noResultsContent: (@Composable ColumnScope.() -> Unit)? = null,
 ) {
     Column(
         modifier = modifier,
@@ -62,6 +65,8 @@ fun UserListView(
                 state.eventSink(UserListEvents.RemoveFromSelection(it))
                 onDeselectUser(it)
             },
+            placeHolderTitle = placeHolderTitle,
+            noResultsContent = noResultsContent,
         )
 
         if (state.isMultiSelectionEnabled && !state.isSearchActive && state.selectedUsers.isNotEmpty()) {

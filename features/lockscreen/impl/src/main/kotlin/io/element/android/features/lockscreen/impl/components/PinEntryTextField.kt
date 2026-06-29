@@ -31,7 +31,6 @@ import io.element.android.features.lockscreen.impl.pin.model.PinDigit
 import io.element.android.features.lockscreen.impl.pin.model.PinEntry
 import io.element.android.libraries.designsystem.preview.ElementPreview
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
-import io.element.android.libraries.designsystem.theme.pinDigitBg
 
 @Composable
 fun PinEntryTextField(
@@ -80,7 +79,7 @@ private fun PinDigitView(
             Modifier.border(1.dp, ElementTheme.colors.iconPrimary, shape)
         }
         is PinDigit.Filled -> {
-            Modifier.background(ElementTheme.colors.pinDigitBg, shape)
+            Modifier.background(ElementTheme.colors.bgSubtlePrimary, shape)
         }
     }
     Box(
@@ -97,7 +96,8 @@ private fun PinDigitView(
             }
             Text(
                 text = text,
-                style = ElementTheme.typography.fontHeadingMdBold
+                style = ElementTheme.typography.fontHeadingMdBold,
+                color = ElementTheme.colors.textPrimary,
             )
         }
     }

@@ -8,14 +8,19 @@
 
 package io.element.android.features.messages.impl
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -26,9 +31,17 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -39,7 +52,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
@@ -51,6 +67,7 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
@@ -64,13 +81,17 @@ import io.element.android.features.messages.impl.actionlist.model.TimelineItemAc
 import io.element.android.features.messages.impl.link.LinkEvent
 import io.element.android.features.messages.impl.link.LinkView
 import io.element.android.features.messages.impl.messagecomposer.AttachmentsBottomSheet
-import io.element.android.features.messages.impl.messagecomposer.DisabledComposerView
+import io.element.android.features.messages.impl.messagecomposer.ComposerEmojiPickerBottomSheet
+import io.element.android.features.messages.impl.messagecomposer.ContactAttachmentPickerBottomSheet
 import io.element.android.features.messages.impl.messagecomposer.MessageComposerEvent
 import io.element.android.features.messages.impl.messagecomposer.MessageComposerView
 import io.element.android.features.messages.impl.messagecomposer.suggestions.SuggestionsPickerView
 import io.element.android.features.messages.impl.pinned.banner.PinnedMessagesBannerState
 import io.element.android.features.messages.impl.pinned.banner.PinnedMessagesBannerView
 import io.element.android.features.messages.impl.pinned.banner.PinnedMessagesBannerViewDefaults
+import io.element.android.features.messages.impl.search.RoomMessageSearchEvent
+import io.element.android.features.messages.impl.search.RoomMessageSearchResult
+import io.element.android.features.messages.impl.search.RoomMessageSearchState
 import io.element.android.features.messages.impl.timeline.FOCUS_ON_PINNED_EVENT_DEBOUNCE_DURATION_IN_MILLIS
 import io.element.android.features.messages.impl.timeline.TimelineEvent
 import io.element.android.features.messages.impl.timeline.TimelineView
@@ -90,6 +111,7 @@ import io.element.android.features.messages.impl.timeline.model.TimelineItemGrou
 import io.element.android.features.messages.impl.timeline.model.event.aTimelineItemStateEventContent
 import io.element.android.features.messages.impl.timeline.model.event.aTimelineItemTextContent
 import io.element.android.features.messages.impl.topbars.MessagesViewTopBar
+import io.element.android.features.messages.impl.topbars.MomentRoomHeaderActionSize
 import io.element.android.features.messages.impl.topbars.ThreadTopBar
 import io.element.android.features.messages.impl.voicemessages.composer.VoiceMessagePermissionRationaleDialog
 import io.element.android.features.messages.impl.voicemessages.composer.VoiceMessageSendingFailedDialog
@@ -98,6 +120,9 @@ import io.element.android.libraries.androidutils.ui.hideKeyboard
 import io.element.android.libraries.designsystem.atomic.molecules.ComposerAlertMolecule
 import io.element.android.libraries.designsystem.components.ExpandableBottomSheetLayout
 import io.element.android.libraries.designsystem.components.ExpandableBottomSheetLayoutState
+import io.element.android.libraries.designsystem.components.avatar.Avatar
+import io.element.android.libraries.designsystem.components.avatar.AvatarData
+import io.element.android.libraries.designsystem.components.avatar.AvatarType
 import io.element.android.libraries.designsystem.components.dialogs.ConfirmationDialog
 import io.element.android.libraries.designsystem.components.rememberExpandableBottomSheetLayoutState
 import io.element.android.libraries.designsystem.preview.ElementPreview
@@ -105,12 +130,16 @@ import io.element.android.libraries.designsystem.preview.PreviewsDayNight
 import io.element.android.libraries.designsystem.text.toAnnotatedString
 import io.element.android.libraries.designsystem.text.toDp
 import io.element.android.libraries.designsystem.theme.components.BottomSheetDragHandle
+import io.element.android.libraries.designsystem.theme.components.HorizontalDivider
 import io.element.android.libraries.designsystem.theme.components.Icon
+import io.element.android.libraries.designsystem.theme.components.IconButton
 import io.element.android.libraries.designsystem.theme.components.Scaffold
+import io.element.android.libraries.designsystem.theme.components.SearchField
 import io.element.android.libraries.designsystem.theme.components.Text
 import io.element.android.libraries.designsystem.utils.HideKeyboardWhenDisposed
 import io.element.android.libraries.designsystem.utils.KeepScreenOn
 import io.element.android.libraries.designsystem.utils.OnLifecycleEvent
+import io.element.android.libraries.designsystem.utils.OnVisibleRangeChangeEffect
 import io.element.android.libraries.designsystem.utils.snackbar.SnackbarHost
 import io.element.android.libraries.designsystem.utils.snackbar.rememberSnackbarHostState
 import io.element.android.libraries.matrix.api.core.EventId
@@ -120,8 +149,10 @@ import io.element.android.libraries.matrix.api.room.tombstone.SuccessorRoom
 import io.element.android.libraries.matrix.api.timeline.Timeline
 import io.element.android.libraries.matrix.api.timeline.item.event.LocalEventSendState
 import io.element.android.libraries.matrix.api.user.MatrixUser
+import io.element.android.libraries.textcomposer.model.VoiceMessageRecorderEvent
 import io.element.android.libraries.ui.strings.CommonStrings
 import io.element.android.wysiwyg.link.Link
+import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import timber.log.Timber
 import kotlin.time.Duration.Companion.milliseconds
@@ -227,15 +258,18 @@ fun MessagesView(
                     } else {
                         MessagesViewTopBar(
                             roomName = state.roomName,
-                            roomAvatar = state.roomAvatar,
-                            isTombstoned = state.isTombstoned,
-                            heroes = state.heroes,
                             onBackClick = { hidingKeyboard { onBackClick() } },
                             onRoomDetailsClick = { hidingKeyboard { onRoomDetailsClick() } },
                             menuActions = {
                                 MessagesMenuActions(
                                     displayThreads = state.timelineState.timelineMode !is Timeline.Mode.Thread && state.threads.hasThreads,
+                                    displaySearch = state.roomMessageSearchState.isSearchEnabled,
                                     roomCallState = state.roomCallState,
+                                    onSearchClick = {
+                                        hidingKeyboard {
+                                            state.roomMessageSearchState.eventSink(RoomMessageSearchEvent.ToggleSearchVisibility)
+                                        }
+                                    },
                                     onJoinCallClick = onJoinCallClick,
                                     onThreadsListClick = onThreadsListClick
                                 )
@@ -284,10 +318,8 @@ fun MessagesView(
 
                         SuggestionsPickerView(
                             modifier = Modifier
-                                    .shadow(10.dp)
-                                    .background(ElementTheme.colors.bgCanvasDefault)
-                                    .align(Alignment.BottomStart)
-                                    .heightIn(max = 230.dp),
+                                .align(Alignment.BottomStart)
+                                .heightIn(max = 230.dp),
                             roomId = state.roomId,
                             roomName = state.roomName,
                             roomAvatarData = state.roomAvatar,
@@ -352,6 +384,13 @@ fun MessagesView(
         maxBottomSheetContentHeight = maxComposerHeightPx.toDp(),
     )
 
+    RoomMessageSearchView(
+        state = state.roomMessageSearchState,
+        roomAvatar = state.roomAvatar,
+        heroes = state.heroes,
+        modifier = Modifier.fillMaxSize(),
+    )
+
     var endPollConfirmingEvent: TimelineItem.Event? by remember { mutableStateOf(null) }
 
     if (endPollConfirmingEvent != null) {
@@ -409,7 +448,9 @@ fun MessagesView(
 @Composable
 internal fun MessagesMenuActions(
     displayThreads: Boolean,
+    displaySearch: Boolean,
     roomCallState: RoomCallState,
+    onSearchClick: () -> Unit,
     onJoinCallClick: (isAudioCall: Boolean) -> Unit,
     onThreadsListClick: () -> Unit,
 ) {
@@ -421,12 +462,257 @@ internal fun MessagesMenuActions(
         )
         Spacer(Modifier.width(8.dp))
     }
+    if (displaySearch) {
+        IconButton(
+            modifier = Modifier.size(MomentRoomHeaderActionSize),
+            onClick = onSearchClick,
+        ) {
+            Icon(
+                imageVector = CompoundIcons.Search(),
+                contentDescription = stringResource(CommonStrings.action_search),
+                tint = ElementTheme.colors.iconPrimary,
+            )
+        }
+    }
     CallMenuItem(
         roomCallState = roomCallState,
         onJoinCallClick = onJoinCallClick,
+        modifier = Modifier.size(MomentRoomHeaderActionSize),
     )
-    Spacer(Modifier.width(8.dp))
 }
+
+@Composable
+private fun RoomMessageSearchView(
+    state: RoomMessageSearchState,
+    roomAvatar: AvatarData,
+    heroes: ImmutableList<AvatarData>,
+    modifier: Modifier = Modifier,
+) {
+    BackHandler(enabled = state.isSearchActive) {
+        state.eventSink(RoomMessageSearchEvent.ToggleSearchVisibility)
+    }
+
+    AnimatedVisibility(
+        visible = state.isSearchActive,
+        enter = fadeIn(),
+        exit = fadeOut(),
+    ) {
+        RoomMessageSearchContent(
+            state = state,
+            roomAvatar = roomAvatar,
+            heroes = heroes,
+            modifier = modifier,
+        )
+    }
+}
+
+@Composable
+private fun RoomMessageSearchContent(
+    state: RoomMessageSearchState,
+    roomAvatar: AvatarData,
+    heroes: ImmutableList<AvatarData>,
+    modifier: Modifier = Modifier,
+) {
+    fun onDismiss() {
+        state.eventSink(RoomMessageSearchEvent.ToggleSearchVisibility)
+    }
+
+    Box(
+        modifier = modifier
+            .background(Color.Black.copy(alpha = 0.5f))
+            .statusBarsPadding()
+            .navigationBarsPadding()
+            .padding(16.dp)
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = ::onDismiss,
+            ),
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(
+            modifier = Modifier
+                .widthIn(max = 700.dp)
+                .fillMaxWidth()
+                .heightIn(max = 800.dp)
+                .clip(RoomMessageSearchCardShape)
+                .background(ElementTheme.colors.bgCanvasDefault)
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = {},
+            )
+        ) {
+            RoomMessageSearchHeader(
+                state = state,
+            )
+
+            val lazyListState = rememberLazyListState()
+            OnVisibleRangeChangeEffect(lazyListState) { visibleRange ->
+                state.eventSink(RoomMessageSearchEvent.UpdateVisibleRange(visibleRange))
+            }
+            LazyColumn(
+                state = lazyListState,
+                contentPadding = PaddingValues(bottom = 8.dp),
+            ) {
+                val highlightedEventId = state.results.firstOrNull()?.eventId
+                if (state.hasEmptySearchResults) {
+                    item(contentType = "empty") {
+                        RoomMessageSearchEmptyRow()
+                    }
+                }
+                items(
+                    items = state.results,
+                    key = { result -> result.eventId.value },
+                    contentType = { "message-search-result" },
+                ) { result ->
+                    RoomMessageSearchResultRow(
+                        result = result,
+                        roomAvatar = roomAvatar,
+                        heroes = heroes,
+                        isHighlighted = result.eventId == highlightedEventId,
+                        onClick = { state.eventSink(RoomMessageSearchEvent.SelectResult(result.eventId)) },
+                    )
+                }
+                if (state.isSearching) {
+                    item(contentType = "loading") {
+                        RoomMessageSearchLoadingRow()
+                    }
+                }
+                if (state.hasSearchError) {
+                    item(contentType = "error") {
+                        RoomMessageSearchErrorRow()
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun RoomMessageSearchHeader(
+    state: RoomMessageSearchState,
+    modifier: Modifier = Modifier,
+) {
+    val focusRequester = remember { FocusRequester() }
+    SearchField(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(start = 12.dp, top = 12.dp, end = 12.dp, bottom = 8.dp)
+            .focusRequester(focusRequester),
+        state = state.query,
+        placeholder = stringResource(CommonStrings.action_search),
+    )
+
+    LaunchedEffect(Unit) {
+        if (!focusRequester.restoreFocusedChild()) {
+            focusRequester.requestFocus()
+        }
+        focusRequester.saveFocusedChild()
+    }
+}
+
+@Composable
+private fun RoomMessageSearchResultRow(
+    result: RoomMessageSearchResult,
+    roomAvatar: AvatarData,
+    heroes: ImmutableList<AvatarData>,
+    isHighlighted: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .background(if (isHighlighted) ElementTheme.colors.bgSubtlePrimary else Color.Transparent)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onClick() }
+                .heightIn(min = 64.dp)
+                .padding(start = 20.dp, top = 8.dp, end = 12.dp, bottom = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Avatar(
+                avatarData = roomAvatar,
+                avatarType = AvatarType.Room(
+                    heroes = heroes,
+                    isTombstoned = false,
+                ),
+            )
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                Text(
+                    text = result.title,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    style = ElementTheme.typography.fontBodyLgRegular,
+                    color = ElementTheme.colors.textPrimary,
+                )
+                Text(
+                    text = result.description,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    style = ElementTheme.typography.fontBodyMdRegular,
+                    color = ElementTheme.colors.textSecondary,
+                )
+            }
+        }
+        HorizontalDivider(modifier = Modifier.padding(start = 20.dp))
+    }
+}
+
+@Composable
+private fun RoomMessageSearchEmptyRow(modifier: Modifier = Modifier) {
+    Text(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp, vertical = 16.dp),
+        text = stringResource(CommonStrings.common_no_results),
+        style = ElementTheme.typography.fontBodyMdRegular,
+        color = ElementTheme.colors.textSecondary,
+    )
+}
+
+@Composable
+private fun RoomMessageSearchLoadingRow(modifier: Modifier = Modifier) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp, vertical = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        CircularProgressIndicator(
+            modifier = Modifier.size(20.dp),
+            color = ElementTheme.colors.iconSecondary,
+            strokeWidth = 2.dp,
+        )
+        Text(
+            text = stringResource(CommonStrings.common_loading),
+            style = ElementTheme.typography.fontBodyMdRegular,
+            color = ElementTheme.colors.textSecondary,
+        )
+    }
+}
+
+@Composable
+private fun RoomMessageSearchErrorRow(modifier: Modifier = Modifier) {
+    Text(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp, vertical = 16.dp),
+        text = stringResource(CommonStrings.error_unknown),
+        style = ElementTheme.typography.fontBodyMdRegular,
+        color = ElementTheme.colors.textCriticalPrimary,
+    )
+}
+
+private val RoomMessageSearchCardShape = RoundedCornerShape(10.dp)
 
 @Composable
 private fun ReinviteDialog(state: MessagesState) {
@@ -471,8 +757,15 @@ private fun MessagesViewContent(
             state = state.composerState,
             onSendLocationClick = onSendLocationClick,
             onCreatePollClick = onCreatePollClick,
+            onStartVoiceMessageRecordingClick = {
+                state.voiceMessageComposerState.eventSink(
+                    VoiceMessageComposerEvent.RecorderEvent(VoiceMessageRecorderEvent.Start)
+                )
+            },
             enableTextFormatting = state.enableTextFormatting,
         )
+        ComposerEmojiPickerBottomSheet(state = state.composerState)
+        ContactAttachmentPickerBottomSheet(state = state.composerState)
 
         if (state.voiceMessageComposerState.showPermissionRationaleDialog) {
             VoiceMessagePermissionRationaleDialog(

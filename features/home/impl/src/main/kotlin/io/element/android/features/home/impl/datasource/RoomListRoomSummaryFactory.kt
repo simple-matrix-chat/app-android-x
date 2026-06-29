@@ -9,6 +9,7 @@
 package io.element.android.features.home.impl.datasource
 
 import dev.zacsweers.metro.Inject
+import io.element.android.features.home.impl.filters.MomentHomeRoomType
 import io.element.android.features.home.impl.model.LatestEvent
 import io.element.android.features.home.impl.model.RoomListRoomSummary
 import io.element.android.features.home.impl.model.RoomSummaryDisplayType
@@ -19,9 +20,11 @@ import io.element.android.libraries.designsystem.components.avatar.AvatarSize
 import io.element.android.libraries.eventformatter.api.RoomLatestEventFormatter
 import io.element.android.libraries.matrix.api.room.CallIntentConsensus
 import io.element.android.libraries.matrix.api.room.CurrentUserMembership
+import io.element.android.libraries.matrix.api.room.RoomNotificationMode
 import io.element.android.libraries.matrix.api.roomlist.LatestEventValue
 import io.element.android.libraries.matrix.api.roomlist.RoomSummary
 import io.element.android.libraries.matrix.ui.model.getAvatarData
+import io.element.android.libraries.matrix.ui.model.getBestName
 import io.element.android.libraries.matrix.ui.model.toInviteSender
 import kotlinx.collections.immutable.toImmutableList
 
@@ -33,6 +36,7 @@ class RoomListRoomSummaryFactory(
     fun create(roomSummary: RoomSummary): RoomListRoomSummary {
         val roomInfo = roomSummary.info
         val avatarData = roomInfo.getAvatarData(size = AvatarSize.RoomListItem)
+        val directUser = roomInfo.heroes.firstOrNull().takeIf { roomInfo.isDirect && roomInfo.activeMembersCount == 2L }
         return RoomListRoomSummary(
             id = roomSummary.roomId.value,
             roomId = roomSummary.roomId,
@@ -56,7 +60,13 @@ class RoomListRoomSummaryFactory(
                 CallIntentConsensus.None -> null
             },
             isDirect = roomInfo.isDirect,
+            isEncrypted = roomInfo.isEncrypted == true,
+            isOneToOne = roomInfo.isDm,
+            directUserId = directUser?.userId,
+            directUserDisplayName = directUser?.getBestName(),
+            isDirectUserBlocked = false,
             isFavorite = roomInfo.isFavorite,
+            isMuted = roomInfo.userDefinedNotificationMode == RoomNotificationMode.MUTE,
             inviteSender = roomInfo.inviter?.toInviteSender(),
             isDm = roomInfo.isDm,
             canonicalAlias = roomInfo.canonicalAlias,
@@ -76,6 +86,8 @@ class RoomListRoomSummaryFactory(
             }.toImmutableList(),
             isTombstoned = roomInfo.successorRoom != null,
             isSpace = roomInfo.isSpace,
+            momentHomeRoomType = if (roomInfo.isDirect) MomentHomeRoomType.Direct else MomentHomeRoomType.Unknown,
+            isArchived = false,
         )
     }
 

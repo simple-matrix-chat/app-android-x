@@ -10,6 +10,7 @@
 
 package io.element.android.features.messages.impl.messagecomposer
 
+import android.content.Context
 import android.net.Uri
 import androidx.compose.runtime.remember
 import app.cash.molecule.RecompositionMode
@@ -34,6 +35,7 @@ import io.element.android.features.messages.impl.utils.TextPillificationHelper
 import io.element.android.libraries.architecture.AsyncAction
 import io.element.android.libraries.core.mimetype.MimeTypes
 import io.element.android.libraries.designsystem.utils.snackbar.SnackbarDispatcher
+import io.element.android.libraries.matrix.api.MatrixClient
 import io.element.android.libraries.matrix.api.core.EventId
 import io.element.android.libraries.matrix.api.core.RoomId
 import io.element.android.libraries.matrix.api.core.ThreadId
@@ -59,11 +61,13 @@ import io.element.android.libraries.matrix.test.A_CAPTION
 import io.element.android.libraries.matrix.test.A_MESSAGE
 import io.element.android.libraries.matrix.test.A_REPLY
 import io.element.android.libraries.matrix.test.A_ROOM_ID
+import io.element.android.libraries.matrix.test.A_THREAD_ID
 import io.element.android.libraries.matrix.test.A_TRANSACTION_ID
 import io.element.android.libraries.matrix.test.A_USER_ID
 import io.element.android.libraries.matrix.test.A_USER_ID_2
 import io.element.android.libraries.matrix.test.A_USER_ID_3
 import io.element.android.libraries.matrix.test.A_USER_ID_4
+import io.element.android.libraries.matrix.test.FakeMatrixClient
 import io.element.android.libraries.matrix.test.media.FakeMediaUploadHandler
 import io.element.android.libraries.matrix.test.permalink.FakePermalinkBuilder
 import io.element.android.libraries.matrix.test.permalink.FakePermalinkParser
@@ -91,6 +95,9 @@ import io.element.android.libraries.preferences.api.store.SessionPreferencesStor
 import io.element.android.libraries.preferences.api.store.VideoCompressionPreset
 import io.element.android.libraries.preferences.test.InMemorySessionPreferencesStore
 import io.element.android.libraries.push.test.notifications.conversations.FakeNotificationConversationService
+import io.element.android.libraries.recentemojis.api.AddRecentEmoji
+import io.element.android.libraries.recentemojis.api.GetRecentEmojis
+import io.element.android.libraries.recentemojis.test.FakeEmojibaseProvider
 import io.element.android.libraries.slashcommands.api.SlashCommand
 import io.element.android.libraries.slashcommands.api.SlashCommandService
 import io.element.android.libraries.slashcommands.test.FakeSlashCommandService
@@ -138,6 +145,7 @@ class MessageComposerPresenterTest {
     private val localMediaFactory = FakeLocalMediaFactory(mockMediaUrl)
     private val analyticsService = FakeAnalyticsService()
     private val notificationConversationService = FakeNotificationConversationService()
+    private val context = mockk<Context>(relaxed = true)
 
     @Test
     fun `present - initial state`() = runTest {
@@ -683,6 +691,35 @@ class MessageComposerPresenterTest {
     }
 
     @Test
+    fun `present - composer emoji attachment inserts selected emoji`() = runTest {
+        val addRecentEmojiLambda = lambdaRecorder { _: String -> Result.success(Unit) }
+        val presenter = createPresenter(
+            isRichTextEditorEnabled = false,
+            addRecentEmoji = AddRecentEmoji { addRecentEmojiLambda(it) },
+        )
+        presenter.test {
+            val initialState = awaitFirstItem()
+            initialState.eventSink(MessageComposerEvent.AddAttachment)
+            val attachmentOpenState = awaitItem()
+            assertThat(attachmentOpenState.showAttachmentSourcePicker).isTrue()
+
+            attachmentOpenState.eventSink(MessageComposerEvent.PickAttachmentSource.Emoji)
+            val emojiPickerState = awaitItem()
+            assertThat(emojiPickerState.showAttachmentSourcePicker).isFalse()
+            assertThat(emojiPickerState.composerEmojiPickerState.isVisible).isTrue()
+
+            emojiPickerState.eventSink(MessageComposerEvent.InsertPlainText("😀"))
+            advanceUntilIdle()
+            val withEmojiState = awaitItem()
+            assertThat(withEmojiState.composerEmojiPickerState.isVisible).isFalse()
+            assertThat(withEmojiState.textEditorState.messageMarkdown(FakePermalinkBuilder())).isEqualTo("😀")
+            assert(addRecentEmojiLambda)
+                .isCalledOnce()
+                .with(value("😀"))
+        }
+    }
+
+    @Test
     fun `present - Pick image from gallery`() = runTest {
         val room = FakeJoinedRoom(
             typingNoticeResult = { Result.success(Unit) }
@@ -715,7 +752,7 @@ class MessageComposerPresenterTest {
         )
         presenter.test {
             val initialState = awaitFirstItem()
-            initialState.eventSink(MessageComposerEvent.PickAttachmentSource.FromGallery)
+            initialState.eventSink(MessageComposerEvent.PickAttachmentSource.FromVideoGallery)
             onPreviewAttachmentLambda.assertions().isCalledOnce()
         }
     }
@@ -774,6 +811,87 @@ class MessageComposerPresenterTest {
     }
 
     @Test
+    fun `present - Pick sticker sends raw sticker event`() = runTest {
+        val matrixClient = FakeMatrixClient()
+        val stickerFile = createStickerFile()
+        mediaPreProcessor.givenResult(
+            Result.success(
+                MediaUploadInfo.Image(
+                    file = stickerFile,
+                    imageInfo = ImageInfo(
+                        width = 32,
+                        height = 48,
+                        mimetype = MimeTypes.Png,
+                        size = stickerFile.length(),
+                        thumbnailInfo = null,
+                        thumbnailSource = null,
+                        blurhash = "LEHV6nWB2yk8pyo0adR*.7kCMdnj",
+                    ),
+                    thumbnailFile = null,
+                )
+            )
+        )
+        pickerProvider.givenResult(Uri.parse("content://test/sticker.png"))
+        val presenter = createPresenter(matrixClient = matrixClient)
+
+        presenter.test {
+            val initialState = awaitFirstItem()
+            initialState.eventSink(MessageComposerEvent.PickAttachmentSource.Sticker)
+            advanceUntilIdle()
+
+            assertThat(matrixClient.sentStickers).hasSize(1)
+            with(matrixClient.sentStickers.single()) {
+                assertThat(roomId).isEqualTo(A_ROOM_ID)
+                assertThat(body).isEqualTo(stickerFile.nameWithoutExtension)
+                assertThat(info.width).isEqualTo(32)
+                assertThat(info.height).isEqualTo(48)
+                assertThat(info.mimetype).isEqualTo(MimeTypes.Png)
+                assertThat(info.blurhash).isEqualTo("LEHV6nWB2yk8pyo0adR*.7kCMdnj")
+                assertThat(threadRootId).isNull()
+            }
+            assertThat(mediaPreProcessor.cleanUpCallCount).isEqualTo(1)
+        }
+    }
+
+    @Test
+    fun `present - Pick sticker sends thread relation in a thread timeline`() = runTest {
+        val matrixClient = FakeMatrixClient()
+        mediaPreProcessor.givenResult(
+            Result.success(
+                MediaUploadInfo.Image(
+                    file = createStickerFile(),
+                    imageInfo = ImageInfo(
+                        width = 32,
+                        height = 32,
+                        mimetype = MimeTypes.Png,
+                        size = 3,
+                        thumbnailInfo = null,
+                        thumbnailSource = null,
+                        blurhash = null,
+                    ),
+                    thumbnailFile = null,
+                )
+            )
+        )
+        pickerProvider.givenResult(Uri.parse("content://test/thread-sticker.png"))
+        val timeline = FakeTimeline(mode = Timeline.Mode.Thread(A_THREAD_ID))
+        val presenter = createPresenter(
+            timeline = timeline,
+            matrixClient = matrixClient,
+            isInThread = true,
+        )
+
+        presenter.test {
+            val initialState = awaitFirstItem()
+            initialState.eventSink(MessageComposerEvent.PickAttachmentSource.Sticker)
+            advanceUntilIdle()
+
+            assertThat(matrixClient.sentStickers).hasSize(1)
+            assertThat(matrixClient.sentStickers.single().threadRootId).isEqualTo(A_THREAD_ID)
+        }
+    }
+
+    @Test
     fun `present - Pick file from storage will open the preview`() = runTest {
         val room = FakeJoinedRoom(
             typingNoticeResult = { Result.success(Unit) }
@@ -824,6 +942,121 @@ class MessageComposerPresenterTest {
             initialState.eventSink(MessageComposerEvent.PickAttachmentSource.Location)
             val finalState = awaitItem()
             assertThat(finalState.showAttachmentSourcePicker).isFalse()
+        }
+    }
+
+    @Test
+    fun `present - start voice message recording from attachment source`() = runTest {
+        val room = FakeJoinedRoom(
+            typingNoticeResult = { Result.success(Unit) }
+        )
+        val presenter = createPresenter(room = room)
+        presenter.test {
+            val initialState = awaitFirstItem()
+            initialState.eventSink(MessageComposerEvent.AddAttachment)
+            val attachmentOpenState = awaitItem()
+            assertThat(attachmentOpenState.showAttachmentSourcePicker).isTrue()
+            initialState.eventSink(MessageComposerEvent.PickAttachmentSource.VoiceMessage)
+            val finalState = awaitItem()
+            assertThat(finalState.showAttachmentSourcePicker).isFalse()
+        }
+    }
+
+    @Test
+    fun `present - pick contact opens contact attachment picker and requests permission`() = runTest {
+        val room = FakeJoinedRoom(
+            typingNoticeResult = { Result.success(Unit) }
+        )
+        val permissionPresenter = FakePermissionsPresenter()
+        val presenter = createPresenter(
+            room = room,
+            permissionPresenter = permissionPresenter,
+        )
+        presenter.test {
+            val initialState = awaitFirstItem()
+            initialState.eventSink(MessageComposerEvent.AddAttachment)
+            val attachmentOpenState = awaitItem()
+            assertThat(attachmentOpenState.showAttachmentSourcePicker).isTrue()
+            attachmentOpenState.eventSink(MessageComposerEvent.PickAttachmentSource.Contact)
+            val contactPickerState = awaitItem()
+            assertThat(contactPickerState.showAttachmentSourcePicker).isFalse()
+            assertThat(contactPickerState.contactAttachmentPickerState.isVisible).isTrue()
+            assertThat(contactPickerState.contactAttachmentPickerState.permissionState).isEqualTo(ContactAttachmentPermissionState.Request)
+        }
+    }
+
+    @Test
+    fun `present - select contact attachment sends formatted contact text`() = runTest {
+        val formattedContact = "Alice Smith\n+44 7700 900000\nalice@example.org"
+        val sendMessageResult = lambdaRecorder { _: String, _: String?, _: List<IntentionalMention>, _: MsgType, _: Boolean ->
+            Result.success(Unit)
+        }
+        val timeline = FakeTimeline().apply {
+            sendMessageLambda = sendMessageResult
+        }
+        val room = FakeJoinedRoom(
+            liveTimeline = timeline,
+            typingNoticeResult = { Result.success(Unit) }
+        )
+        val presenter = createPresenter(room = room)
+        presenter.test {
+            val initialState = awaitFirstItem()
+            initialState.eventSink(MessageComposerEvent.SelectContactAttachment(formattedContact))
+
+            advanceUntilIdle()
+
+            sendMessageResult.assertions().isCalledOnce()
+                .with(value(formattedContact), value(null), value(emptyList<IntentionalMention>()), value(MsgType.MSG_TYPE_TEXT), value(false))
+        }
+    }
+
+    @Test
+    fun `present - Take media from camera`() = runTest {
+        val room = FakeJoinedRoom(
+            typingNoticeResult = { Result.success(Unit) }
+        )
+        val permissionPresenter = FakePermissionsPresenter().apply { setPermissionGranted() }
+        val onPreviewAttachmentLambda = lambdaRecorder { _: ImmutableList<Attachment>, _: EventId? -> }
+        val navigator = FakeMessagesNavigator(
+            onPreviewAttachmentLambda = onPreviewAttachmentLambda
+        )
+        val presenter = createPresenter(
+            room = room,
+            permissionPresenter = permissionPresenter,
+            navigator = navigator,
+        )
+        pickerProvider.givenMimeType(MimeTypes.Videos)
+        presenter.test {
+            val initialState = awaitFirstItem()
+            initialState.eventSink(MessageComposerEvent.PickAttachmentSource.FromCamera)
+            onPreviewAttachmentLambda.assertions().isCalledOnce()
+        }
+    }
+
+    @Test
+    fun `present - Take media from camera with permission request`() = runTest {
+        val room = FakeJoinedRoom(
+            typingNoticeResult = { Result.success(Unit) }
+        )
+        val permissionPresenter = FakePermissionsPresenter()
+        val onPreviewAttachmentLambda = lambdaRecorder { _: ImmutableList<Attachment>, _: EventId? -> }
+        val navigator = FakeMessagesNavigator(
+            onPreviewAttachmentLambda = onPreviewAttachmentLambda
+        )
+        val presenter = createPresenter(
+            room = room,
+            permissionPresenter = permissionPresenter,
+            navigator = navigator,
+        )
+        pickerProvider.givenMimeType(MimeTypes.Images)
+        presenter.test {
+            val initialState = awaitFirstItem()
+            initialState.eventSink(MessageComposerEvent.PickAttachmentSource.FromCamera)
+            val permissionState = awaitItem()
+            assertThat(permissionState.showAttachmentSourcePicker).isFalse()
+            permissionPresenter.setPermissionGranted()
+            skipItems(1)
+            onPreviewAttachmentLambda.assertions().isCalledOnce()
         }
     }
 
@@ -1511,6 +1744,13 @@ class MessageComposerPresenterTest {
         return normalState
     }
 
+    private fun createStickerFile(): File {
+        return File.createTempFile("moment-sticker", ".png").apply {
+            writeBytes(byteArrayOf(1, 2, 3))
+            deleteOnExit()
+        }
+    }
+
     private fun TestScope.createPresenter(
         room: JoinedRoom = FakeJoinedRoom(
             typingNoticeResult = { Result.success(Unit) }
@@ -1521,6 +1761,7 @@ class MessageComposerPresenterTest {
         locationService: LocationService = FakeLocationService(true),
         sessionPreferencesStore: SessionPreferencesStore = InMemorySessionPreferencesStore(),
         mediaPreProcessor: MediaPreProcessor = this@MessageComposerPresenterTest.mediaPreProcessor,
+        matrixClient: MatrixClient = FakeMatrixClient(),
         snackbarDispatcher: SnackbarDispatcher = this@MessageComposerPresenterTest.snackbarDispatcher,
         permissionPresenter: PermissionsPresenter = FakePermissionsPresenter(),
         permalinkBuilder: PermalinkBuilder = FakePermalinkBuilder(),
@@ -1536,10 +1777,14 @@ class MessageComposerPresenterTest {
         mediaOptimizationConfigProvider: FakeMediaOptimizationConfigProvider = FakeMediaOptimizationConfigProvider(),
         isInThread: Boolean = false,
         slashCommandService: SlashCommandService = FakeSlashCommandService(),
+        getRecentEmojis: GetRecentEmojis = GetRecentEmojis { Result.success(persistentListOf()) },
+        addRecentEmoji: AddRecentEmoji = AddRecentEmoji { Result.success(Unit) },
     ) = MessageComposerPresenter(
         navigator = navigator,
         sessionCoroutineScope = this,
         isInThread = isInThread,
+        context = context,
+        matrixClient = matrixClient,
         room = room,
         mediaPickerProvider = pickerProvider,
         sessionPreferencesStore = sessionPreferencesStore,
@@ -1574,6 +1819,9 @@ class MessageComposerPresenterTest {
         mediaOptimizationConfigProvider = mediaOptimizationConfigProvider,
         notificationConversationService = notificationConversationService,
         slashCommandService = slashCommandService,
+        emojibaseProvider = FakeEmojibaseProvider(),
+        getRecentEmojis = getRecentEmojis,
+        addRecentEmoji = addRecentEmoji,
     ).apply {
         isTesting = true
         showTextFormatting = isRichTextEditorEnabled

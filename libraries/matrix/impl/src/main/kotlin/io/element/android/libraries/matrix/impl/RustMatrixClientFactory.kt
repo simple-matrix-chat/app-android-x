@@ -121,6 +121,7 @@ class RustMatrixClientFactory(
             appCoroutineScope = appCoroutineScope,
             sessionDelegate = sessionDelegate,
             innerSyncService = syncService,
+            userAgentProvider = userAgentProvider,
             dispatchers = coroutineDispatchers,
             baseCacheDirectory = cacheDirectory,
             clock = clock,

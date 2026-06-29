@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.runtime.Composable
@@ -30,6 +31,7 @@ import io.element.android.libraries.designsystem.components.dialogs.Confirmation
 import io.element.android.libraries.designsystem.preview.ElementPreview
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
 import io.element.android.libraries.designsystem.theme.components.Button
+import io.element.android.libraries.designsystem.theme.components.ButtonSize
 import io.element.android.libraries.designsystem.theme.components.Text
 import io.element.android.libraries.matrix.api.core.EventId
 import io.element.android.libraries.matrix.api.poll.PollAnswer
@@ -102,7 +104,9 @@ fun PollContentView(
     }
 
     Column(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .widthIn(max = 450.dp)
+            .fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         PollTitleView(title = question, isPollEnded = isPollEnded)
@@ -121,7 +125,9 @@ fun PollContentView(
                 isPollEditable = isPollEditable,
                 onEditPoll = ::onEditPoll,
                 onEndPoll = { showConfirmation = true },
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp),
             )
         }
     }
@@ -143,7 +149,11 @@ private fun PollAnswers(
                     .selectable(
                         selected = it.isSelected,
                         enabled = it.isEnabled,
-                        onClick = { onSelectAnswer(it.answer) },
+                        onClick = {
+                            if (!it.isSelected) {
+                                onSelectAnswer(it.answer)
+                            }
+                        },
                         role = Role.RadioButton,
                     ),
             )
@@ -189,12 +199,14 @@ private fun CreatorView(
                 text = stringResource(id = CommonStrings.action_edit_poll),
                 onClick = onEditPoll,
                 modifier = modifier,
+                size = ButtonSize.Medium,
             )
         !isPollEnded ->
             Button(
                 text = stringResource(id = CommonStrings.action_end_poll),
                 onClick = onEndPoll,
                 modifier = modifier,
+                size = ButtonSize.Medium,
             )
     }
 }

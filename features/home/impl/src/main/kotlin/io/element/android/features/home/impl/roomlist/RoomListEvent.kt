@@ -8,8 +8,10 @@
 
 package io.element.android.features.home.impl.roomlist
 
+import io.element.android.features.home.impl.filters.MomentHomeMuteDuration
 import io.element.android.features.home.impl.model.RoomListRoomSummary
 import io.element.android.libraries.matrix.api.core.RoomId
+import io.element.android.libraries.matrix.api.core.UserId
 
 sealed interface RoomListEvent {
     data class UpdateVisibleRange(val range: IntRange) : RoomListEvent
@@ -21,6 +23,8 @@ sealed interface RoomListEvent {
     data class DeclineInvite(val roomSummary: RoomListRoomSummary, val blockUser: Boolean) : RoomListEvent
     data class ShowDeclineInviteMenu(val roomSummary: RoomListRoomSummary) : RoomListEvent
     data object HideDeclineInviteMenu : RoomListEvent
+    data class SetDirectUserBlocked(val userId: UserId, val blocked: Boolean) : RoomListEvent
+    data object HideDirectUserBlockConfirmation : RoomListEvent
 
     sealed interface ContextMenuEvent : RoomListEvent
     data object HideContextMenu : ContextMenuEvent
@@ -28,5 +32,9 @@ sealed interface RoomListEvent {
     data class MarkAsRead(val roomId: RoomId) : ContextMenuEvent
     data class MarkAsUnread(val roomId: RoomId) : ContextMenuEvent
     data class SetRoomIsFavorite(val roomId: RoomId, val isFavorite: Boolean) : ContextMenuEvent
+    data class SetRoomIsArchived(val roomId: RoomId, val isArchived: Boolean) : ContextMenuEvent
+    data class SetRoomMuteDuration(val roomId: RoomId, val duration: MomentHomeMuteDuration) : ContextMenuEvent
+    data class UnmuteRoom(val roomId: RoomId) : ContextMenuEvent
+    data class ShowDirectUserBlockConfirmation(val userId: UserId, val displayName: String, val blocked: Boolean) : ContextMenuEvent
     data class ClearCacheOfRoom(val roomId: RoomId) : ContextMenuEvent
 }

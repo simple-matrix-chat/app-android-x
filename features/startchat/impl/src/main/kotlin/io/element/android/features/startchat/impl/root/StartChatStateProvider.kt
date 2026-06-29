@@ -20,6 +20,7 @@ import io.element.android.libraries.matrix.api.user.MatrixUser
 import io.element.android.libraries.matrix.ui.components.aMatrixUser
 import io.element.android.libraries.usersearch.api.UserSearchResult
 import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.toImmutableList
 
 open class StartChatStateProvider : PreviewParameterProvider<StartChatState> {
     override val values: Sequence<StartChatState>
@@ -71,11 +72,15 @@ fun aConfirmingStartDmWithMatrixUser(
 fun aCreateRoomRootState(
     applicationName: String = "Element X Preview",
     userListState: UserListState = aUserListState(),
+    phonebookContacts: List<UserSearchResult> = emptyList(),
     startDmAction: AsyncAction<RoomId> = AsyncAction.Uninitialized,
+    createMomentRoomAction: AsyncAction<RoomId> = AsyncAction.Uninitialized,
     eventSink: (StartChatEvents) -> Unit = {},
 ) = StartChatState(
     applicationName = applicationName,
     userListState = userListState,
+    phonebookContacts = phonebookContacts.toImmutableList(),
     startDmAction = startDmAction,
+    createMomentRoomAction = createMomentRoomAction,
     eventSink = eventSink,
 )

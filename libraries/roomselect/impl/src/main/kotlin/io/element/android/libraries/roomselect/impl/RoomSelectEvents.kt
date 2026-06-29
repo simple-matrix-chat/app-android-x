@@ -15,6 +15,7 @@ sealed interface RoomSelectEvents {
 
     // TODO remove to restore multi-selection
     data object RemoveSelectedRoom : RoomSelectEvents
+    data class UpdateForwardComment(val comment: String) : RoomSelectEvents
     data object ToggleSearchActive : RoomSelectEvents
     data class UpdateVisibleRange(val range: IntRange) : RoomSelectEvents
 }

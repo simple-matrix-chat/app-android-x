@@ -65,7 +65,7 @@ private fun RowScope.MainText(
     mode: SenderNameMode,
 ) {
     val style = when (mode) {
-        is SenderNameMode.Timeline -> ElementTheme.typography.fontBodyMdMedium
+        is SenderNameMode.Timeline -> ElementTheme.typography.fontBodySmMedium
         SenderNameMode.ActionList,
         SenderNameMode.Reply -> ElementTheme.typography.fontBodySmMedium
     }
@@ -95,7 +95,7 @@ private fun RowScope.SecondaryText(
     mode: SenderNameMode,
 ) {
     val style = when (mode) {
-        is SenderNameMode.Timeline -> ElementTheme.typography.fontBodySmRegular
+        is SenderNameMode.Timeline -> ElementTheme.typography.fontBodyXsRegular
         SenderNameMode.ActionList,
         SenderNameMode.Reply -> ElementTheme.typography.fontBodyXsRegular
     }

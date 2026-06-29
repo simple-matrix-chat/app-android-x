@@ -17,7 +17,7 @@ class RoomListFiltersStateProvider : PreviewParameterProvider<RoomListFiltersSta
         get() = sequenceOf(
             aRoomListFiltersState(),
             aRoomListFiltersState(
-                filterSelectionStates = RoomListFilter.entries.map { FilterSelectionState(it, isSelected = true) }
+                filterSelectionStates = RoomListFilter.entries.map { FilterSelectionState(it, isSelected = it == RoomListFilter.Direct) }
             ),
         )
 }

@@ -8,22 +8,31 @@
 
 package io.element.android.libraries.mediaviewer.impl.details
 
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -39,14 +48,13 @@ import io.element.android.libraries.designsystem.components.avatar.Avatar
 import io.element.android.libraries.designsystem.components.avatar.AvatarData
 import io.element.android.libraries.designsystem.components.avatar.AvatarSize
 import io.element.android.libraries.designsystem.components.avatar.AvatarType
-import io.element.android.libraries.designsystem.components.list.ListItemContent
+import io.element.android.libraries.designsystem.modifiers.niceClickable
 import io.element.android.libraries.designsystem.preview.ElementPreview
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
 import io.element.android.libraries.designsystem.theme.components.HorizontalDivider
-import io.element.android.libraries.designsystem.theme.components.IconSource
-import io.element.android.libraries.designsystem.theme.components.ListItem
-import io.element.android.libraries.designsystem.theme.components.ListItemStyle
+import io.element.android.libraries.designsystem.theme.components.Icon
 import io.element.android.libraries.designsystem.theme.components.ModalBottomSheet
+import io.element.android.libraries.designsystem.theme.components.Surface
 import io.element.android.libraries.matrix.api.core.EventId
 import io.element.android.libraries.mediaviewer.api.MediaInfo
 import io.element.android.libraries.mediaviewer.impl.R
@@ -73,100 +81,178 @@ fun MediaDetailsBottomSheet(
         modifier = modifier,
         onDismissRequest = onDismiss,
         scrollable = false,
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .verticalScroll(rememberScrollState()),
+                .verticalScroll(rememberScrollState())
+                .navigationBarsPadding()
+                .padding(bottom = 16.dp),
         ) {
             Title()
-            Section(
-                title = stringResource(R.string.screen_media_details_uploaded_by),
+            MomentMediaDetailsCard(
+                modifier = Modifier.padding(horizontal = 16.dp),
             ) {
-                SenderRow(
-                    mediaInfo = state.mediaInfo,
-                )
-            }
-            SectionText(
-                title = stringResource(R.string.screen_media_details_uploaded_on),
-                text = state.mediaInfo.dateSentFull.orEmpty(),
-            )
-            SectionText(
-                title = stringResource(R.string.screen_media_details_filename),
-                text = state.mediaInfo.filename,
-            )
-            SectionText(
-                title = stringResource(R.string.screen_media_details_file_format),
-                text = state.mediaInfo.mimeType + Strings.NICE_SEPARATOR + state.mediaInfo.formattedFileSize,
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-            if (state.eventId != null) {
-                HorizontalDivider()
-                ListItem(
-                    leadingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.VisibilityOn())),
-                    headlineContent = { Text(stringResource(CommonStrings.action_view_in_timeline)) },
-                    style = ListItemStyle.Primary,
-                    onClick = {
-                        onViewInTimeline(state.eventId)
-                    }
-                )
-                ListItem(
-                    leadingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.ShareAndroid())),
-                    headlineContent = { Text(stringResource(CommonStrings.action_share)) },
-                    style = ListItemStyle.Primary,
-                    onClick = {
-                        onShare(state.eventId)
-                    }
-                )
-                ListItem(
-                    leadingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.Forward())),
-                    headlineContent = { Text(stringResource(CommonStrings.action_forward)) },
-                    style = ListItemStyle.Primary,
-                    onClick = {
-                        onForward(state.eventId)
-                    }
-                )
-                ListItem(
-                    leadingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.Download())),
-                    headlineContent = { Text(stringResource(CommonStrings.action_download)) },
-                    style = ListItemStyle.Primary,
-                    onClick = {
-                        onDownload(state.eventId)
-                    }
-                )
-                val mimeType = state.mediaInfo.mimeType
-                val icon = when (mimeType) {
-                    MimeTypes.Apk ->
-                        ListItemContent.Icon(IconSource.Resource(R.drawable.ic_apk_install))
-                    else ->
-                        ListItemContent.Icon(IconSource.Vector(CompoundIcons.PopOut()))
-                }
-                val wording = when (mimeType) {
-                    MimeTypes.Apk -> stringResource(id = CommonStrings.common_install_apk_android)
-                    else -> stringResource(id = CommonStrings.action_open_with)
-                }
-                ListItem(
-                    leadingContent = icon,
-                    headlineContent = { Text(wording) },
-                    style = ListItemStyle.Primary,
-                    onClick = {
-                        onOpenWith(state.eventId)
-                    }
-                )
-                if (state.canDelete) {
-                    HorizontalDivider()
-                    ListItem(
-                        leadingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.Delete())),
-                        headlineContent = { Text(stringResource(CommonStrings.action_delete)) },
-                        style = ListItemStyle.Destructive,
-                        onClick = {
-                            onDelete(state.eventId)
-                        }
+                Section(
+                    title = stringResource(R.string.screen_media_details_uploaded_by),
+                ) {
+                    SenderRow(
+                        mediaInfo = state.mediaInfo,
                     )
                 }
+                SectionText(
+                    title = stringResource(R.string.screen_media_details_uploaded_on),
+                    text = state.mediaInfo.dateSentFull.orEmpty(),
+                )
+                SectionText(
+                    title = stringResource(R.string.screen_media_details_filename),
+                    text = state.mediaInfo.filename,
+                )
+                SectionText(
+                    title = stringResource(R.string.screen_media_details_file_format),
+                    text = state.mediaInfo.mimeType + Strings.NICE_SEPARATOR + state.mediaInfo.formattedFileSize,
+                )
             }
             Spacer(modifier = Modifier.height(16.dp))
+            if (state.eventId != null) {
+                MomentMediaDetailsCard(
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                ) {
+                    MomentMediaActionRow(
+                        text = stringResource(CommonStrings.action_view_in_timeline),
+                        onClick = {
+                            onViewInTimeline(state.eventId)
+                        },
+                    ) { iconColor ->
+                        Icon(imageVector = CompoundIcons.VisibilityOn(), contentDescription = null, tint = iconColor)
+                    }
+                    MomentMediaDetailsDivider()
+                    MomentMediaActionRow(
+                        text = stringResource(CommonStrings.action_share),
+                        onClick = {
+                            onShare(state.eventId)
+                        },
+                    ) { iconColor ->
+                        Icon(imageVector = CompoundIcons.ShareAndroid(), contentDescription = null, tint = iconColor)
+                    }
+                    MomentMediaDetailsDivider()
+                    MomentMediaActionRow(
+                        text = stringResource(CommonStrings.action_forward),
+                        onClick = {
+                            onForward(state.eventId)
+                        },
+                    ) { iconColor ->
+                        Icon(imageVector = CompoundIcons.Forward(), contentDescription = null, tint = iconColor)
+                    }
+                    MomentMediaDetailsDivider()
+                    MomentMediaActionRow(
+                        text = stringResource(CommonStrings.action_download),
+                        onClick = {
+                            onDownload(state.eventId)
+                        },
+                    ) { iconColor ->
+                        Icon(imageVector = CompoundIcons.Download(), contentDescription = null, tint = iconColor)
+                    }
+                    MomentMediaDetailsDivider()
+                    val mimeType = state.mediaInfo.mimeType
+                    val wording = when (mimeType) {
+                        MimeTypes.Apk -> stringResource(id = CommonStrings.common_install_apk_android)
+                        else -> stringResource(id = CommonStrings.action_open_with)
+                    }
+                    MomentMediaActionRow(
+                        text = wording,
+                        onClick = {
+                            onOpenWith(state.eventId)
+                        },
+                    ) { iconColor ->
+                        when (mimeType) {
+                            MimeTypes.Apk -> Icon(
+                                resourceId = R.drawable.ic_apk_install,
+                                contentDescription = null,
+                                tint = iconColor,
+                            )
+                            else -> Icon(imageVector = CompoundIcons.PopOut(), contentDescription = null, tint = iconColor)
+                        }
+                    }
+                    if (state.canDelete) {
+                        MomentMediaDetailsDivider()
+                        MomentMediaActionRow(
+                            text = stringResource(CommonStrings.action_delete),
+                            destructive = true,
+                            onClick = {
+                                onDelete(state.eventId)
+                            },
+                        ) { iconColor ->
+                            Icon(imageVector = CompoundIcons.Delete(), contentDescription = null, tint = iconColor)
+                        }
+                    }
+                }
+            }
         }
+    }
+}
+
+@Composable
+private fun MomentMediaDetailsCard(
+    modifier: Modifier = Modifier,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
+        color = ElementTheme.colors.bgCanvasDefault,
+        border = BorderStroke(1.dp, ElementTheme.colors.borderDisabled.copy(alpha = 0.6f)),
+        shadowElevation = 3.dp,
+    ) {
+        Column(content = content)
+    }
+}
+
+@Composable
+private fun MomentMediaDetailsDivider() {
+    HorizontalDivider(
+        modifier = Modifier.padding(start = 64.dp),
+        color = ElementTheme.colors.borderDisabled,
+    )
+}
+
+@Composable
+private fun MomentMediaActionRow(
+    text: String,
+    destructive: Boolean = false,
+    onClick: () -> Unit,
+    leadingIcon: @Composable (Color) -> Unit,
+) {
+    val textColor = if (destructive) ElementTheme.colors.textCriticalPrimary else ElementTheme.colors.textPrimary
+    val iconColor = if (destructive) ElementTheme.colors.iconCriticalPrimary else ElementTheme.colors.iconSecondary
+    val iconBackground = if (destructive) ElementTheme.colors.bgCriticalSubtle else ElementTheme.colors.bgSubtleSecondary
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 56.dp)
+            .niceClickable(onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(36.dp)
+                .background(iconBackground, RoundedCornerShape(10.dp)),
+            contentAlignment = Alignment.Center,
+        ) {
+            leadingIcon(iconColor)
+        }
+        Text(
+            modifier = Modifier
+                .padding(start = 14.dp)
+                .weight(1f),
+            text = text,
+            color = textColor,
+            style = ElementTheme.typography.fontBodyLgMedium,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 

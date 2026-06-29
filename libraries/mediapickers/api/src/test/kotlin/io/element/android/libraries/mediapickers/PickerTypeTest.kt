@@ -27,6 +27,13 @@ class PickerTypeTest {
     }
 
     @Test
+    fun `Video - assert types`() {
+        val pickerType = PickerType.Video
+        assertThat(pickerType.getContract()).isInstanceOf(ActivityResultContracts.PickVisualMedia::class.java)
+        assertThat(pickerType.getDefaultRequest().mediaType).isEqualTo(ActivityResultContracts.PickVisualMedia.VideoOnly)
+    }
+
+    @Test
     fun `File - assert types`() {
         val pickerType = PickerType.File()
         assertThat(pickerType.getContract()).isInstanceOf(ActivityResultContracts.GetContent::class.java)

@@ -12,9 +12,13 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.bumble.appyx.core.modality.BuildContext
 import com.google.common.truth.Truth.assertThat
 import io.element.android.features.home.api.HomeEntryPoint
+import io.element.android.features.home.impl.contacts.HomeContactsPresenter
+import io.element.android.features.home.impl.contacts.HomeDeviceContact
+import io.element.android.features.home.impl.contacts.HomeDeviceContactsDataSource
 import io.element.android.libraries.matrix.api.core.RoomId
 import io.element.android.libraries.matrix.api.room.JoinedRoom
 import io.element.android.libraries.matrix.test.FakeMatrixClient
+import io.element.android.libraries.permissions.test.FakePermissionsPresenterFactory
 import io.element.android.services.analytics.test.FakeAnalyticsService
 import io.element.android.tests.testutils.lambda.lambdaError
 import io.element.android.tests.testutils.node.TestParentNode
@@ -33,6 +37,15 @@ class DefaultHomeEntryPointTest {
                 plugins = plugins,
                 matrixClient = FakeMatrixClient(),
                 presenter = createHomePresenter(),
+                contactsPresenter = HomeContactsPresenter(
+                    permissionsPresenterFactory = FakePermissionsPresenterFactory(),
+                    matrixClient = FakeMatrixClient(),
+                    deviceContactsDataSource = object : HomeDeviceContactsDataSource {
+                        override suspend fun getContacts(): Result<List<HomeDeviceContact>> {
+                            return Result.success(emptyList())
+                        }
+                    },
+                ),
                 inviteFriendsUseCase = { lambdaError() },
                 analyticsService = FakeAnalyticsService(),
                 acceptDeclineInviteView = { _, _, _, _ -> lambdaError() },

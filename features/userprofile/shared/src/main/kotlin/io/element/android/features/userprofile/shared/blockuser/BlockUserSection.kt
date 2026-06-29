@@ -8,12 +8,25 @@
 
 package io.element.android.features.userprofile.shared.blockuser
 
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.progressSemantics
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import io.element.android.compound.theme.ElementTheme
 import io.element.android.compound.tokens.generated.CompoundIcons
 import io.element.android.features.userprofile.api.UserProfileEvents
 import io.element.android.features.userprofile.api.UserProfileState
@@ -21,12 +34,9 @@ import io.element.android.features.userprofile.shared.R
 import io.element.android.libraries.architecture.AsyncData
 import io.element.android.libraries.core.bool.orFalse
 import io.element.android.libraries.designsystem.components.dialogs.RetryDialog
-import io.element.android.libraries.designsystem.components.list.ListItemContent
-import io.element.android.libraries.designsystem.components.preferences.PreferenceCategory
 import io.element.android.libraries.designsystem.theme.components.CircularProgressIndicator
-import io.element.android.libraries.designsystem.theme.components.IconSource
-import io.element.android.libraries.designsystem.theme.components.ListItem
-import io.element.android.libraries.designsystem.theme.components.ListItemStyle
+import io.element.android.libraries.designsystem.theme.components.Icon
+import io.element.android.libraries.designsystem.theme.components.Surface
 import io.element.android.libraries.designsystem.theme.components.Text
 import io.element.android.libraries.ui.strings.CommonStrings
 
@@ -36,16 +46,11 @@ fun BlockUserSection(
     modifier: Modifier = Modifier,
 ) {
     val isBlocked = state.isBlocked
-    PreferenceCategory(
-        modifier = modifier,
-        showTopDivider = false,
-    ) {
-        when (isBlocked) {
-            is AsyncData.Failure -> PreferenceBlockUser(isBlocked = isBlocked.prevData, isLoading = false, eventSink = state.eventSink)
-            is AsyncData.Loading -> PreferenceBlockUser(isBlocked = isBlocked.prevData, isLoading = true, eventSink = state.eventSink)
-            is AsyncData.Success -> PreferenceBlockUser(isBlocked = isBlocked.data, isLoading = false, eventSink = state.eventSink)
-            AsyncData.Uninitialized -> PreferenceBlockUser(isBlocked = null, isLoading = true, eventSink = state.eventSink)
-        }
+    when (isBlocked) {
+        is AsyncData.Failure -> MomentBlockUserCard(modifier = modifier, isBlocked = isBlocked.prevData, isLoading = false, eventSink = state.eventSink)
+        is AsyncData.Loading -> MomentBlockUserCard(modifier = modifier, isBlocked = isBlocked.prevData, isLoading = true, eventSink = state.eventSink)
+        is AsyncData.Success -> MomentBlockUserCard(modifier = modifier, isBlocked = isBlocked.data, isLoading = false, eventSink = state.eventSink)
+        AsyncData.Uninitialized -> MomentBlockUserCard(modifier = modifier, isBlocked = null, isLoading = true, eventSink = state.eventSink)
     }
     if (isBlocked is AsyncData.Failure) {
         RetryDialog(
@@ -65,34 +70,91 @@ fun BlockUserSection(
 }
 
 @Composable
-private fun PreferenceBlockUser(
+private fun MomentBlockUserCard(
+    modifier: Modifier = Modifier,
     isBlocked: Boolean?,
     isLoading: Boolean,
     eventSink: (UserProfileEvents) -> Unit,
 ) {
-    val loadingCurrentValue = @Composable { _: Boolean ->
-        CircularProgressIndicator(
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(28.dp),
+        color = ElementTheme.colors.bgCanvasDefault,
+        shadowElevation = 8.dp,
+        border = BorderStroke(1.dp, ElementTheme.colors.borderInteractiveSecondary.copy(alpha = 0.55f)),
+    ) {
+        MomentBlockUserRow(
+            title = stringResource(
+                if (isBlocked.orFalse()) R.string.screen_room_member_details_unblock_user else R.string.screen_room_member_details_block_user
+            ),
+            destructive = !isBlocked.orFalse(),
+            isLoading = isLoading,
+            onClick = {
+                if (!isLoading) {
+                    if (isBlocked.orFalse()) {
+                        eventSink(UserProfileEvents.UnblockUser(needsConfirmation = true))
+                    } else {
+                        eventSink(UserProfileEvents.BlockUser(needsConfirmation = true))
+                    }
+                }
+            },
+        )
+    }
+}
+
+@Composable
+private fun MomentBlockUserRow(
+    title: String,
+    destructive: Boolean,
+    isLoading: Boolean,
+    onClick: () -> Unit,
+) {
+    val foregroundColor = if (destructive) ElementTheme.colors.textCriticalPrimary else ElementTheme.colors.textPrimary
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 60.dp)
+            .semantics(mergeDescendants = true) {}
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
             modifier = Modifier
-                .progressSemantics()
-                .size(20.dp),
-            strokeWidth = 2.dp
+                .size(32.dp)
+                .background(
+                    color = if (destructive) ElementTheme.colors.bgCriticalSubtle else ElementTheme.colors.bgSubtleSecondary,
+                    shape = CircleShape,
+                ),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                modifier = Modifier.size(18.dp),
+                imageVector = CompoundIcons.Block(),
+                contentDescription = null,
+                tint = foregroundColor,
+            )
+        }
+        Text(
+            modifier = Modifier
+                .weight(1f)
+                .padding(horizontal = 12.dp),
+            text = title,
+            color = foregroundColor,
+            style = ElementTheme.typography.fontBodyLgMedium,
         )
+        if (isLoading) {
+            MomentBlockUserLoadingIndicator()
+        }
     }
-    if (isBlocked.orFalse()) {
-        ListItem(
-            headlineContent = { Text(stringResource(R.string.screen_dm_details_unblock_user)) },
-            leadingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.Block())),
-            onClick = { if (!isLoading) eventSink(UserProfileEvents.UnblockUser(needsConfirmation = true)) },
-            trailingContent = if (isLoading) ListItemContent.Custom(loadingCurrentValue) else null,
-            style = ListItemStyle.Primary,
-        )
-    } else {
-        ListItem(
-            headlineContent = { Text(stringResource(R.string.screen_dm_details_block_user)) },
-            leadingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.Block())),
-            style = ListItemStyle.Destructive,
-            onClick = { if (!isLoading) eventSink(UserProfileEvents.BlockUser(needsConfirmation = true)) },
-            trailingContent = if (isLoading) ListItemContent.Custom(loadingCurrentValue) else null,
-        )
-    }
+}
+
+@Composable
+private fun MomentBlockUserLoadingIndicator() {
+    CircularProgressIndicator(
+        modifier = Modifier
+            .progressSemantics()
+            .size(20.dp),
+        strokeWidth = 2.dp,
+    )
 }

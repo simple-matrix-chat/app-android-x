@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="screen_room_attachment_source_contact">Contact</string>
+    <string name="screen_room_attachment_source_emoji">Emoji</string>
+    <string name="screen_room_attachment_source_photo">Photo</string>
+    <string name="screen_room_attachment_contact_picker_title">Contacts</string>
+    <string name="screen_room_attachment_contact_picker_permission_title">Share a contact</string>
+    <string name="screen_room_attachment_contact_picker_permission_message">Allow Moment to access your contacts to attach a contact card.</string>
+    <string name="screen_room_attachment_contact_picker_permission_allow">Allow access</string>
+    <string name="screen_room_attachment_contact_picker_loading">Loading contacts...</string>
+    <string name="screen_room_attachment_contact_picker_empty_title">No contacts</string>
+    <string name="screen_room_attachment_contact_picker_empty_message">There are no contacts on this device.</string>
+    <string name="screen_room_attachment_contact_picker_error_title">Could not load contacts</string>
+    <string name="screen_room_attachment_contact_picker_error_message">Check contact access and try again.</string>
+</resources>

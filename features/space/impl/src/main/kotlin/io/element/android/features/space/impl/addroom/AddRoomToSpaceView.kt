@@ -8,7 +8,9 @@
 package io.element.android.features.space.impl.addroom
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
@@ -16,6 +18,7 @@ import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -23,8 +26,13 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
 import io.element.android.compound.theme.ElementTheme
@@ -33,7 +41,6 @@ import io.element.android.libraries.architecture.AsyncAction
 import io.element.android.libraries.designsystem.components.async.AsyncActionView
 import io.element.android.libraries.designsystem.components.avatar.AvatarSize
 import io.element.android.libraries.designsystem.components.avatar.AvatarType
-import io.element.android.libraries.designsystem.components.button.BackButton
 import io.element.android.libraries.designsystem.components.list.AvatarListItem
 import io.element.android.libraries.designsystem.components.list.ListItemContent
 import io.element.android.libraries.designsystem.preview.ElementPreview
@@ -42,8 +49,6 @@ import io.element.android.libraries.designsystem.theme.components.ListSectionHea
 import io.element.android.libraries.designsystem.theme.components.Scaffold
 import io.element.android.libraries.designsystem.theme.components.SearchBar
 import io.element.android.libraries.designsystem.theme.components.Text
-import io.element.android.libraries.designsystem.theme.components.TextButton
-import io.element.android.libraries.designsystem.theme.components.TopAppBar
 import io.element.android.libraries.designsystem.utils.OnVisibleRangeChangeEffect
 import io.element.android.libraries.matrix.ui.components.SelectedRoom
 import io.element.android.libraries.matrix.ui.model.SelectRoomInfo
@@ -84,19 +89,12 @@ fun AddRoomToSpaceView(
 
     Scaffold(
         modifier = modifier,
+        containerColor = ElementTheme.colors.bgSubtleSecondary,
         topBar = {
-            TopAppBar(
-                titleStr = stringResource(CommonStrings.action_add_existing_rooms),
-                navigationIcon = {
-                    BackButton(onClick = ::onBack)
-                },
-                actions = {
-                    TextButton(
-                        text = stringResource(CommonStrings.action_save),
-                        enabled = state.canSave,
-                        onClick = { state.eventSink(AddRoomToSpaceEvent.Save) }
-                    )
-                }
+            AddRoomToSpaceTopBar(
+                canSave = state.canSave,
+                onBack = ::onBack,
+                onSave = { state.eventSink(AddRoomToSpaceEvent.Save) },
             )
         }
     ) { paddingValues ->
@@ -179,6 +177,71 @@ fun AddRoomToSpaceView(
         onRetry = { state.eventSink(AddRoomToSpaceEvent.Save) },
         onDismiss = { state.eventSink(AddRoomToSpaceEvent.ResetSaveAction) }
     )
+}
+
+@Composable
+private fun AddRoomToSpaceTopBar(
+    canSave: Boolean,
+    onBack: () -> Unit,
+    onSave: () -> Unit,
+) {
+    val backContentDescription = stringResource(CommonStrings.action_back)
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .statusBarsPadding(),
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(44.dp),
+        ) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.CenterStart)
+                    .height(44.dp)
+                    .clickable(onClick = onBack)
+                    .semantics { contentDescription = backContentDescription }
+                    .padding(start = 16.dp, end = 12.dp),
+                contentAlignment = Alignment.CenterStart,
+            ) {
+                Text(
+                    text = stringResource(CommonStrings.action_cancel),
+                    style = ElementTheme.typography.fontBodyLgMedium,
+                    color = ElementTheme.colors.textActionAccent,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            Text(
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .padding(horizontal = 92.dp),
+                text = stringResource(CommonStrings.action_add_existing_rooms),
+                style = ElementTheme.typography.fontHeadingSmMedium,
+                color = ElementTheme.colors.textPrimary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                textAlign = TextAlign.Center,
+            )
+            Box(
+                modifier = Modifier
+                    .align(Alignment.CenterEnd)
+                    .height(44.dp)
+                    .clickable(onClick = { if (canSave) onSave() })
+                    .padding(start = 12.dp, end = 16.dp),
+                contentAlignment = Alignment.CenterEnd,
+            ) {
+                Text(
+                    text = stringResource(CommonStrings.action_save),
+                    style = ElementTheme.typography.fontBodyLgMedium,
+                    color = if (canSave) ElementTheme.colors.textActionAccent else ElementTheme.colors.textDisabled,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+    }
 }
 
 @Composable

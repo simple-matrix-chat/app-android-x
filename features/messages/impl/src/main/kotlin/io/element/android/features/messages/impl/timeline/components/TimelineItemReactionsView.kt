@@ -26,7 +26,6 @@ import io.element.android.features.messages.impl.timeline.aTimelineItemReactions
 import io.element.android.features.messages.impl.timeline.model.AggregatedReaction
 import io.element.android.features.messages.impl.timeline.model.TimelineItemReactions
 import io.element.android.libraries.architecture.coverage.ExcludeFromCoverage
-import io.element.android.libraries.designsystem.icons.CompoundDrawables
 import io.element.android.libraries.designsystem.preview.ElementPreview
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
 import kotlinx.collections.immutable.ImmutableList
@@ -52,7 +51,6 @@ fun TimelineItemReactionsView(
         isOutgoing = isOutgoing,
         onReactionClick = onReactionClick,
         onReactionLongClick = onReactionLongClick,
-        onMoreReactionsClick = onMoreReactionsClick,
         onToggleExpandClick = { expanded = !expanded },
     )
 }
@@ -65,7 +63,6 @@ private fun TimelineItemReactionsView(
     expanded: Boolean,
     onReactionClick: (emoji: String) -> Unit,
     onReactionLongClick: (emoji: String) -> Unit,
-    onMoreReactionsClick: () -> Unit,
     onToggleExpandClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -99,19 +96,7 @@ private fun TimelineItemReactionsView(
                     onLongClick = {}
                 )
             },
-            addMoreButton = if (userCanSendReaction) {
-                {
-                    CompositionLocalProvider(LocalLayoutDirection provides currentLayout) {
-                        MessagesReactionButton(
-                            content = MessagesReactionsButtonContent.Icon(CompoundDrawables.ic_compound_reaction_add),
-                            onClick = onMoreReactionsClick,
-                            onLongClick = {}
-                        )
-                    }
-                }
-            } else {
-                null
-            },
+            addMoreButton = null,
             reactions = {
                 reactions.forEach { reaction ->
                     CompositionLocalProvider(LocalLayoutDirection provides currentLayout) {

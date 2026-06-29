@@ -31,20 +31,19 @@ internal fun TimelineItemReadMarkerView(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .padding(vertical = 12.dp, horizontal = 18.dp),
+            .padding(vertical = 16.dp, horizontal = 20.dp),
         horizontalAlignment = Alignment.End,
-        verticalArrangement = spacedBy(4.dp),
+        verticalArrangement = spacedBy(2.dp),
     ) {
         Text(
             text = stringResource(id = R.string.screen_room_timeline_read_marker_title).uppercase(),
-            style = ElementTheme.typography.fontBodySmMedium,
-            color = ElementTheme.colors.textActionAccent,
+            style = ElementTheme.typography.fontBodyXsMedium,
+            color = ElementTheme.colors.textSecondary,
         )
         HorizontalDivider(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 2.dp),
-            color = ElementTheme.colors.textActionAccent,
+                .fillMaxWidth(),
+            color = ElementTheme.colors.borderInteractivePrimary,
         )
     }
 }

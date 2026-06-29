@@ -31,7 +31,19 @@ class UserProfileNodeHelper(
     fun onShareUser(
         context: Context,
         permalinkBuilder: PermalinkBuilder,
+        profileShareText: String?,
     ) {
+        val momentShareText = profileShareText?.trim()?.takeIf { it.isNotEmpty() }
+        if (momentShareText != null) {
+            context.startSharePlainTextIntent(
+                activityResultLauncher = null,
+                chooserTitle = context.getString(CommonStrings.action_share),
+                text = momentShareText,
+                noActivityFoundMessage = context.getString(R.string.error_no_compatible_app_found)
+            )
+            return
+        }
+
         val permalinkResult = permalinkBuilder.permalinkForUser(userId)
         permalinkResult.onSuccess { permalink ->
             context.startSharePlainTextIntent(

@@ -15,6 +15,7 @@ import kotlinx.collections.immutable.ImmutableList
 data class EditDefaultNotificationSettingState(
     val isOneToOne: Boolean,
     val mode: RoomNotificationMode?,
+    val pendingMode: RoomNotificationMode?,
     val roomsWithUserDefinedMode: ImmutableList<EditNotificationSettingRoomInfo>,
     val changeNotificationSettingAction: AsyncAction<Unit>,
     val displayMentionsOnlyDisclaimer: Boolean,

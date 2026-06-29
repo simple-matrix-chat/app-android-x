@@ -8,6 +8,7 @@
 
 package io.element.android.libraries.matrix.impl
 
+import io.element.android.appconfig.AuthenticationConfig
 import io.element.android.appconfig.MatrixE2EEConfig
 import io.element.android.libraries.androidutils.file.getSizeOfFiles
 import io.element.android.libraries.core.bool.orFalse
@@ -26,14 +27,21 @@ import io.element.android.libraries.matrix.api.core.EventId
 import io.element.android.libraries.matrix.api.core.RoomAlias
 import io.element.android.libraries.matrix.api.core.RoomId
 import io.element.android.libraries.matrix.api.core.RoomIdOrAlias
+import io.element.android.libraries.matrix.api.core.ThreadId
 import io.element.android.libraries.matrix.api.core.UserId
 import io.element.android.libraries.matrix.api.createroom.CreateRoomParameters
+import io.element.android.libraries.matrix.api.createroom.MomentRoomKind
 import io.element.android.libraries.matrix.api.createroom.RoomPreset
 import io.element.android.libraries.matrix.api.encryption.EncryptionService
 import io.element.android.libraries.matrix.api.linknewdevice.LinkDesktopHandler
 import io.element.android.libraries.matrix.api.linknewdevice.LinkMobileHandler
 import io.element.android.libraries.matrix.api.media.MatrixMediaLoader
+import io.element.android.libraries.matrix.api.media.MatrixStickerInfo
+import io.element.android.libraries.matrix.api.media.ThumbnailInfo
 import io.element.android.libraries.matrix.api.oauth.AccountManagementAction
+import io.element.android.libraries.matrix.api.privacy.MatrixMomentPrivacyAccess
+import io.element.android.libraries.matrix.api.privacy.MatrixMomentPrivacySettings
+import io.element.android.libraries.matrix.api.privacy.MatrixMomentVisibilityAccess
 import io.element.android.libraries.matrix.api.room.BaseRoom
 import io.element.android.libraries.matrix.api.room.CurrentUserMembership
 import io.element.android.libraries.matrix.api.room.JoinedRoom
@@ -46,9 +54,19 @@ import io.element.android.libraries.matrix.api.room.history.RoomHistoryVisibilit
 import io.element.android.libraries.matrix.api.room.join.JoinRule
 import io.element.android.libraries.matrix.api.roomdirectory.RoomVisibility
 import io.element.android.libraries.matrix.api.roomlist.RoomListService
+import io.element.android.libraries.matrix.api.search.MatrixMessageSearchPage
+import io.element.android.libraries.matrix.api.search.MatrixMessageSearchResult
+import io.element.android.libraries.matrix.api.session.DeleteSessionDeviceResult
+import io.element.android.libraries.matrix.api.session.MatrixSessionDevice
 import io.element.android.libraries.matrix.api.spaces.SpaceService
 import io.element.android.libraries.matrix.api.sync.SlidingSyncVersion
 import io.element.android.libraries.matrix.api.sync.SyncState
+import io.element.android.libraries.matrix.api.user.MatrixMomentUserSearchMatch
+import io.element.android.libraries.matrix.api.user.MatrixProfileLink
+import io.element.android.libraries.matrix.api.user.MatrixProfileUsername
+import io.element.android.libraries.matrix.api.user.MatrixProfileUsernameException
+import io.element.android.libraries.matrix.api.user.MatrixPublicProfile
+import io.element.android.libraries.matrix.api.user.MatrixPublicProfileException
 import io.element.android.libraries.matrix.api.user.MatrixSearchUserResults
 import io.element.android.libraries.matrix.api.user.MatrixUser
 import io.element.android.libraries.matrix.api.verification.SessionVerificationService
@@ -91,6 +109,7 @@ import io.element.android.libraries.matrix.impl.util.mxCallbackFlow
 import io.element.android.libraries.matrix.impl.verification.DisabledSessionVerificationService
 import io.element.android.libraries.matrix.impl.verification.RustSessionVerificationService
 import io.element.android.libraries.matrix.impl.workmanager.PerformDatabaseVacuumRequestBuilder
+import io.element.android.libraries.network.useragent.UserAgentProvider
 import io.element.android.libraries.sessionstorage.api.SessionStore
 import io.element.android.libraries.workmanager.api.WorkManagerRequestType
 import io.element.android.libraries.workmanager.api.WorkManagerScheduler
@@ -117,6 +136,17 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.booleanOrNull
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.longOrNull
+import kotlinx.serialization.json.put
 import org.matrix.rustcomponents.sdk.AuthData
 import org.matrix.rustcomponents.sdk.AuthDataPasswordDetails
 import org.matrix.rustcomponents.sdk.BeaconInfoListener
@@ -129,11 +159,17 @@ import org.matrix.rustcomponents.sdk.NotificationProcessSetup
 import org.matrix.rustcomponents.sdk.PowerLevels
 import org.matrix.rustcomponents.sdk.RoomInfoListener
 import org.matrix.rustcomponents.sdk.SendQueueRoomErrorListener
+import org.matrix.rustcomponents.sdk.Session
 import org.matrix.rustcomponents.sdk.TaskHandle
 import org.matrix.rustcomponents.sdk.use
 import timber.log.Timber
 import java.io.File
+import java.net.HttpURLConnection
+import java.net.URI
+import java.net.URLEncoder
+import java.nio.charset.StandardCharsets
 import java.util.Optional
+import java.util.UUID
 import kotlin.jvm.optionals.getOrNull
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
@@ -141,11 +177,27 @@ import org.matrix.rustcomponents.sdk.CreateRoomParameters as RustCreateRoomParam
 import org.matrix.rustcomponents.sdk.RoomPreset as RustRoomPreset
 import org.matrix.rustcomponents.sdk.SyncService as ClientSyncService
 
+private const val MATRIX_REQUEST_TIMEOUT_MILLIS = 30_000
+private const val PROFILE_USERNAME_KEY = "username"
+private const val PROFILE_USERNAME_REGISTRY_ALIAS_LOCAL_PART = "moment_usernames"
+private const val PROFILE_USERNAME_ALIAS_PREFIX = "moment_username_"
+private const val PROFILE_USERNAME_REGISTRY_ROOM_NAME = "Moment Username Registry"
+private const val BFF_PUBLIC_PROFILE_SYNC_PATH = "oauth-bff/api/v1/sync-public-profile"
+private const val BFF_PUBLIC_IDENTITY_LOOKUP_PATH = "oauth-bff/api/v1/lookup-user-public-identity"
+private const val BFF_PUBLIC_LINKS_PATH = "oauth-bff/api/v1/public-links"
+private const val BFF_USER_SEARCH_PATH = "oauth-bff/api/v1/search-users"
+private const val BFF_PRIVACY_SETTINGS_SYNC_PATH = "oauth-bff/api/v1/sync-privacy-settings"
+private const val MOMENT_ROOM_KIND_EVENT_TYPE = "io.moment.room_kind"
+private const val STABLE_EXTENDED_PROFILE_VERSION = "v1.16"
+private const val STABLE_EXTENDED_PROFILE_FEATURE = "uk.tcpip.msc4133.stable"
+private const val UNSTABLE_EXTENDED_PROFILE_FEATURE = "uk.tcpip.msc4133"
+
 class RustMatrixClient(
     private val innerClient: Client,
     private val sessionStore: SessionStore,
     private val sessionDelegate: RustClientSessionDelegate,
     private val innerSyncService: ClientSyncService,
+    private val userAgentProvider: UserAgentProvider,
     appCoroutineScope: CoroutineScope,
     dispatchers: CoroutineDispatchers,
     baseCacheDirectory: File,
@@ -399,7 +451,8 @@ class RustMatrixClient(
     override suspend fun createRoom(createRoomParams: CreateRoomParameters): Result<RoomId> = withContext(sessionDispatcher) {
         runCatchingExceptions {
             val hasPublicAccess = createRoomParams.preset == RoomPreset.PUBLIC_CHAT || createRoomParams.joinRuleOverride == JoinRule.Public
-            val powerLevels = defaultRoomCreationPowerLevels(isSpace = createRoomParams.isSpace, isPublic = hasPublicAccess)
+            val powerLevels = createRoomParams.momentRoomKind?.let(::momentRoomCreationPowerLevels)
+                ?: defaultRoomCreationPowerLevels(isSpace = createRoomParams.isSpace, isPublic = hasPublicAccess)
 
             val roomPreset = if (!MatrixE2EEConfig.ENABLED && createRoomParams.preset == RoomPreset.TRUSTED_PRIVATE_CHAT) {
                 RoomPreset.PRIVATE_CHAT
@@ -439,6 +492,13 @@ class RustMatrixClient(
             } catch (e: Exception) {
                 Timber.e(e, "Timeout waiting for the room to be available in the room list")
             }
+            createRoomParams.momentRoomKind?.let { momentRoomKind ->
+                sendMomentRoomKindStateEvent(
+                    session = innerClient.session(),
+                    roomId = roomId,
+                    momentRoomKind = momentRoomKind,
+                )
+            }
             roomId
         }
     }
@@ -477,6 +537,62 @@ class RustMatrixClient(
         withContext(sessionDispatcher) {
             runCatchingExceptions {
                 innerClient.searchUsers(searchTerm, limit.toULong()).let(UserSearchResultMapper::map)
+            }
+        }
+
+    override suspend fun searchMomentUsers(query: String, limit: Int, defaultCountry: String?): Result<List<MatrixMomentUserSearchMatch>> =
+        withContext(sessionDispatcher) {
+            runCatchingExceptions {
+                val normalizedQuery = query.trim()
+                if (normalizedQuery.isEmpty()) {
+                    return@runCatchingExceptions emptyList()
+                }
+
+                parseMomentUserSearchResults(
+                    performStringRequest(
+                        openBffRequest(
+                            session = innerClient.session(),
+                            userAgent = userAgentProvider.provide(),
+                            method = "POST",
+                            path = BFF_USER_SEARCH_PATH,
+                            body = momentUserSearchBody(
+                                query = normalizedQuery,
+                                limit = limit.coerceIn(1, 50),
+                                defaultCountry = defaultCountry.normalizedCountryCode(),
+                            ),
+                        )
+                    )
+                )
+            }
+        }
+
+    override suspend fun searchMessages(searchTerm: String, nextBatch: String?, roomId: RoomId?): Result<MatrixMessageSearchPage> =
+        withContext(sessionDispatcher) {
+            runCatchingExceptions {
+                val trimmedSearchTerm = searchTerm.trim()
+                if (trimmedSearchTerm.isEmpty()) {
+                    return@runCatchingExceptions MatrixMessageSearchPage(emptyList(), null)
+                }
+
+                val path = buildString {
+                    append("_matrix/client/r0/search")
+                    if (!nextBatch.isNullOrBlank()) {
+                        append("?next_batch=")
+                        append(nextBatch.urlEncodedPathSegment())
+                    }
+                }
+                val response = performStringRequest(
+                    openMatrixRequest(
+                        session = innerClient.session(),
+                        method = "POST",
+                        path = path,
+                        body = messageSearchBody(
+                            searchTerm = trimmedSearchTerm,
+                            roomId = roomId,
+                        ),
+                    )
+                )
+                parseMessageSearchPage(response)
             }
         }
 
@@ -715,9 +831,313 @@ class RustMatrixClient(
         }
     }
 
+    override suspend fun getAccountData(eventType: String): Result<String?> = withContext(sessionDispatcher) {
+        runCatchingExceptions {
+            innerClient.accountData(eventType)
+        }
+    }
+
+    override suspend fun setAccountData(eventType: String, content: String): Result<Unit> = withContext(sessionDispatcher) {
+        runCatchingExceptions {
+            innerClient.setAccountData(eventType, content)
+        }
+    }
+
+    override suspend fun syncMomentPrivacySettings(settings: MatrixMomentPrivacySettings): Result<Unit> = withContext(sessionDispatcher) {
+        runCatchingExceptions {
+            performUnitMatrixRequest(
+                openBffRequest(
+                    session = innerClient.session(),
+                    userAgent = userAgentProvider.provide(),
+                    method = "POST",
+                    path = BFF_PRIVACY_SETTINGS_SYNC_PATH,
+                    body = momentPrivacySettingsBody(settings),
+                )
+            )
+        }
+    }
+
+    override suspend fun getProfileStatus(): Result<String> = withContext(sessionDispatcher) {
+        runCatchingExceptions {
+            fetchProfileStatus(userId = innerClient.session().userId)
+        }
+    }
+
+    override suspend fun getProfileStatus(userId: UserId): Result<String> = withContext(sessionDispatcher) {
+        runCatchingExceptions {
+            fetchProfileStatus(userId = userId.value)
+        }
+    }
+
+    private fun fetchProfileStatus(userId: String): String {
+        val session = innerClient.session()
+        return openMatrixRequest(
+            session = session,
+            method = "GET",
+            path = "_matrix/client/v3/presence/${userId.urlEncodedPathSegment()}/status",
+        ).useConnection { connection ->
+            when (val responseCode = connection.responseCode) {
+                in 200..299 -> parseProfileStatus(connection.inputStream.use { it.readBytes().decodeToString() })
+                HttpURLConnection.HTTP_NOT_FOUND -> ""
+                else -> error("Failed to fetch profile status: HTTP $responseCode")
+            }
+        }
+    }
+
+    override suspend fun setProfileStatus(status: String): Result<Unit> = withContext(sessionDispatcher) {
+        runCatchingExceptions {
+            val session = innerClient.session()
+            openMatrixRequest(
+                session = session,
+                method = "PUT",
+                path = "_matrix/client/v3/presence/${session.userId.urlEncodedPathSegment()}/status",
+                body = profileStatusBody(status),
+            ).useConnection { connection ->
+                val responseCode = connection.responseCode
+                if (responseCode !in 200..299) {
+                    error("Failed to update profile status: HTTP $responseCode")
+                }
+            }
+        }
+    }
+
+    override suspend fun getProfileUsername(userId: UserId): Result<String> = withContext(sessionDispatcher) {
+        runCatchingExceptions {
+            val session = innerClient.session()
+            val requestPrefix = resolveExtendedProfileRequestPrefix(session) ?: throw MatrixProfileUsernameException.Unsupported
+            try {
+                MatrixProfileUsername.normalize(
+                    getExtendedProfileProperty(
+                        session = session,
+                        requestPrefix = requestPrefix,
+                        userId = userId,
+                        key = PROFILE_USERNAME_KEY,
+                    )
+                )
+            } catch (failure: MatrixHttpFailure) {
+                if (failure.statusCode == HttpURLConnection.HTTP_NOT_FOUND) {
+                    ""
+                } else {
+                    throw MatrixProfileUsernameException.HttpError(failure.statusCode)
+                }
+            }
+        }
+    }
+
+    override suspend fun setProfileUsername(username: String, displayName: String): Result<String> = withContext(sessionDispatcher) {
+        runCatchingExceptions {
+            val normalizedUsername = MatrixProfileUsername.normalize(username)
+            MatrixProfileUsername.validationError(normalizedUsername)?.let { throw it }
+
+            val session = innerClient.session()
+            val userId = UserId(session.userId)
+            val requestPrefix = resolveExtendedProfileRequestPrefix(session) ?: throw MatrixProfileUsernameException.Unsupported
+            val currentUsername = try {
+                MatrixProfileUsername.normalize(
+                    getExtendedProfileProperty(
+                        session = session,
+                        requestPrefix = requestPrefix,
+                        userId = userId,
+                        key = PROFILE_USERNAME_KEY,
+                    )
+                )
+            } catch (failure: MatrixHttpFailure) {
+                if (failure.statusCode == HttpURLConnection.HTTP_NOT_FOUND) {
+                    ""
+                } else {
+                    throw MatrixProfileUsernameException.HttpError(failure.statusCode)
+                }
+            }
+
+            if (currentUsername == normalizedUsername) {
+                return@runCatchingExceptions normalizedUsername
+            }
+
+            val registryRoomId = try {
+                ensureProfileUsernameRegistryRoomId(session, userId)
+            } catch (failure: MatrixHttpFailure) {
+                Timber.e("Profile username registry resolution failed with HTTP ${failure.statusCode}")
+                throw MatrixProfileUsernameException.SaveFailed
+            }
+
+            val nextAlias = buildProfileUsernameAlias(userId.value, normalizedUsername)
+            try {
+                createDirectoryAlias(
+                    session = session,
+                    roomAlias = nextAlias,
+                    roomId = registryRoomId,
+                )
+            } catch (failure: MatrixHttpFailure) {
+                if (failure.statusCode == HttpURLConnection.HTTP_CONFLICT) {
+                    throw MatrixProfileUsernameException.Taken
+                }
+                Timber.e("Profile username alias creation failed with HTTP ${failure.statusCode}")
+                throw MatrixProfileUsernameException.SaveFailed
+            }
+
+            try {
+                setExtendedProfileProperty(
+                    session = session,
+                    requestPrefix = requestPrefix,
+                    userId = userId,
+                    key = PROFILE_USERNAME_KEY,
+                    value = normalizedUsername,
+                )
+            } catch (failure: Throwable) {
+                tryOrNull { deleteDirectoryAlias(session, nextAlias) }
+                if (failure is MatrixHttpFailure) {
+                    Timber.e("Profile username profile save failed with HTTP ${failure.statusCode}")
+                } else {
+                    Timber.e(failure, "Profile username profile save failed")
+                }
+                throw MatrixProfileUsernameException.SaveFailed
+            }
+
+            if (currentUsername.isNotEmpty()) {
+                tryOrNull {
+                    deleteDirectoryAlias(
+                        session = session,
+                        roomAlias = buildProfileUsernameAlias(userId.value, currentUsername),
+                    )
+                }
+            }
+
+            syncPublicProfileBestEffort(
+                session = session,
+                username = normalizedUsername,
+                displayName = displayName,
+            )
+
+            normalizedUsername
+        }
+    }
+
+    override suspend fun getPublicProfile(userId: UserId): Result<MatrixPublicProfile?> = withContext(sessionDispatcher) {
+        runCatchingExceptions {
+            val normalizedUserId = userId.value.trim()
+            if (normalizedUserId.isEmpty()) {
+                throw MatrixPublicProfileException.MissingUserId
+            }
+
+            val session = innerClient.session()
+            try {
+                parsePublicProfile(
+                    performStringRequest(
+                        openBffRequest(
+                            session = session,
+                            userAgent = userAgentProvider.provide(),
+                            method = "POST",
+                            path = BFF_PUBLIC_IDENTITY_LOOKUP_PATH,
+                            body = publicIdentityLookupBody(normalizedUserId),
+                        )
+                    )
+                )
+            } catch (failure: MatrixHttpFailure) {
+                throw MatrixPublicProfileException.HttpError(failure.statusCode)
+            }
+        }
+    }
+
+    override suspend fun createUserProfileLink(userId: UserId): Result<String?> = withContext(sessionDispatcher) {
+        runCatchingExceptions {
+            val fallback = MatrixProfileLink.fallbackUserLink(userId)
+            val normalizedUserId = userId.value.trim()
+            if (normalizedUserId.isEmpty()) {
+                return@runCatchingExceptions fallback
+            }
+
+            try {
+                parsePublicLink(
+                    performStringRequest(
+                        openBffRequest(
+                            session = innerClient.session(),
+                            userAgent = userAgentProvider.provide(),
+                            method = "POST",
+                            path = BFF_PUBLIC_LINKS_PATH,
+                            body = createPublicLinkBody(
+                                kind = "user",
+                                userId = normalizedUserId,
+                                roomId = null,
+                                eventId = null,
+                            ),
+                        )
+                    )
+                ) ?: fallback
+            } catch (failure: Throwable) {
+                Timber.e(failure, "Moment public profile link creation failed")
+                fallback
+            }
+        }
+    }
+
+    override suspend fun getSessionDevices(): Result<List<MatrixSessionDevice>> = withContext(sessionDispatcher) {
+        runCatchingExceptions {
+            val session = innerClient.session()
+            val response = openMatrixRequest(
+                session = session,
+                method = "GET",
+                path = "_matrix/client/v3/devices",
+            ).useConnection { connection ->
+                val responseCode = connection.responseCode
+                if (responseCode !in 200..299) {
+                    error("Failed to fetch devices: HTTP $responseCode")
+                }
+                connection.inputStream.use { it.readBytes().decodeToString() }
+            }
+            parseSessionDevices(response, session.deviceId)
+        }
+    }
+
+    override suspend fun deleteSessionDevice(deviceId: DeviceId): Result<DeleteSessionDeviceResult> = withContext(sessionDispatcher) {
+        runCatchingExceptions {
+            val session = innerClient.session()
+            openMatrixRequest(
+                session = session,
+                method = "DELETE",
+                path = "_matrix/client/v3/devices/${deviceId.value.urlEncodedPathSegment()}",
+                body = "{}",
+            ).useConnection { connection ->
+                val responseCode = connection.responseCode
+                when {
+                    responseCode in 200..299 -> DeleteSessionDeviceResult.Deleted
+                    responseCode == HttpURLConnection.HTTP_UNAUTHORIZED -> {
+                        val accountManagementUrl = getAccountManagementUrl(AccountManagementAction.DeviceDelete(deviceId)).getOrNull()
+                        DeleteSessionDeviceResult.RequiresAccountManagement(accountManagementUrl)
+                    }
+                    else -> error("Failed to delete device ${deviceId.value}: HTTP $responseCode")
+                }
+            }
+        }
+    }
+
     override suspend fun uploadMedia(mimeType: String, data: ByteArray): Result<String> = withContext(sessionDispatcher) {
         runCatchingExceptions {
             innerClient.uploadMedia(mimeType, data, progressWatcher = null)
+        }
+    }
+
+    override suspend fun sendSticker(
+        roomId: RoomId,
+        body: String,
+        url: String,
+        info: MatrixStickerInfo,
+        threadRootId: ThreadId?,
+    ): Result<Unit> = withContext(sessionDispatcher) {
+        runCatchingExceptions {
+            val session = innerClient.session()
+            performUnitMatrixRequest(
+                openMatrixRequest(
+                    session = session,
+                    method = "PUT",
+                    path = "_matrix/client/v3/rooms/${roomId.value.urlEncodedPathSegment()}/send/m.sticker/${UUID.randomUUID()}",
+                    body = stickerContentBody(
+                        body = body,
+                        url = url,
+                        info = info,
+                        threadRootId = threadRootId,
+                    ),
+                )
+            )
         }
     }
 
@@ -872,6 +1292,680 @@ class RustMatrixClient(
     override fun homeserverCapabilities(): HomeserverCapabilitiesProvider {
         return RustHomeserverCapabilitiesProvider(innerClient.homeserverCapabilities())
     }
+
+    private suspend fun ensureProfileUsernameRegistryRoomId(
+        session: Session,
+        userId: UserId,
+    ): RoomId {
+        val registryAlias = buildProfileUsernameRegistryAlias(userId.value)
+        resolveDirectoryRoomId(session, registryAlias)?.let { return it }
+
+        val createdRoomId = createRoom(
+            CreateRoomParameters(
+                name = PROFILE_USERNAME_REGISTRY_ROOM_NAME,
+                isEncrypted = false,
+                visibility = RoomVisibility.Private,
+                preset = RoomPreset.PRIVATE_CHAT,
+            )
+        ).getOrThrow()
+
+        try {
+            createDirectoryAlias(
+                session = session,
+                roomAlias = registryAlias,
+                roomId = createdRoomId,
+            )
+            return createdRoomId
+        } catch (failure: MatrixHttpFailure) {
+            if (failure.statusCode == HttpURLConnection.HTTP_CONFLICT) {
+                resolveDirectoryRoomId(session, registryAlias)?.let { existingRoomId ->
+                    return existingRoomId
+                }
+            }
+            throw failure
+        } finally {
+            leaveRoomIfPossible(createdRoomId)
+        }
+    }
+
+    private suspend fun leaveRoomIfPossible(roomId: RoomId) {
+        getJoinedRoom(roomId)
+            ?.leave()
+            ?.onFailure {
+                Timber.e(it, "Failed to leave profile username registry room")
+            }
+    }
+
+    private fun syncPublicProfileBestEffort(
+        session: Session,
+        username: String,
+        displayName: String,
+    ) {
+        if (username.isBlank()) return
+        try {
+            performUnitMatrixRequest(
+                openBffRequest(
+                    session = session,
+                    userAgent = userAgentProvider.provide(),
+                    method = "POST",
+                    path = BFF_PUBLIC_PROFILE_SYNC_PATH,
+                    body = publicProfileSyncBody(
+                        username = username,
+                        displayName = displayName,
+                    ),
+                )
+            )
+        } catch (failure: Throwable) {
+            Timber.e(failure, "Moment public profile sync failed")
+        }
+    }
+}
+
+private class MatrixHttpFailure(
+    val statusCode: Int,
+) : Exception("HTTP $statusCode")
+
+private fun openMatrixRequest(
+    session: Session,
+    method: String,
+    path: String,
+    body: String? = null,
+): HttpURLConnection {
+    val url = URI("${session.homeserverUrl.trimEnd('/')}/${path.trimStart('/')}").toURL()
+    val connection = url.openConnection() as HttpURLConnection
+    connection.requestMethod = method
+    connection.connectTimeout = MATRIX_REQUEST_TIMEOUT_MILLIS
+    connection.readTimeout = MATRIX_REQUEST_TIMEOUT_MILLIS
+    connection.setRequestProperty("Accept", "application/json")
+    connection.setRequestProperty("Authorization", "Bearer ${session.accessToken}")
+    if (body != null) {
+        val bodyBytes = body.toByteArray(StandardCharsets.UTF_8)
+        connection.doOutput = true
+        connection.setRequestProperty("Content-Type", "application/json")
+        connection.setRequestProperty("Content-Length", bodyBytes.size.toString())
+        connection.outputStream.use { outputStream ->
+            outputStream.write(bodyBytes)
+        }
+    }
+    return connection
+}
+
+private fun openBffRequest(
+    session: Session,
+    userAgent: String,
+    method: String,
+    path: String,
+    body: String? = null,
+): HttpURLConnection {
+    val url = URI("${AuthenticationConfig.OAUTH_BFF_BASE_URL.trimEnd('/')}/${path.trimStart('/')}").toURL()
+    val connection = url.openConnection() as HttpURLConnection
+    connection.requestMethod = method
+    connection.connectTimeout = MATRIX_REQUEST_TIMEOUT_MILLIS
+    connection.readTimeout = MATRIX_REQUEST_TIMEOUT_MILLIS
+    connection.setRequestProperty("Accept", "application/json")
+    connection.setRequestProperty("Authorization", "Bearer ${session.accessToken}")
+    userAgent.trim().takeIf { it.isNotEmpty() }?.let { value ->
+        connection.setRequestProperty("User-Agent", value)
+        connection.setRequestProperty("X-Element-User-Agent", value)
+    }
+    if (body != null) {
+        val bodyBytes = body.toByteArray(StandardCharsets.UTF_8)
+        connection.doOutput = true
+        connection.setRequestProperty("Content-Type", "application/json")
+        connection.setRequestProperty("Content-Length", bodyBytes.size.toString())
+        connection.outputStream.use { outputStream ->
+            outputStream.write(bodyBytes)
+        }
+    }
+    return connection
+}
+
+private inline fun <T> HttpURLConnection.useConnection(block: (HttpURLConnection) -> T): T {
+    return try {
+        block(this)
+    } finally {
+        disconnect()
+    }
+}
+
+private fun parseSessionDevices(
+    content: String,
+    currentDeviceId: String,
+): List<MatrixSessionDevice> {
+    val devices = Json.parseToJsonElement(content)
+        .jsonObject["devices"]
+        ?.jsonArray
+        .orEmpty()
+        .mapNotNull { deviceJson ->
+            val device = deviceJson.jsonObject
+            val deviceId = device["device_id"]?.jsonPrimitive?.contentOrNull?.nilIfBlank() ?: return@mapNotNull null
+            val displayName = device["display_name"]?.jsonPrimitive?.contentOrNull?.nilIfBlank() ?: deviceId
+            MatrixSessionDevice(
+                deviceId = DeviceId(deviceId),
+                displayName = displayName,
+                lastSeenIp = device["last_seen_ip"]?.jsonPrimitive?.contentOrNull?.nilIfBlank(),
+                lastSeenTimestamp = device["last_seen_ts"]?.jsonPrimitive?.longOrNull,
+                isCurrent = deviceId == currentDeviceId,
+            )
+        }
+        .let { parsedDevices ->
+            if (parsedDevices.any { it.deviceId.value == currentDeviceId }) {
+                parsedDevices
+            } else {
+                parsedDevices + MatrixSessionDevice(
+                    deviceId = DeviceId(currentDeviceId),
+                    displayName = currentDeviceId,
+                    lastSeenIp = null,
+                    lastSeenTimestamp = null,
+                    isCurrent = true,
+                )
+            }
+        }
+
+    return devices.sortedWith(::compareSessionDevices)
+}
+
+private fun parseProfileStatus(content: String): String {
+    return Json.parseToJsonElement(content)
+        .jsonObject["status_msg"]
+        ?.jsonPrimitive
+        ?.contentOrNull
+        ?.trim()
+        .orEmpty()
+}
+
+private fun profileStatusBody(status: String): String {
+    return buildJsonObject {
+        put("presence", "online")
+        put("status_msg", status.trim())
+    }.toString()
+}
+
+private fun momentPrivacySettingsBody(settings: MatrixMomentPrivacySettings): String {
+    return buildJsonObject {
+        put("directMessages", settings.directMessages.serializedValue())
+        put("groupInvites", settings.groupInvites.serializedValue())
+        put("avatarVisibility", settings.avatarVisibility.serializedValue())
+        put("phoneVisibility", settings.phoneVisibility.serializedValue())
+        put("presenceVisibility", settings.presenceVisibility.serializedValue())
+    }.toString()
+}
+
+private fun stickerContentBody(
+    body: String,
+    url: String,
+    info: MatrixStickerInfo,
+    threadRootId: ThreadId?,
+): String {
+    return buildJsonObject {
+        put("body", body)
+        put("url", url)
+        put("info", stickerInfoBody(info))
+        threadRootId?.let {
+            put("m.relates_to", stickerThreadRelationBody(it))
+        }
+    }.toString()
+}
+
+private fun stickerInfoBody(info: MatrixStickerInfo) = buildJsonObject {
+    info.mimetype?.let { put("mimetype", it) }
+    info.size?.let { put("size", it) }
+    info.width?.let { put("w", it) }
+    info.height?.let { put("h", it) }
+    info.thumbnailUrl?.let { put("thumbnail_url", it) }
+    info.thumbnailInfo?.let { put("thumbnail_info", stickerThumbnailInfoBody(it)) }
+    info.blurhash?.let { put("xyz.amorgan.blurhash", it) }
+}
+
+private fun stickerThumbnailInfoBody(info: ThumbnailInfo) = buildJsonObject {
+    info.mimetype?.let { put("mimetype", it) }
+    info.size?.let { put("size", it) }
+    info.width?.let { put("w", it) }
+    info.height?.let { put("h", it) }
+}
+
+private fun stickerThreadRelationBody(threadRootId: ThreadId) = buildJsonObject {
+    put("rel_type", "m.thread")
+    put("event_id", threadRootId.value)
+    put("is_falling_back", true)
+    put(
+        "m.in_reply_to",
+        buildJsonObject {
+            put("event_id", threadRootId.value)
+        }
+    )
+}
+
+private fun MatrixMomentPrivacyAccess.serializedValue(): String {
+    return when (this) {
+        MatrixMomentPrivacyAccess.Everyone -> "all"
+        MatrixMomentPrivacyAccess.ContactsOnly -> "contacts"
+        MatrixMomentPrivacyAccess.Nobody -> "nobody"
+    }
+}
+
+private fun MatrixMomentVisibilityAccess.serializedValue(): String {
+    return when (this) {
+        MatrixMomentVisibilityAccess.Everyone -> "all"
+        MatrixMomentVisibilityAccess.ContactsOnly -> "contacts"
+    }
+}
+
+private fun resolveExtendedProfileRequestPrefix(session: Session): String? {
+    return try {
+        openMatrixRequest(
+            session = session,
+            method = "GET",
+            path = "_matrix/client/versions",
+        ).useConnection { connection ->
+            val responseCode = connection.responseCode
+            if (responseCode !in 200..299) {
+                return@useConnection null
+            }
+            parseExtendedProfileRequestPrefix(connection.inputStream.use { it.readBytes().decodeToString() })
+        }
+    } catch (failure: Throwable) {
+        Timber.e(failure, "Failed to resolve extended profile support")
+        null
+    }
+}
+
+private fun parseExtendedProfileRequestPrefix(content: String): String? {
+    val versionsResponse = Json.parseToJsonElement(content).jsonObject
+    val versions = versionsResponse["versions"]
+        ?.jsonArray
+        .orEmpty()
+        .mapNotNull { it.jsonPrimitive.contentOrNull }
+    val unstableFeatures = versionsResponse["unstable_features"]
+        ?.jsonObject
+        .orEmpty()
+
+    return when {
+        versions.contains(STABLE_EXTENDED_PROFILE_VERSION) ||
+            unstableFeatures[STABLE_EXTENDED_PROFILE_FEATURE]?.jsonPrimitive?.booleanOrNull == true -> "_matrix/client/v3"
+        unstableFeatures[UNSTABLE_EXTENDED_PROFILE_FEATURE]?.jsonPrimitive?.booleanOrNull == true -> {
+            "_matrix/client/unstable/$UNSTABLE_EXTENDED_PROFILE_FEATURE"
+        }
+        else -> null
+    }
+}
+
+private fun getExtendedProfileProperty(
+    session: Session,
+    requestPrefix: String,
+    userId: UserId,
+    key: String,
+): String {
+    val content = openMatrixRequest(
+        session = session,
+        method = "GET",
+        path = "$requestPrefix/profile/${userId.value.urlEncodedPathSegment()}/${key.urlEncodedPathSegment()}",
+    ).useConnection { connection ->
+        val responseCode = connection.responseCode
+        if (responseCode !in 200..299) {
+            throw MatrixHttpFailure(responseCode)
+        }
+        connection.inputStream.use { it.readBytes().decodeToString() }
+    }
+
+    return Json.parseToJsonElement(content)
+        .jsonObject[key]
+        ?.jsonPrimitive
+        ?.contentOrNull
+        .orEmpty()
+}
+
+private fun setExtendedProfileProperty(
+    session: Session,
+    requestPrefix: String,
+    userId: UserId,
+    key: String,
+    value: String,
+) {
+    performUnitMatrixRequest(
+        openMatrixRequest(
+            session = session,
+            method = "PUT",
+            path = "$requestPrefix/profile/${userId.value.urlEncodedPathSegment()}/${key.urlEncodedPathSegment()}",
+            body = profilePropertyBody(key, value),
+        )
+    )
+}
+
+private fun sendMomentRoomKindStateEvent(
+    session: Session,
+    roomId: RoomId,
+    momentRoomKind: MomentRoomKind,
+) {
+    performUnitMatrixRequest(
+        openMatrixRequest(
+            session = session,
+            method = "PUT",
+            path = "_matrix/client/v3/rooms/${roomId.value.urlEncodedPathSegment()}/state/${MOMENT_ROOM_KIND_EVENT_TYPE.urlEncodedPathSegment()}/",
+            body = momentRoomKindBody(momentRoomKind),
+        )
+    )
+}
+
+private fun resolveDirectoryRoomId(
+    session: Session,
+    roomAlias: String,
+): RoomId? {
+    val content = openMatrixRequest(
+        session = session,
+        method = "GET",
+        path = "_matrix/client/v3/directory/room/${roomAlias.urlEncodedPathSegment()}",
+    ).useConnection { connection ->
+        when (val responseCode = connection.responseCode) {
+            in 200..299 -> connection.inputStream.use { it.readBytes().decodeToString() }
+            HttpURLConnection.HTTP_NOT_FOUND -> return@useConnection null
+            else -> throw MatrixHttpFailure(responseCode)
+        }
+    } ?: return null
+
+    return Json.parseToJsonElement(content)
+        .jsonObject["room_id"]
+        ?.jsonPrimitive
+        ?.contentOrNull
+        ?.let(::RoomId)
+}
+
+private fun createDirectoryAlias(
+    session: Session,
+    roomAlias: String,
+    roomId: RoomId,
+) {
+    performUnitMatrixRequest(
+        openMatrixRequest(
+            session = session,
+            method = "PUT",
+            path = "_matrix/client/v3/directory/room/${roomAlias.urlEncodedPathSegment()}",
+            body = directoryAliasBody(roomId),
+        )
+    )
+}
+
+private fun deleteDirectoryAlias(
+    session: Session,
+    roomAlias: String,
+) {
+    openMatrixRequest(
+        session = session,
+        method = "DELETE",
+        path = "_matrix/client/v3/directory/room/${roomAlias.urlEncodedPathSegment()}",
+    ).useConnection { connection ->
+        when (val responseCode = connection.responseCode) {
+            in 200..299,
+            HttpURLConnection.HTTP_NOT_FOUND -> Unit
+            else -> throw MatrixHttpFailure(responseCode)
+        }
+    }
+}
+
+private fun performUnitMatrixRequest(connection: HttpURLConnection) {
+    connection.useConnection {
+        val responseCode = it.responseCode
+        if (responseCode !in 200..299) {
+            throw MatrixHttpFailure(responseCode)
+        }
+    }
+}
+
+private fun performStringRequest(connection: HttpURLConnection): String {
+    return connection.useConnection {
+        val responseCode = it.responseCode
+        if (responseCode !in 200..299) {
+            throw MatrixHttpFailure(responseCode)
+        }
+        it.inputStream.use { inputStream -> inputStream.readBytes().decodeToString() }
+    }
+}
+
+private fun messageSearchBody(
+    searchTerm: String,
+    roomId: RoomId?,
+): String {
+    return buildJsonObject {
+        put(
+            "search_categories",
+            buildJsonObject {
+                put(
+                    "room_events",
+                    buildJsonObject {
+                        put("search_term", searchTerm)
+                        put("order_by", "recent")
+                        put(
+                            "filter",
+                            buildJsonObject {
+                                put("limit", 20)
+                                if (roomId != null) {
+                                    put("rooms", JsonArray(listOf(JsonPrimitive(roomId.value))))
+                                }
+                            }
+                        )
+                        put(
+                            "event_context",
+                            buildJsonObject {
+                                put("before_limit", 0)
+                                put("after_limit", 0)
+                                put("include_profile", true)
+                            }
+                        )
+                    }
+                )
+            }
+        )
+    }.toString()
+}
+
+private fun parseMessageSearchPage(content: String): MatrixMessageSearchPage {
+    val roomEvents = Json.parseToJsonElement(content)
+        .jsonObject["search_categories"]
+        ?.jsonObject
+        ?.get("room_events")
+        ?.jsonObject
+        ?: return MatrixMessageSearchPage(emptyList(), null)
+
+    return MatrixMessageSearchPage(
+        results = roomEvents["results"]
+            ?.jsonArray
+            ?.mapNotNull { item -> parseMessageSearchResult(item.jsonObject) }
+            .orEmpty(),
+        nextBatch = roomEvents["next_batch"]?.jsonPrimitive?.contentOrNull?.nilIfBlank(),
+    )
+}
+
+private fun parseMessageSearchResult(item: kotlinx.serialization.json.JsonObject): MatrixMessageSearchResult? {
+    val result = item["result"]?.jsonObject ?: return null
+    val eventId = result["event_id"]?.jsonPrimitive?.contentOrNull?.nilIfBlank()?.let(::EventId) ?: return null
+    val roomId = result["room_id"]?.jsonPrimitive?.contentOrNull?.nilIfBlank()?.let(::RoomId) ?: return null
+    val content = result["content"]?.jsonObject ?: return null
+    val message = content.messageSearchDisplayText()
+    if (message.isEmpty()) return null
+
+    val senderId = result["sender"]?.jsonPrimitive?.contentOrNull?.nilIfBlank()?.let(::UserId)
+    val senderDisplayName = senderId?.value?.let { sender ->
+        item["context"]
+            ?.jsonObject
+            ?.get("profile_info")
+            ?.jsonObject
+            ?.get(sender)
+            ?.jsonObject
+            ?.get("displayname")
+            ?.jsonPrimitive
+            ?.contentOrNull
+            ?.nilIfBlank()
+    }
+
+    return MatrixMessageSearchResult(
+        roomId = roomId,
+        eventId = eventId,
+        senderId = senderId,
+        senderDisplayName = senderDisplayName,
+        message = message,
+        originServerTimestamp = result["origin_server_ts"]?.jsonPrimitive?.longOrNull,
+    )
+}
+
+private fun kotlinx.serialization.json.JsonObject.messageSearchDisplayText(): String {
+    return listOf("body", "name", "topic", "msgtype", "type")
+        .firstNotNullOfOrNull { key -> get(key)?.jsonPrimitive?.contentOrNull?.nilIfBlank() }
+        .orEmpty()
+}
+
+private fun profilePropertyBody(
+    key: String,
+    value: String,
+): String {
+    return buildJsonObject {
+        put(key, value)
+    }.toString()
+}
+
+private fun momentRoomKindBody(momentRoomKind: MomentRoomKind): String {
+    return buildJsonObject {
+        put("kind", momentRoomKind.value)
+    }.toString()
+}
+
+private fun directoryAliasBody(roomId: RoomId): String {
+    return buildJsonObject {
+        put("room_id", roomId.value)
+    }.toString()
+}
+
+private fun publicProfileSyncBody(
+    username: String,
+    displayName: String,
+): String {
+    return buildJsonObject {
+        put("username", username.trim())
+        put("displayName", displayName.trim())
+    }.toString()
+}
+
+private fun publicIdentityLookupBody(userId: String): String {
+    return buildJsonObject {
+        put("userId", userId.trim())
+    }.toString()
+}
+
+private fun momentUserSearchBody(
+    query: String,
+    limit: Int,
+    defaultCountry: String?,
+): String {
+    return buildJsonObject {
+        put("query", query.trim())
+        put("limit", limit)
+        defaultCountry?.let { put("defaultCountry", it) }
+    }.toString()
+}
+
+private fun createPublicLinkBody(
+    kind: String,
+    userId: String?,
+    roomId: String?,
+    eventId: String?,
+): String {
+    return buildJsonObject {
+        put("kind", kind)
+        userId?.let { put("userId", it.trim()) }
+        roomId?.let { put("roomId", it.trim()) }
+        eventId?.let { put("eventId", it.trim()) }
+    }.toString()
+}
+
+private fun parsePublicProfile(content: String): MatrixPublicProfile? {
+    val response = Json.parseToJsonElement(content).jsonObject
+    val status = response["status"]?.jsonPrimitive?.contentOrNull
+    if (status != "found") return null
+
+    val user = response["user"]?.jsonObject ?: return null
+    val userId = user["userId"]?.jsonPrimitive?.contentOrNull?.nilIfBlank() ?: return null
+
+    return MatrixPublicProfile(
+        userId = UserId(userId),
+        displayName = user["displayName"]?.jsonPrimitive?.contentOrNull?.nilIfBlank(),
+        username = user["username"]?.jsonPrimitive?.contentOrNull?.nilIfBlank(),
+        phoneNumber = user["phone"]?.jsonPrimitive?.contentOrNull?.nilIfBlank(),
+    )
+}
+
+private fun parsePublicLink(content: String): String? {
+    return Json.parseToJsonElement(content)
+        .jsonObject["link"]
+        ?.jsonObject
+        ?.get("url")
+        ?.jsonPrimitive
+        ?.contentOrNull
+        ?.nilIfBlank()
+}
+
+private fun parseMomentUserSearchResults(content: String): List<MatrixMomentUserSearchMatch> {
+    return Json.parseToJsonElement(content)
+        .jsonObject["results"]
+        ?.jsonArray
+        .orEmpty()
+        .mapNotNull { item ->
+            val user = item.jsonObject
+            val userId = user["userId"]?.jsonPrimitive?.contentOrNull?.nilIfBlank() ?: return@mapNotNull null
+            MatrixMomentUserSearchMatch(
+                userId = UserId(userId),
+                displayName = user["displayName"]?.jsonPrimitive?.contentOrNull?.nilIfBlank(),
+                avatarUrl = user["avatarUrl"]?.jsonPrimitive?.contentOrNull?.nilIfBlank(),
+                phoneNumber = user["phone"]?.jsonPrimitive?.contentOrNull?.nilIfBlank(),
+            )
+        }
+}
+
+private fun buildProfileUsernameRegistryAlias(userId: String): String {
+    return "#$PROFILE_USERNAME_REGISTRY_ALIAS_LOCAL_PART:${profileUsernameServerName(userId)}"
+}
+
+private fun buildProfileUsernameAlias(
+    userId: String,
+    username: String,
+): String {
+    return "#$PROFILE_USERNAME_ALIAS_PREFIX$username:${profileUsernameServerName(userId)}"
+}
+
+private fun profileUsernameServerName(userId: String): String {
+    return userId.substringAfterLast(":", missingDelimiterValue = "")
+        .ifBlank { throw MatrixProfileUsernameException.MissingUserId }
+}
+
+private fun compareSessionDevices(
+    left: MatrixSessionDevice,
+    right: MatrixSessionDevice,
+): Int {
+    if (left.isCurrent != right.isCurrent) {
+        return if (left.isCurrent) -1 else 1
+    }
+    val leftLastSeen = left.lastSeenTimestamp
+    val rightLastSeen = right.lastSeenTimestamp
+    return when {
+        leftLastSeen != null && rightLastSeen != null -> rightLastSeen.compareTo(leftLastSeen)
+        leftLastSeen != null -> -1
+        rightLastSeen != null -> 1
+        else -> left.displayName.compareTo(right.displayName, ignoreCase = true)
+    }
+}
+
+private fun String.urlEncodedPathSegment(): String {
+    return URLEncoder.encode(this, StandardCharsets.UTF_8.toString()).replace("+", "%20")
+}
+
+private fun String.nilIfBlank(): String? {
+    val trimmed = trim()
+    return trimmed.ifEmpty { null }
+}
+
+private fun String?.normalizedCountryCode(): String? {
+    return this
+        ?.trim()
+        ?.uppercase()
+        ?.takeIf { it.length == 2 }
 }
 
 private fun defaultRoomCreationPowerLevels(isPublic: Boolean, isSpace: Boolean) = PowerLevels(
@@ -893,4 +1987,32 @@ private fun defaultRoomCreationPowerLevels(isPublic: Boolean, isSpace: Boolean) 
     } else {
         mapOf()
     }
+)
+
+private fun momentRoomCreationPowerLevels(momentRoomKind: MomentRoomKind) = PowerLevels(
+    usersDefault = 0,
+    eventsDefault = 0,
+    stateDefault = 50,
+    ban = 50,
+    kick = 50,
+    redact = 50,
+    invite = 50,
+    notifications = null,
+    users = mapOf(),
+    events = mapOf(
+        MOMENT_ROOM_KIND_EVENT_TYPE to 100,
+        "m.room.name" to 50,
+        "m.room.topic" to 50,
+        "m.room.avatar" to 50,
+        "m.room.canonical_alias" to 50,
+        "m.room.join_rules" to 50,
+        "m.room.history_visibility" to 50,
+        "m.room.encryption" to 100,
+        "m.room.power_levels" to 100,
+        "m.room.server_acl" to 100,
+        "m.room.message" to if (momentRoomKind == MomentRoomKind.Channel) 50 else 0,
+        "m.reaction" to 0,
+        "m.call.member" to 0,
+        "org.matrix.msc3401.call.member" to 0,
+    )
 )

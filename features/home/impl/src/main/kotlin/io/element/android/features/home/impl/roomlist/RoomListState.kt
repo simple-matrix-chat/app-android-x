@@ -17,6 +17,7 @@ import io.element.android.features.invite.api.acceptdecline.AcceptDeclineInviteS
 import io.element.android.features.leaveroom.api.LeaveRoomState
 import io.element.android.libraries.fullscreenintent.api.FullScreenIntentPermissionsState
 import io.element.android.libraries.matrix.api.core.RoomId
+import io.element.android.libraries.matrix.api.core.UserId
 import io.element.android.libraries.push.api.battery.BatteryOptimizationState
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.ImmutableSet
@@ -24,6 +25,7 @@ import kotlinx.collections.immutable.ImmutableSet
 data class RoomListState(
     val contextMenu: ContextMenu,
     val declineInviteMenu: DeclineInviteMenu,
+    val directUserBlockConfirmation: DirectUserBlockConfirmation,
     val leaveRoomState: LeaveRoomState,
     val filtersState: RoomListFiltersState,
     val searchState: RoomListSearchState,
@@ -43,6 +45,13 @@ data class RoomListState(
             val roomName: String?,
             val isDm: Boolean,
             val isFavorite: Boolean,
+            val isArchived: Boolean,
+            val isMuted: Boolean,
+            val isEncrypted: Boolean,
+            val isOneToOne: Boolean,
+            val directUserId: UserId?,
+            val directUserDisplayName: String?,
+            val isDirectUserBlocked: Boolean,
             val hasNewContent: Boolean,
             val displayClearRoomCacheAction: Boolean,
         ) : ContextMenu
@@ -51,6 +60,15 @@ data class RoomListState(
     sealed interface DeclineInviteMenu {
         data object Hidden : DeclineInviteMenu
         data class Shown(val roomSummary: RoomListRoomSummary) : DeclineInviteMenu
+    }
+
+    sealed interface DirectUserBlockConfirmation {
+        data object Hidden : DirectUserBlockConfirmation
+        data class Shown(
+            val userId: UserId,
+            val displayName: String,
+            val blocked: Boolean,
+        ) : DirectUserBlockConfirmation
     }
 }
 

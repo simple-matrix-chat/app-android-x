@@ -68,6 +68,7 @@ fun <T> SearchBar(
     activeBarColors: SearchBarColors = ElementSearchBarDefaults.activeColors(),
     contentPrefix: @Composable ColumnScope.() -> Unit = {},
     contentSuffix: @Composable ColumnScope.() -> Unit = {},
+    noResultsContent: (@Composable ColumnScope.() -> Unit)? = null,
     resultHandler: @Composable ColumnScope.(T) -> Unit = {},
 ) {
     val focusManager = LocalFocusManager.current
@@ -135,15 +136,19 @@ fun <T> SearchBar(
                 }
 
                 is SearchBarResultState.NoResultsFound<T> -> {
-                    // No results found, show a message
-                    Spacer(Modifier.size(80.dp))
+                    if (noResultsContent != null) {
+                        noResultsContent()
+                    } else {
+                        // No results found, show a message
+                        Spacer(Modifier.size(80.dp))
 
-                    Text(
-                        text = stringResource(CommonStrings.common_no_results),
-                        textAlign = TextAlign.Center,
-                        color = ElementTheme.colors.textSecondary,
-                        modifier = Modifier.fillMaxWidth()
-                    )
+                        Text(
+                            text = stringResource(CommonStrings.common_no_results),
+                            textAlign = TextAlign.Center,
+                            color = ElementTheme.colors.textSecondary,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
                 }
 
                 else -> {

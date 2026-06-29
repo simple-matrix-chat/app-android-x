@@ -9,10 +9,12 @@
 package io.element.android.features.home.impl.model
 
 import androidx.compose.runtime.Immutable
+import io.element.android.features.home.impl.filters.MomentHomeRoomType
 import io.element.android.features.invite.api.InviteData
 import io.element.android.libraries.designsystem.components.avatar.AvatarData
 import io.element.android.libraries.matrix.api.core.RoomAlias
 import io.element.android.libraries.matrix.api.core.RoomId
+import io.element.android.libraries.matrix.api.core.UserId
 import io.element.android.libraries.matrix.api.notification.CallIntent
 import io.element.android.libraries.matrix.api.room.RoomNotificationMode
 import io.element.android.libraries.matrix.ui.model.InviteSender
@@ -37,13 +39,21 @@ data class RoomListRoomSummary(
     val activeCallIntent: CallIntent?,
     val isDirect: Boolean,
     val isDm: Boolean,
+    val isEncrypted: Boolean,
+    val isOneToOne: Boolean,
+    val directUserId: UserId?,
+    val directUserDisplayName: String?,
+    val isDirectUserBlocked: Boolean,
     val isFavorite: Boolean,
+    val isMuted: Boolean,
     val inviteSender: InviteSender?,
     val isTombstoned: Boolean,
     val heroes: ImmutableList<AvatarData>,
     val isSpace: Boolean,
+    val momentHomeRoomType: MomentHomeRoomType,
+    val isArchived: Boolean,
 ) {
-    val isHighlighted = userDefinedNotificationMode != RoomNotificationMode.MUTE &&
+    val isHighlighted = !isMuted &&
         (numberOfUnreadNotifications > 0 || numberOfUnreadMentions > 0) ||
         isMarkedUnread
 

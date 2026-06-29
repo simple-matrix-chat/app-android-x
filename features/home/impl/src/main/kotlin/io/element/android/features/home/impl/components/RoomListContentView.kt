@@ -156,8 +156,7 @@ private fun RoomsView(
     modifier: Modifier = Modifier,
 ) {
     val isSpaceFilterSelected = spaceFiltersState is SpaceFiltersState.Selected
-    val hasAnyFilterSelected = filtersState.hasAnyFilterSelected || isSpaceFilterSelected
-    if (state.summaries.isEmpty() && hasAnyFilterSelected) {
+    if (state.summaries.isEmpty()) {
         EmptyViewForFilterStates(
             selectedFilters = filtersState.selectedFilters(),
             isSpaceFilterSelected = isSpaceFilterSelected,
@@ -223,10 +222,8 @@ private fun RoomsViewList(
                     state.seenRoomInvites.contains(room.roomId),
                 onClick = onRoomClick,
                 eventSink = eventSink,
+                showDivider = index != state.summaries.lastIndex,
             )
-            if (index != state.summaries.lastIndex) {
-                HorizontalDivider()
-            }
         }
     }
 }
@@ -253,24 +250,27 @@ private fun EmptyScaffold(
     action: @Composable (ColumnScope.() -> Unit)? = null,
 ) {
     Column(
-        modifier = modifier.padding(horizontal = 60.dp),
+        modifier = modifier.padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
         Text(
             text = stringResource(title),
-            style = ElementTheme.typography.fontHeadingMdBold,
+            style = ElementTheme.typography.fontBodyLgMedium,
             color = ElementTheme.colors.textPrimary,
             textAlign = TextAlign.Center,
         )
-        Spacer(modifier = Modifier.height(16.dp))
+        val hasAction = action != null
+        Spacer(modifier = Modifier.height(if (hasAction) 6.dp else 12.dp))
         Text(
             text = stringResource(subtitle),
             style = ElementTheme.typography.fontBodyLgRegular,
             color = ElementTheme.colors.textSecondary,
             textAlign = TextAlign.Center,
         )
-        Spacer(modifier = Modifier.height(32.dp))
+        if (hasAction) {
+            Spacer(modifier = Modifier.height(12.dp))
+        }
         action?.invoke(this)
     }
 }

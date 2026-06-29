@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
@@ -26,7 +27,10 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
+import androidx.compose.material3.SingleChoiceSegmentedButtonRowScope
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -36,9 +40,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
 import io.element.android.compound.theme.ElementTheme
@@ -52,11 +53,10 @@ import io.element.android.libraries.designsystem.components.async.AsyncFailure
 import io.element.android.libraries.designsystem.components.button.BackButton
 import io.element.android.libraries.designsystem.preview.ElementPreview
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
-import io.element.android.libraries.designsystem.theme.aliasScreenTitle
 import io.element.android.libraries.designsystem.theme.components.CircularProgressIndicator
+import io.element.android.libraries.designsystem.theme.components.HorizontalDivider
 import io.element.android.libraries.designsystem.theme.components.LinearProgressIndicator
 import io.element.android.libraries.designsystem.theme.components.Scaffold
-import io.element.android.libraries.designsystem.theme.components.SegmentedButton
 import io.element.android.libraries.designsystem.theme.components.Text
 import io.element.android.libraries.designsystem.theme.components.TopAppBar
 import io.element.android.libraries.designsystem.utils.snackbar.SnackbarHost
@@ -80,6 +80,7 @@ import io.element.android.libraries.mediaviewer.impl.model.MediaItem
 import io.element.android.libraries.mediaviewer.impl.model.id
 import io.element.android.libraries.voiceplayer.api.VoiceMessageState
 import kotlinx.collections.immutable.ImmutableList
+import androidx.compose.material3.SegmentedButton as MaterialSegmentedButton
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -93,18 +94,14 @@ fun MediaGalleryView(
     BackHandler { onBackClick() }
     Scaffold(
         modifier = modifier,
+        containerColor = ElementTheme.colors.bgCanvasDefault,
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = {
-                    Text(
-                        modifier = Modifier.semantics {
-                            heading()
-                        },
-                        text = state.roomName,
-                        style = ElementTheme.typography.aliasScreenTitle,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
+                    MediaGalleryModePicker(
+                        selectedMode = state.mode,
+                        onModeClick = { state.eventSink(MediaGalleryEvent.ChangeMode(it)) },
                     )
                 },
                 navigationIcon = {
@@ -112,6 +109,12 @@ fun MediaGalleryView(
                         onClick = onBackClick,
                     )
                 },
+                actions = {
+                    Box(Modifier.size(48.dp))
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = ElementTheme.colors.bgCanvasDefault,
+                ),
             )
         },
     ) { paddingValues ->
@@ -122,21 +125,6 @@ fun MediaGalleryView(
                 .fillMaxSize(),
             verticalArrangement = Arrangement.spacedBy(2.dp),
         ) {
-            SingleChoiceSegmentedButtonRow(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
-            ) {
-                MediaGalleryMode.entries.forEach { mode ->
-                    SegmentedButton(
-                        index = mode.ordinal,
-                        count = MediaGalleryMode.entries.size,
-                        selected = state.mode == mode,
-                        onClick = { state.eventSink(MediaGalleryEvent.ChangeMode(mode)) },
-                        text = stringResource(mode.stringResource),
-                    )
-                }
-            }
             val pagerState = rememberPagerState(0, 0f) {
                 MediaGalleryMode.entries.size
             }
@@ -202,6 +190,62 @@ fun MediaGalleryView(
             )
         }
     }
+}
+
+@Composable
+private fun MediaGalleryModePicker(
+    selectedMode: MediaGalleryMode,
+    onModeClick: (MediaGalleryMode) -> Unit,
+) {
+    SingleChoiceSegmentedButtonRow(
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        MediaGalleryMode.entries.forEach { mode ->
+            MediaGallerySegmentedButton(
+                index = mode.ordinal,
+                count = MediaGalleryMode.entries.size,
+                selected = selectedMode == mode,
+                onClick = { onModeClick(mode) },
+                text = stringResource(mode.stringResource),
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SingleChoiceSegmentedButtonRowScope.MediaGallerySegmentedButton(
+    index: Int,
+    count: Int,
+    selected: Boolean,
+    onClick: () -> Unit,
+    text: String,
+) {
+    MaterialSegmentedButton(
+        selected = selected,
+        onClick = onClick,
+        shape = SegmentedButtonDefaults.itemShape(index = index, count = count),
+        icon = {},
+        label = {
+            Text(
+                text = text,
+                style = ElementTheme.typography.fontBodyMdMedium,
+            )
+        },
+        colors = SegmentedButtonDefaults.colors(
+            activeContainerColor = ElementTheme.materialColors.primary,
+            activeContentColor = ElementTheme.materialColors.onPrimary,
+            activeBorderColor = ElementTheme.materialColors.primary,
+            inactiveContainerColor = ElementTheme.materialColors.surface,
+            inactiveContentColor = ElementTheme.materialColors.onSurface,
+            inactiveBorderColor = ElementTheme.materialColors.primary,
+            disabledActiveContainerColor = ElementTheme.colors.bgActionPrimaryDisabled,
+            disabledActiveContentColor = ElementTheme.colors.textOnSolidPrimary,
+            disabledActiveBorderColor = ElementTheme.colors.bgActionPrimaryDisabled,
+            disabledInactiveContainerColor = ElementTheme.materialColors.surface,
+            disabledInactiveContentColor = ElementTheme.colors.textDisabled,
+        ),
+    )
 }
 
 @Composable
@@ -316,32 +360,38 @@ private fun MediaGalleryFilesList(
             contentType = { it::class.java },
         ) { item ->
             when (item) {
-                is MediaItem.File -> FileItemView(
-                    modifier = Modifier.animateItem(),
-                    file = item,
-                    onClick = { onItemClick(item) },
-                    onLongClick = {
-                        eventSink(MediaGalleryEvent.OpenInfo(item))
-                    },
-                )
-                is MediaItem.Audio -> AudioItemView(
-                    modifier = Modifier.animateItem(),
-                    audio = item,
-                    onClick = { onItemClick(item) },
-                    onLongClick = {
-                        eventSink(MediaGalleryEvent.OpenInfo(item))
-                    },
-                )
-                is MediaItem.Voice -> {
-                    val presenter: Presenter<VoiceMessageState> = presenterFactories.rememberPresenter(item)
-                    VoiceItemView(
-                        modifier = Modifier.animateItem(),
-                        state = presenter.present(),
-                        voice = item,
+                is MediaItem.File -> Column(modifier = Modifier.animateItem()) {
+                    MediaGalleryFileItemDivider()
+                    FileItemView(
+                        file = item,
+                        onClick = { onItemClick(item) },
                         onLongClick = {
                             eventSink(MediaGalleryEvent.OpenInfo(item))
                         },
                     )
+                }
+                is MediaItem.Audio -> Column(modifier = Modifier.animateItem()) {
+                    MediaGalleryFileItemDivider()
+                    AudioItemView(
+                        audio = item,
+                        onClick = { onItemClick(item) },
+                        onLongClick = {
+                            eventSink(MediaGalleryEvent.OpenInfo(item))
+                        },
+                    )
+                }
+                is MediaItem.Voice -> {
+                    val presenter: Presenter<VoiceMessageState> = presenterFactories.rememberPresenter(item)
+                    Column(modifier = Modifier.animateItem()) {
+                        MediaGalleryFileItemDivider()
+                        VoiceItemView(
+                            state = presenter.present(),
+                            voice = item,
+                            onLongClick = {
+                                eventSink(MediaGalleryEvent.OpenInfo(item))
+                            },
+                        )
+                    }
                 }
                 is MediaItem.DateSeparator -> DateItemView(
                     modifier = Modifier.animateItem(),
@@ -362,18 +412,25 @@ private fun MediaGalleryFilesList(
 }
 
 @Composable
+private fun MediaGalleryFileItemDivider(
+    modifier: Modifier = Modifier,
+) {
+    HorizontalDivider(
+        modifier = modifier.padding(horizontal = 16.dp),
+    )
+}
+
+@Composable
 private fun MediaGalleryImageGrid(
     imagesAndVideos: ImmutableList<MediaItem>,
     eventSink: (MediaGalleryEvent) -> Unit,
     onItemClick: (MediaItem.Event) -> Unit,
 ) {
     LazyVerticalGrid(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(horizontal = 16.dp),
+        modifier = Modifier.fillMaxSize(),
         columns = GridCells.Adaptive(80.dp),
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
+        horizontalArrangement = Arrangement.spacedBy(1.dp),
+        verticalArrangement = Arrangement.spacedBy(1.dp),
     ) {
         items(
             items = imagesAndVideos,

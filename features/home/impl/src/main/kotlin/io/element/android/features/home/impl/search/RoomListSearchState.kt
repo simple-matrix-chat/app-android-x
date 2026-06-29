@@ -16,5 +16,25 @@ data class RoomListSearchState(
     val isSearchActive: Boolean,
     val query: TextFieldState,
     val results: ImmutableList<RoomListRoomSummary>,
+    val userResults: ImmutableList<RoomListSearchUserResult>,
+    val messageResults: ImmutableList<RoomListSearchMessageResult>,
+    val isSearchingUsers: Boolean,
+    val isSearchingMessages: Boolean,
+    val hasMoreMessageResults: Boolean,
+    val hasMessageSearchError: Boolean,
+    val recentlyViewedRooms: ImmutableList<RoomListSearchRoomResult>,
+    val recentSearches: ImmutableList<RoomListSearchRoomResult>,
     val eventSink: (RoomListSearchEvent) -> Unit
-)
+) {
+    val shouldShowRecents: Boolean
+        get() = query.text.isBlank() && (recentlyViewedRooms.isNotEmpty() || recentSearches.isNotEmpty())
+
+    val hasEmptySearchResults: Boolean
+        get() = query.text.isNotBlank() &&
+            results.isEmpty() &&
+            userResults.isEmpty() &&
+            messageResults.isEmpty() &&
+            !isSearchingUsers &&
+            !isSearchingMessages &&
+            !hasMessageSearchError
+}

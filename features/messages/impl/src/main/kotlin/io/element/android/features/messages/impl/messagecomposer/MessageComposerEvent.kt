@@ -21,13 +21,25 @@ sealed interface MessageComposerEvent {
     data class SetMode(val composerMode: MessageComposerMode) : MessageComposerEvent
     data object AddAttachment : MessageComposerEvent
     data object DismissAttachmentMenu : MessageComposerEvent
+    data object DismissComposerEmojiPicker : MessageComposerEvent
+    data object DismissContactAttachmentPicker : MessageComposerEvent
+    data object RequestContactAttachmentPermission : MessageComposerEvent
+    data object RetryLoadContactAttachments : MessageComposerEvent
+    data class SelectContactAttachment(val formattedContact: String) : MessageComposerEvent
+    data class InsertPlainText(val text: String) : MessageComposerEvent
     sealed interface PickAttachmentSource : MessageComposerEvent {
+        data object Emoji : PickAttachmentSource
+        data object Sticker : PickAttachmentSource
         data object FromGallery : PickAttachmentSource
+        data object FromVideoGallery : PickAttachmentSource
         data object FromFiles : PickAttachmentSource
+        data object FromCamera : PickAttachmentSource
         data object PhotoFromCamera : PickAttachmentSource
         data object VideoFromCamera : PickAttachmentSource
         data object Location : PickAttachmentSource
         data object Poll : PickAttachmentSource
+        data object Contact : PickAttachmentSource
+        data object VoiceMessage : PickAttachmentSource
     }
 
     data class ToggleTextFormatting(val enabled: Boolean) : MessageComposerEvent

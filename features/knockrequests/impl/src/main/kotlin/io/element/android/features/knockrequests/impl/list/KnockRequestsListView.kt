@@ -12,7 +12,6 @@ import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Arrangement.spacedBy
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -24,10 +23,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -42,8 +41,10 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.PreviewParameter
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import io.element.android.compound.theme.ElementTheme
 import io.element.android.compound.tokens.generated.CompoundIcons
@@ -51,7 +52,6 @@ import io.element.android.features.knockrequests.impl.R
 import io.element.android.features.knockrequests.impl.data.KnockRequestPresentable
 import io.element.android.libraries.architecture.AsyncAction
 import io.element.android.libraries.architecture.AsyncData
-import io.element.android.libraries.designsystem.atomic.molecules.IconTitleSubtitleMolecule
 import io.element.android.libraries.designsystem.components.BigIcon
 import io.element.android.libraries.designsystem.components.ProgressDialog
 import io.element.android.libraries.designsystem.components.async.AsyncActionView
@@ -65,14 +65,12 @@ import io.element.android.libraries.designsystem.preview.PreviewsDayNight
 import io.element.android.libraries.designsystem.text.toDp
 import io.element.android.libraries.designsystem.theme.components.Button
 import io.element.android.libraries.designsystem.theme.components.ButtonSize
-import io.element.android.libraries.designsystem.theme.components.CircularProgressIndicator
 import io.element.android.libraries.designsystem.theme.components.HorizontalDivider
 import io.element.android.libraries.designsystem.theme.components.Icon
 import io.element.android.libraries.designsystem.theme.components.OutlinedButton
 import io.element.android.libraries.designsystem.theme.components.Scaffold
 import io.element.android.libraries.designsystem.theme.components.Text
 import io.element.android.libraries.designsystem.theme.components.TextButton
-import io.element.android.libraries.designsystem.theme.components.TopAppBar
 import io.element.android.libraries.ui.strings.CommonStrings
 import kotlinx.collections.immutable.ImmutableList
 
@@ -84,6 +82,7 @@ fun KnockRequestsListView(
 ) {
     Scaffold(
         modifier = modifier,
+        containerColor = ElementTheme.colors.bgCanvasDefault,
         topBar = {
             KnockRequestsListTopBar(onBackClick = onBackClick)
         },
@@ -132,24 +131,11 @@ private fun KnockRequestsListContent(
                         onAcceptClick = ::onAcceptClick,
                         onDeclineClick = ::onDeclineClick,
                         onBanClick = ::onBanClick,
-                        contentPadding = PaddingValues(bottom = bottomPaddingInPixels.toDp()),
+                        bottomContentPadding = bottomPaddingInPixels.toDp(),
                     )
                 }
             }
-            is AsyncData.Loading -> {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = spacedBy(16.dp),
-                    modifier = Modifier.align(Alignment.Center)
-                ) {
-                    CircularProgressIndicator(color = ElementTheme.colors.iconPrimary)
-                    Text(
-                        text = stringResource(R.string.screen_knock_requests_list_initial_loading_title),
-                        style = ElementTheme.typography.fontBodyLgRegular,
-                        color = ElementTheme.colors.textPrimary,
-                    )
-                }
-            }
+            is AsyncData.Loading -> Unit
             else -> Unit
         }
         KnockRequestsActionsView(
@@ -280,11 +266,11 @@ private fun KnockRequestsList(
     onDeclineClick: (KnockRequestPresentable) -> Unit,
     onBanClick: (KnockRequestPresentable) -> Unit,
     modifier: Modifier = Modifier,
-    contentPadding: PaddingValues = PaddingValues(0.dp),
+    bottomContentPadding: Dp = 0.dp,
 ) {
     LazyColumn(
         modifier = modifier.fillMaxSize(),
-        contentPadding = contentPadding,
+        contentPadding = PaddingValues(top = 40.dp, bottom = bottomContentPadding),
     ) {
         itemsIndexed(knockRequests) { index, knockRequest ->
             KnockRequestItem(
@@ -295,10 +281,8 @@ private fun KnockRequestsList(
                 canAccept = canAccept,
                 onDeclineClick = onDeclineClick,
                 onBanClick = onBanClick,
+                showDivider = index != knockRequests.size - 1,
             )
-            if (index != knockRequests.size - 1) {
-                HorizontalDivider()
-            }
         }
     }
 }
@@ -312,19 +296,26 @@ private fun KnockRequestItem(
     onAcceptClick: (KnockRequestPresentable) -> Unit,
     onDeclineClick: (KnockRequestPresentable) -> Unit,
     onBanClick: (KnockRequestPresentable) -> Unit,
+    showDivider: Boolean,
     modifier: Modifier = Modifier,
 ) {
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 12.dp)
+            .background(ElementTheme.colors.bgCanvasDefault)
+            .padding(top = 16.dp)
+            .padding(start = 16.dp)
     ) {
         Avatar(
             avatarData = knockRequest.getAvatarData(AvatarSize.KnockRequestItem),
             avatarType = AvatarType.User,
         )
         Spacer(modifier = Modifier.width(16.dp))
-        Column {
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .padding(end = 16.dp)
+        ) {
             // Name and date
             Row {
                 Text(
@@ -360,7 +351,7 @@ private fun KnockRequestItem(
             // Reason
             val reason = knockRequest.reason
             if (!reason.isNullOrBlank()) {
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(16.dp))
                 var isExpanded by rememberSaveable(knockRequest.userId) { mutableStateOf(false) }
                 var isExpandable by rememberSaveable(knockRequest.userId) { mutableStateOf(false) }
                 Row(
@@ -379,6 +370,7 @@ private fun KnockRequestItem(
                             }
                         },
                         overflow = TextOverflow.Ellipsis,
+                        color = ElementTheme.colors.textPrimary,
                         modifier = Modifier.weight(1f),
                     )
                     Box(modifier = Modifier.size(24.dp)) {
@@ -394,7 +386,7 @@ private fun KnockRequestItem(
             }
             // Actions
             if (canDecline || canAccept) {
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(16.dp))
             }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 if (canDecline) {
@@ -419,7 +411,7 @@ private fun KnockRequestItem(
                 }
             }
             if (canBan) {
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(if (canDecline || canAccept) 16.dp else 4.dp))
                 TextButton(
                     text = stringResource(R.string.screen_knock_requests_list_decline_and_ban_action_title),
                     onClick = {
@@ -429,6 +421,10 @@ private fun KnockRequestItem(
                     size = ButtonSize.Small,
                     modifier = Modifier.fillMaxWidth(),
                 )
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+            if (showDivider) {
+                HorizontalDivider()
             }
         }
     }
@@ -444,7 +440,8 @@ private fun KnockRequestsAcceptAll(
         modifier = modifier
             .shadow(elevation = 24.dp, spotColor = Color.Transparent)
             .background(color = ElementTheme.colors.bgCanvasDefault)
-            .padding(vertical = 12.dp, horizontal = 16.dp)
+            .padding(horizontal = 16.dp)
+            .padding(top = 16.dp, bottom = 4.dp)
             .onSizeChanged { onHeightChange(it.height) }
     ) {
         OutlinedButton(
@@ -460,28 +457,60 @@ private fun KnockRequestsAcceptAll(
 private fun KnockRequestsEmptyList(
     modifier: Modifier = Modifier,
 ) {
-    Box(
-        modifier = modifier.padding(
-            horizontal = 32.dp,
-            vertical = 48.dp,
-        ),
-        contentAlignment = Alignment.Center,
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(horizontal = 40.dp)
+            .padding(top = 53.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        IconTitleSubtitleMolecule(
-            title = stringResource(R.string.screen_knock_requests_list_empty_state_title),
-            subTitle = stringResource(R.string.screen_knock_requests_list_empty_state_description),
-            iconStyle = BigIcon.Style.Default(CompoundIcons.AskToJoin()),
+        BigIcon(style = BigIcon.Style.Default(CompoundIcons.AskToJoin()))
+        Text(
+            modifier = Modifier.padding(top = 16.dp),
+            text = stringResource(R.string.screen_knock_requests_list_empty_state_title),
+            style = ElementTheme.typography.fontHeadingMdBold,
+            color = ElementTheme.colors.textPrimary,
+            textAlign = TextAlign.Center,
         )
+        Text(
+            modifier = Modifier.padding(top = 8.dp),
+            text = stringResource(R.string.screen_knock_requests_list_empty_state_description),
+            style = ElementTheme.typography.fontBodyMdRegular,
+            color = ElementTheme.colors.textSecondary,
+            textAlign = TextAlign.Center,
+        )
+        Spacer(modifier = Modifier.weight(1f))
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun KnockRequestsListTopBar(onBackClick: () -> Unit) {
-    TopAppBar(
-        titleStr = stringResource(R.string.screen_knock_requests_list_title),
-        navigationIcon = { BackButton(onClick = onBackClick) },
-    )
+private fun KnockRequestsListTopBar(
+    onBackClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .statusBarsPadding()
+            .height(56.dp)
+            .padding(horizontal = 20.dp),
+    ) {
+        Box(modifier = Modifier.align(Alignment.CenterStart)) {
+            BackButton(onClick = onBackClick)
+        }
+        Text(
+            modifier = Modifier
+                .align(Alignment.Center)
+                .fillMaxWidth()
+                .padding(horizontal = 72.dp),
+            text = stringResource(R.string.screen_knock_requests_list_title),
+            style = ElementTheme.typography.fontBodyLgMedium,
+            color = ElementTheme.colors.textPrimary,
+            textAlign = TextAlign.Center,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
 }
 
 @PreviewsDayNight

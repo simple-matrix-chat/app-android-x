@@ -22,6 +22,7 @@ import dev.zacsweers.metro.AssistedInject
 import io.element.android.annotations.ContributesNode
 import io.element.android.features.deactivation.api.AccountDeactivationEntryPoint
 import io.element.android.features.licenses.api.OpenSourceLicensesEntryPoint
+import io.element.android.features.linknewdevice.api.LinkNewDeviceEntryPoint
 import io.element.android.features.lockscreen.api.LockScreenEntryPoint
 import io.element.android.features.logout.api.LogoutEntryPoint
 import io.element.android.features.preferences.api.PreferencesEntryPoint
@@ -29,11 +30,15 @@ import io.element.android.features.preferences.impl.about.AboutNode
 import io.element.android.features.preferences.impl.advanced.AdvancedSettingsNode
 import io.element.android.features.preferences.impl.blockedusers.BlockedUsersNode
 import io.element.android.features.preferences.impl.developer.DeveloperSettingsNode
+import io.element.android.features.preferences.impl.general.MomentGeneralSettingsNode
 import io.element.android.features.preferences.impl.labs.LabsNode
 import io.element.android.features.preferences.impl.notifications.NotificationSettingsNode
 import io.element.android.features.preferences.impl.notifications.edit.EditDefaultNotificationSettingNode
+import io.element.android.features.preferences.impl.privacy.MomentPrivacySettingsNode
 import io.element.android.features.preferences.impl.root.PreferencesRootNode
+import io.element.android.features.preferences.impl.sessions.MomentSessionsNode
 import io.element.android.features.preferences.impl.user.editprofile.EditUserProfileNode
+import io.element.android.features.preferences.impl.user.username.MomentUsernameNode
 import io.element.android.libraries.architecture.BackstackView
 import io.element.android.libraries.architecture.BaseFlowNode
 import io.element.android.libraries.architecture.appyx.canPop
@@ -56,6 +61,7 @@ class PreferencesFlowNode(
     private val notificationTroubleShootEntryPoint: NotificationTroubleShootEntryPoint,
     private val pushHistoryEntryPoint: PushHistoryEntryPoint,
     private val logoutEntryPoint: LogoutEntryPoint,
+    private val linkNewDeviceEntryPoint: LinkNewDeviceEntryPoint,
     private val openSourceLicensesEntryPoint: OpenSourceLicensesEntryPoint,
     private val accountDeactivationEntryPoint: AccountDeactivationEntryPoint,
 ) : BaseFlowNode<PreferencesFlowNode.NavTarget>(
@@ -77,6 +83,9 @@ class PreferencesFlowNode(
         data object AdvancedSettings : NavTarget
 
         @Parcelize
+        data object MomentGeneralSettings : NavTarget
+
+        @Parcelize
         data object Labs : NavTarget
 
         @Parcelize
@@ -84,6 +93,12 @@ class PreferencesFlowNode(
 
         @Parcelize
         data object NotificationSettings : NavTarget
+
+        @Parcelize
+        data object MomentPrivacySettings : NavTarget
+
+        @Parcelize
+        data object MomentSessions : NavTarget
 
         @Parcelize
         data object TroubleshootNotifications : NavTarget
@@ -101,6 +116,9 @@ class PreferencesFlowNode(
         data class UserProfile(val matrixUser: MatrixUser) : NavTarget
 
         @Parcelize
+        data class MomentUsername(val matrixUser: MatrixUser) : NavTarget
+
+        @Parcelize
         data object BlockedUsers : NavTarget
 
         @Parcelize
@@ -111,6 +129,9 @@ class PreferencesFlowNode(
 
         @Parcelize
         data object OssLicenses : NavTarget
+
+        @Parcelize
+        data object LinkNewDevice : NavTarget
     }
 
     private val callback: PreferencesEntryPoint.Callback = callback()
@@ -119,12 +140,8 @@ class PreferencesFlowNode(
         return when (navTarget) {
             NavTarget.Root -> {
                 val callback = object : PreferencesRootNode.Callback {
-                    override fun navigateToAddAccount() {
-                        callback.navigateToAddAccount()
-                    }
-
-                    override fun navigateToBugReport() {
-                        callback.navigateToBugReport()
+                    override fun navigateToChatsTab() {
+                        callback.navigateToChatsTab()
                     }
 
                     override fun navigateToAbout() {
@@ -135,8 +152,40 @@ class PreferencesFlowNode(
                         backstack.push(NavTarget.DeveloperSettings)
                     }
 
+                    override fun navigateToGeneralSettings() {
+                        backstack.push(NavTarget.MomentGeneralSettings)
+                    }
+
                     override fun navigateToNotificationSettings() {
                         backstack.push(NavTarget.NotificationSettings)
+                    }
+
+                    override fun navigateToPrivacySettings() {
+                        backstack.push(NavTarget.MomentPrivacySettings)
+                    }
+
+                    override fun navigateToUserProfile(matrixUser: MatrixUser) {
+                        backstack.push(NavTarget.UserProfile(matrixUser))
+                    }
+                }
+                createNode<PreferencesRootNode>(buildContext, plugins = listOf(callback))
+            }
+            NavTarget.MomentGeneralSettings -> {
+                val callback = object : MomentGeneralSettingsNode.Callback {
+                    override fun onDone() {
+                        backstack.pop()
+                    }
+
+                    override fun navigateToLinkNewDevice() {
+                        backstack.push(NavTarget.LinkNewDevice)
+                    }
+
+                    override fun navigateToBlockedUsers() {
+                        backstack.push(NavTarget.BlockedUsers)
+                    }
+
+                    override fun navigateToSessions() {
+                        backstack.push(NavTarget.MomentSessions)
                     }
 
                     override fun navigateToLockScreenSettings() {
@@ -147,18 +196,6 @@ class PreferencesFlowNode(
                         backstack.push(NavTarget.AdvancedSettings)
                     }
 
-                    override fun navigateToLabs() {
-                        backstack.push(NavTarget.Labs)
-                    }
-
-                    override fun navigateToUserProfile(matrixUser: MatrixUser) {
-                        backstack.push(NavTarget.UserProfile(matrixUser))
-                    }
-
-                    override fun navigateToBlockedUsers() {
-                        backstack.push(NavTarget.BlockedUsers)
-                    }
-
                     override fun startSignOutFlow() {
                         backstack.push(NavTarget.SignOut)
                     }
@@ -167,7 +204,7 @@ class PreferencesFlowNode(
                         backstack.push(NavTarget.AccountDeactivation)
                     }
                 }
-                createNode<PreferencesRootNode>(buildContext, plugins = listOf(callback))
+                createNode<MomentGeneralSettingsNode>(buildContext, listOf(callback))
             }
             NavTarget.DeveloperSettings -> {
                 val developerSettingsCallback = object : DeveloperSettingsNode.Callback {
@@ -212,6 +249,12 @@ class PreferencesFlowNode(
                     }
                 }
                 createNode<NotificationSettingsNode>(buildContext, listOf(notificationSettingsCallback))
+            }
+            NavTarget.MomentPrivacySettings -> {
+                createNode<MomentPrivacySettingsNode>(buildContext)
+            }
+            NavTarget.MomentSessions -> {
+                createNode<MomentSessionsNode>(buildContext)
             }
             NavTarget.TroubleshootNotifications -> {
                 notificationTroubleShootEntryPoint.createNode(
@@ -269,8 +312,21 @@ class PreferencesFlowNode(
                     override fun onDone() {
                         backstack.pop()
                     }
+
+                    override fun navigateToUsername(matrixUser: MatrixUser) {
+                        backstack.push(NavTarget.MomentUsername(matrixUser))
+                    }
                 }
                 createNode<EditUserProfileNode>(buildContext, listOf(inputs, callback))
+            }
+            is NavTarget.MomentUsername -> {
+                val inputs = MomentUsernameNode.Inputs(navTarget.matrixUser)
+                val callback = object : MomentUsernameNode.Callback {
+                    override fun onDone() {
+                        backstack.pop()
+                    }
+                }
+                createNode<MomentUsernameNode>(buildContext, listOf(inputs, callback))
             }
             NavTarget.LockScreenSettings -> {
                 lockScreenEntryPoint.createNode(
@@ -299,6 +355,17 @@ class PreferencesFlowNode(
             }
             NavTarget.AccountDeactivation -> {
                 accountDeactivationEntryPoint.createNode(this, buildContext)
+            }
+            NavTarget.LinkNewDevice -> {
+                linkNewDeviceEntryPoint.createNode(
+                    parentNode = this,
+                    buildContext = buildContext,
+                    callback = object : LinkNewDeviceEntryPoint.Callback {
+                        override fun onDone() {
+                            backstack.pop()
+                        }
+                    },
+                )
             }
         }
     }

@@ -38,6 +38,23 @@ class TimelineItemPollViewTest {
         testAnswer(answerIndex = 1)
     }
 
+    @Test
+    fun `answering a poll with selected answer should not emit a PollAnswerSelected event`() = runAndroidComposeUiTest<ComponentActivity> {
+        val eventsRecorder = EventsRecorder<TimelineEvent.TimelineItemPollEvent>(expectEvents = false)
+        val content = aTimelineItemPollContent()
+        setContent {
+            TimelineItemPollView(
+                content = content,
+                eventSink = eventsRecorder
+            )
+        }
+        val selectedAnswer = content.answerItems.first { it.isSelected }.answer
+        onNode(
+            matcher = hasText(selectedAnswer.text),
+            useUnmergedTree = true,
+        ).performClick()
+    }
+
     private fun testAnswer(answerIndex: Int) = runAndroidComposeUiTest<ComponentActivity> {
         val eventsRecorder = EventsRecorder<TimelineEvent.TimelineItemPollEvent>()
         val content = aTimelineItemPollContent()

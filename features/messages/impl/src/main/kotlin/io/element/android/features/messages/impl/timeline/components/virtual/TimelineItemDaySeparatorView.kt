@@ -35,7 +35,7 @@ internal fun TimelineItemDaySeparatorView(
         modifier = modifier
             .fillMaxWidth()
             .wrapContentHeight()
-            .padding(16.dp),
+            .padding(horizontal = 36.dp, vertical = 8.dp),
         contentAlignment = Alignment.Center,
     ) {
         Text(
@@ -44,7 +44,7 @@ internal fun TimelineItemDaySeparatorView(
                     heading()
                 },
             text = model.formattedDate,
-            style = ElementTheme.typography.fontBodyMdMedium,
+            style = ElementTheme.typography.fontBodySmMedium,
             color = ElementTheme.colors.textPrimary,
         )
     }

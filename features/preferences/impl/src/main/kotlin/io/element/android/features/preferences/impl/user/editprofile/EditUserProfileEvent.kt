@@ -13,6 +13,9 @@ import io.element.android.libraries.matrix.ui.media.AvatarAction
 sealed interface EditUserProfileEvent {
     data class HandleAvatarAction(val action: AvatarAction) : EditUserProfileEvent
     data class UpdateDisplayName(val name: String) : EditUserProfileEvent
+    data class UpdateUsername(val username: String) : EditUserProfileEvent
+    data class UpdateStatus(val status: String) : EditUserProfileEvent
+    data class SelectStatusPreset(val status: String) : EditUserProfileEvent
     data object Exit : EditUserProfileEvent
     data object Save : EditUserProfileEvent
     data object CloseDialog : EditUserProfileEvent

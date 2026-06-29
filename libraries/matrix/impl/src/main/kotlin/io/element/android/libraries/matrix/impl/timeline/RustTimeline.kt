@@ -474,9 +474,9 @@ class RustTimeline(
         }
     }
 
-    override suspend fun forwardEvent(eventId: EventId, roomIds: List<RoomId>): Result<Unit> = withContext(dispatcher) {
+    override suspend fun forwardEvent(eventId: EventId, roomIds: List<RoomId>, comment: String?): Result<Unit> = withContext(dispatcher) {
         runCatchingExceptions {
-            roomContentForwarder.forward(fromTimeline = inner, eventId = eventId, toRoomIds = roomIds)
+            roomContentForwarder.forward(fromTimeline = inner, eventId = eventId, toRoomIds = roomIds, comment = comment)
         }.onFailure {
             Timber.tag(loggerTag).e(it)
         }

@@ -181,6 +181,20 @@ class RoomMemberListPresenterTest {
     }
 
     @Test
+    fun `present - hides canInvite for direct room even when user has invite permission`() = runTest {
+        val presenter = createPresenter(
+            joinedRoom = createFakeJoinedRoom(
+                canInvite = true,
+                isDirect = true,
+            )
+        )
+        presenter.test {
+            val loadedState = awaitItem()
+            assertThat(loadedState.canInvite).isFalse()
+        }
+    }
+
+    @Test
     fun `present - RoomMemberSelected will open the moderation options`() = runTest {
         val presenter = createPresenter(
             roomMemberModerationState = aRoomMemberModerationState(canBan = true, canKick = true)
@@ -195,6 +209,7 @@ class RoomMemberListPresenterTest {
 private fun createFakeJoinedRoom(
     updateMembersResult: () -> Unit = { },
     canInvite: Boolean = true,
+    isDirect: Boolean = false,
 ): FakeJoinedRoom {
     return FakeJoinedRoom(
         baseRoom = FakeBaseRoom(
@@ -204,7 +219,7 @@ private fun createFakeJoinedRoom(
             ),
         ).apply {
             // Needed to avoid discarding the loaded members as a partial and invalid result
-            givenRoomInfo(aRoomInfo(joinedMembersCount = 2))
+            givenRoomInfo(aRoomInfo(isDirect = isDirect, joinedMembersCount = 2))
         }
     )
 }

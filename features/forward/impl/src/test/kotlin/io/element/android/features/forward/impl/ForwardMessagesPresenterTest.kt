@@ -22,6 +22,7 @@ import io.element.android.libraries.matrix.test.timeline.FakeTimeline
 import io.element.android.libraries.matrix.test.timeline.LiveTimelineProvider
 import io.element.android.tests.testutils.WarmUpRule
 import io.element.android.tests.testutils.lambda.lambdaRecorder
+import io.element.android.tests.testutils.lambda.value
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
 import org.junit.Rule
@@ -44,7 +45,7 @@ class ForwardMessagesPresenterTest {
 
     @Test
     fun `present - forward successful`() = runTest {
-        val forwardEventLambda = lambdaRecorder { _: EventId, _: List<RoomId> ->
+        val forwardEventLambda = lambdaRecorder { _: EventId, _: List<RoomId>, _: String? ->
             Result.success(Unit)
         }
         val timeline = FakeTimeline().apply {
@@ -67,8 +68,62 @@ class ForwardMessagesPresenterTest {
     }
 
     @Test
+    fun `present - forward successful with trimmed comment`() = runTest {
+        val forwardEventLambda = lambdaRecorder { _: EventId, _: List<RoomId>, _: String? ->
+            Result.success(Unit)
+        }
+        val timeline = FakeTimeline().apply {
+            this.forwardEventLambda = forwardEventLambda
+        }
+        val room = FakeJoinedRoom(liveTimeline = timeline)
+        val presenter = createForwardMessagesPresenter(fakeRoom = room)
+        moleculeFlow(RecompositionMode.Immediate) {
+            presenter.present()
+        }.test {
+            skipItems(1)
+            val summary = aRoomSummary()
+            presenter.onRoomSelected(listOf(summary.roomId), "  Forwarding note  ")
+            skipItems(1)
+            assertThat(awaitItem().forwardAction).isEqualTo(AsyncAction.Success(listOf(summary.roomId)))
+            forwardEventLambda.assertions().isCalledOnce().with(
+                value(AN_EVENT_ID),
+                value(listOf(summary.roomId)),
+                value("Forwarding note"),
+            )
+        }
+    }
+
+    @Test
+    fun `present - forward ignores duplicate selection while loading`() = runTest {
+        val forwardEventLambda = lambdaRecorder { _: EventId, _: List<RoomId>, _: String? ->
+            Result.success(Unit)
+        }
+        val timeline = FakeTimeline().apply {
+            this.forwardEventLambda = forwardEventLambda
+        }
+        val room = FakeJoinedRoom(liveTimeline = timeline)
+        val presenter = createForwardMessagesPresenter(fakeRoom = room)
+        moleculeFlow(RecompositionMode.Immediate) {
+            presenter.present()
+        }.test {
+            skipItems(1)
+            val summary = aRoomSummary()
+            presenter.onRoomSelected(listOf(summary.roomId), "First")
+            presenter.onRoomSelected(listOf(summary.roomId), "Second")
+
+            assertThat(awaitItem().forwardAction).isEqualTo(AsyncAction.Loading)
+            assertThat(awaitItem().forwardAction).isEqualTo(AsyncAction.Success(listOf(summary.roomId)))
+            forwardEventLambda.assertions().isCalledOnce().with(
+                value(AN_EVENT_ID),
+                value(listOf(summary.roomId)),
+                value("First"),
+            )
+        }
+    }
+
+    @Test
     fun `present - select a room and forward failed, then clear`() = runTest {
-        val forwardEventLambda = lambdaRecorder { _: EventId, _: List<RoomId> ->
+        val forwardEventLambda = lambdaRecorder { _: EventId, _: List<RoomId>, _: String? ->
             Result.failure<Unit>(IllegalStateException("error"))
         }
         val timeline = FakeTimeline().apply {

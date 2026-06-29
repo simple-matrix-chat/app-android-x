@@ -11,6 +11,7 @@ package io.element.android.features.messages.impl.timeline.components.event
 import android.text.SpannedString
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -84,13 +85,10 @@ fun TimelineItemVideoView(
     val a11yLabel = stringResource(CommonStrings.common_video)
     val description = content.caption?.let { "$a11yLabel: $it" } ?: a11yLabel
     Column(modifier = modifier) {
-        val containerModifier = if (content.showCaption) {
-            Modifier
-                .padding(top = 6.dp)
-                .clip(RoundedCornerShape(6.dp))
-        } else {
-            Modifier
-        }
+        val mediaShape = RoundedCornerShape(if (content.showCaption) MomentTimelineCaptionedMediaRadius else MomentTimelineMediaRadius)
+        val containerModifier = Modifier
+            .clip(mediaShape)
+            .border(1.dp, momentTimelineMediaBorderColor(), mediaShape)
         TimelineItemAspectRatioBox(
             modifier = containerModifier.blurHashBackground(content.blurHash, alpha = 0.9f),
             aspectRatio = coerceRatioWhenHidingContent(content.aspectRatio, hideMediaContent),
@@ -131,7 +129,10 @@ fun TimelineItemVideoView(
                 )
 
                 Box(
-                    modifier = Modifier.roundedBackground(),
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(10.dp)
+                        .roundedBackground(size = 30.dp, color = Color.Black, alpha = 0.38f),
                     contentAlignment = Alignment.Center,
                 ) {
                     Image(
@@ -163,7 +164,7 @@ fun TimelineItemVideoView(
                     text = caption,
                     onLinkClickedListener = onLinkClick,
                     onLinkLongClickedListener = onLinkLongClick,
-                    style = ElementRichTextEditorStyle.textStyle(),
+                    style = ElementRichTextEditorStyle.textStyle(usesMomentTimelineStyle = true),
                     releaseOnDetach = false,
                     onTextLayout = ContentAvoidingLayout.measureLegacyLastTextLine(onContentLayoutChange = onContentLayoutChange),
                 )

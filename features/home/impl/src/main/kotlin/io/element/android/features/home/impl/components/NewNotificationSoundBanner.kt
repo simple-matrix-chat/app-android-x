@@ -12,8 +12,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import io.element.android.features.home.impl.R
-import io.element.android.libraries.designsystem.components.Announcement
-import io.element.android.libraries.designsystem.components.AnnouncementType
 import io.element.android.libraries.designsystem.preview.ElementPreview
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
 import io.element.android.libraries.ui.strings.CommonStrings
@@ -23,15 +21,13 @@ internal fun NewNotificationSoundBanner(
     onDismissClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Announcement(
-        modifier = modifier.roomListBannerPadding(),
+    MomentHomeBanner(
+        modifier = modifier,
         title = stringResource(R.string.banner_new_sound_title),
         description = stringResource(R.string.banner_new_sound_message),
-        type = AnnouncementType.Actionable(
-            actionText = stringResource(CommonStrings.action_ok),
-            onActionClick = onDismissClick,
-            onDismissClick = onDismissClick,
-        ),
+        actionText = stringResource(CommonStrings.action_ok),
+        onActionClick = onDismissClick,
+        onDismissClick = onDismissClick,
     )
 }
 

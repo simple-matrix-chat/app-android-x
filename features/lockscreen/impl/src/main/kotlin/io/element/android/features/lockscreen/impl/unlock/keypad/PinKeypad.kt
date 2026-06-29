@@ -10,6 +10,7 @@ package io.element.android.features.lockscreen.impl.unlock.keypad
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Arrangement.spacedBy
 import androidx.compose.foundation.layout.Box
@@ -23,6 +24,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -48,7 +50,8 @@ import io.element.android.libraries.ui.utils.time.digit
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 
-private val spaceBetweenPinKey = 16.dp
+private val horizontalSpaceBetweenPinKey = 24.dp
+private val verticalSpaceBetweenPinKey = 16.dp
 private val minSizePinKey = 16.dp
 private val maxSizePinKey = 80.dp
 
@@ -61,12 +64,12 @@ fun PinKeypad(
     verticalAlignment: Alignment.Vertical = Alignment.Top,
     horizontalAlignment: Alignment.Horizontal = Alignment.Start,
 ) {
-    val pinKeyMaxWidth = ((maxWidth - 2 * spaceBetweenPinKey) / 3).coerceIn(minSizePinKey, maxSizePinKey)
-    val pinKeyMaxHeight = ((maxHeight - 3 * spaceBetweenPinKey) / 4).coerceIn(minSizePinKey, maxSizePinKey)
+    val pinKeyMaxWidth = ((maxWidth - 2 * horizontalSpaceBetweenPinKey) / 3).coerceIn(minSizePinKey, maxSizePinKey)
+    val pinKeyMaxHeight = ((maxHeight - 3 * verticalSpaceBetweenPinKey) / 4).coerceIn(minSizePinKey, maxSizePinKey)
     val pinKeySize = if (pinKeyMaxWidth < pinKeyMaxHeight) pinKeyMaxWidth else pinKeyMaxHeight
 
-    val horizontalArrangement = spacedBy(spaceBetweenPinKey, Alignment.CenterHorizontally)
-    val verticalArrangement = spacedBy(spaceBetweenPinKey, Alignment.CenterVertically)
+    val horizontalArrangement = spacedBy(horizontalSpaceBetweenPinKey, Alignment.CenterHorizontally)
+    val verticalArrangement = spacedBy(verticalSpaceBetweenPinKey, Alignment.CenterVertically)
     Column(
         modifier = modifier.onKeyEvent { event ->
             if (event.type == KeyEventType.KeyUp) {
@@ -160,14 +163,19 @@ private fun PinKeypadRow(
 private fun PinKeypadButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    solid: Boolean = true,
     content: @Composable BoxScope.() -> Unit,
 ) {
     Box(
         contentAlignment = Alignment.Center,
         modifier = modifier
             .clip(CircleShape)
-            .background(color = ElementTheme.colors.bgSubtlePrimary)
-            .clickable(onClick = onClick),
+            .background(color = if (solid) ElementTheme.colors.bgSubtlePrimary else ElementTheme.colors.bgCanvasDefault)
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = onClick,
+            ),
         content = content
     )
 }
@@ -202,6 +210,7 @@ private fun PinKeypadBackButton(
 ) {
     PinKeypadButton(
         modifier = modifier,
+        solid = false,
         onClick = onClick,
     ) {
         Icon(

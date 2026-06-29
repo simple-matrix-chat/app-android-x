@@ -60,8 +60,8 @@ class RoomMemberDetailsNode(
     override fun View(modifier: Modifier) {
         val context = LocalContext.current
 
-        fun onShareUser() {
-            userProfileNodeHelper.onShareUser(context, permalinkBuilder)
+        fun onShareUser(profileShareText: String?) {
+            userProfileNodeHelper.onShareUser(context, permalinkBuilder, profileShareText)
         }
 
         fun navigateToRoom(roomId: RoomId) {

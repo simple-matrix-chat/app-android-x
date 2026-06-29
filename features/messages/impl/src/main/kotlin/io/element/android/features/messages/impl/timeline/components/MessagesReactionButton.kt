@@ -21,7 +21,6 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
@@ -63,17 +62,9 @@ fun MessagesReactionButton(
     content: MessagesReactionsButtonContent,
     modifier: Modifier = Modifier,
 ) {
-    val buttonColor = if (content.isHighlighted) {
-        ElementTheme.colors.bgSubtlePrimary
-    } else {
-        ElementTheme.colors.bgSubtleSecondary
-    }
-
-    val borderColor = if (content.isHighlighted) {
-        ElementTheme.colors.borderInteractivePrimary
-    } else {
-        buttonColor
-    }
+    val buttonColor = momentTimelineReactionBackgroundColor(content.isHighlighted)
+    val borderColor = momentTimelineReactionBorderColor(content.isHighlighted)
+    val buttonShape = RoundedCornerShape(12.dp)
 
     val a11yText = when (content) {
         is MessagesReactionsButtonContent.Icon -> stringResource(id = R.string.screen_room_timeline_add_reaction)
@@ -90,14 +81,7 @@ fun MessagesReactionButton(
     Surface(
         modifier = modifier
             .background(Color.Transparent)
-            // Outer border, same colour as background
-            .border(
-                BorderStroke(2.dp, ElementTheme.colors.bgCanvasDefault),
-                shape = RoundedCornerShape(corner = CornerSize(14.dp))
-            )
-            .padding(vertical = 2.dp, horizontal = 2.dp)
-            // Clip click indicator inside the outer border
-            .clip(RoundedCornerShape(corner = CornerSize(12.dp)))
+            .clip(buttonShape)
             .combinedClickable(
                 onClick = onClick,
                 onClickLabel = (content as? MessagesReactionsButtonContent.Reaction)?.let {
@@ -110,10 +94,9 @@ fun MessagesReactionButton(
                 onLongClick = onLongClick
             )
             .onKeyboardContextMenuAction(onLongClick)
-            // Inner border, to highlight when selected
-            .border(BorderStroke(1.dp, borderColor), RoundedCornerShape(corner = CornerSize(12.dp)))
-            .background(buttonColor, RoundedCornerShape(corner = CornerSize(12.dp)))
-            .padding(vertical = 4.dp, horizontal = 10.dp)
+            .border(BorderStroke(1.dp, borderColor), buttonShape)
+            .background(buttonColor, buttonShape)
+            .padding(vertical = 5.dp, horizontal = 10.dp)
             .clearAndSetSemantics {
                 contentDescription = a11yText
             },
@@ -148,7 +131,7 @@ private fun TextContent(
     modifier = Modifier
         .height(REACTION_EMOJI_LINE_HEIGHT.toDp()),
     text = text,
-    style = ElementTheme.typography.fontBodyMdRegular,
+    style = ElementTheme.typography.fontBodySmRegular,
     color = ElementTheme.colors.textPrimary
 )
 
@@ -181,8 +164,7 @@ private fun ReactionContent(
     } else {
         Text(
             text = reaction.displayKey,
-            style = ElementTheme.typography.fontBodyMdRegular.copy(
-                fontSize = 15.sp,
+            style = ElementTheme.typography.fontBodySmRegular.copy(
                 lineHeight = REACTION_EMOJI_LINE_HEIGHT,
             ),
         )
@@ -191,9 +173,29 @@ private fun ReactionContent(
         Spacer(modifier = Modifier.width(4.dp))
         Text(
             text = reaction.count.toString(),
-            color = if (reaction.isHighlighted) ElementTheme.colors.textPrimary else ElementTheme.colors.textSecondary,
-            style = ElementTheme.typography.fontBodyMdRegular,
+            color = ElementTheme.colors.textPrimary,
+            style = ElementTheme.typography.fontBodySmRegular,
         )
+    }
+}
+
+@Composable
+private fun momentTimelineReactionBackgroundColor(isHighlighted: Boolean): Color {
+    return when {
+        ElementTheme.isLightTheme && isHighlighted -> Color.Black.copy(alpha = 0.06f)
+        ElementTheme.isLightTheme -> Color.Black.copy(alpha = 0.035f)
+        isHighlighted -> Color.White.copy(alpha = 0.12f)
+        else -> Color.White.copy(alpha = 0.08f)
+    }
+}
+
+@Composable
+private fun momentTimelineReactionBorderColor(isHighlighted: Boolean): Color {
+    return when {
+        ElementTheme.isLightTheme && isHighlighted -> Color.Black.copy(alpha = 0.10f)
+        ElementTheme.isLightTheme -> Color.Black.copy(alpha = 0.06f)
+        isHighlighted -> Color.White.copy(alpha = 0.16f)
+        else -> Color.White.copy(alpha = 0.10f)
     }
 }
 

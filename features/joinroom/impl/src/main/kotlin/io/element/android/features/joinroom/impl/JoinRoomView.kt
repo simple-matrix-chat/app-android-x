@@ -12,28 +12,29 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
@@ -41,23 +42,12 @@ import io.element.android.compound.theme.ElementTheme
 import io.element.android.compound.tokens.generated.CompoundIcons
 import io.element.android.features.invite.api.InviteData
 import io.element.android.libraries.designsystem.atomic.atoms.PlaceholderAtom
-import io.element.android.libraries.designsystem.atomic.atoms.RoomPreviewAliasAtom
-import io.element.android.libraries.designsystem.atomic.atoms.RoomPreviewDescriptionAtom
-import io.element.android.libraries.designsystem.atomic.atoms.RoomPreviewTitleAtom
-import io.element.android.libraries.designsystem.atomic.molecules.ButtonRowMolecule
-import io.element.android.libraries.designsystem.atomic.molecules.IconTitlePlaceholdersRowMolecule
-import io.element.android.libraries.designsystem.atomic.molecules.IconTitleSubtitleMolecule
 import io.element.android.libraries.designsystem.atomic.molecules.MembersCountMolecule
-import io.element.android.libraries.designsystem.atomic.organisms.RoomPreviewOrganism
-import io.element.android.libraries.designsystem.atomic.pages.HeaderFooterPage
-import io.element.android.libraries.designsystem.components.Announcement
-import io.element.android.libraries.designsystem.components.AnnouncementType
 import io.element.android.libraries.designsystem.components.BigIcon
 import io.element.android.libraries.designsystem.components.async.AsyncActionView
 import io.element.android.libraries.designsystem.components.avatar.Avatar
 import io.element.android.libraries.designsystem.components.avatar.AvatarSize
 import io.element.android.libraries.designsystem.components.avatar.AvatarType
-import io.element.android.libraries.designsystem.components.button.BackButton
 import io.element.android.libraries.designsystem.components.button.SuperButton
 import io.element.android.libraries.designsystem.components.dialogs.ConfirmationDialog
 import io.element.android.libraries.designsystem.components.dialogs.RetryDialog
@@ -67,12 +57,14 @@ import io.element.android.libraries.designsystem.theme.components.Button
 import io.element.android.libraries.designsystem.theme.components.ButtonSize
 import io.element.android.libraries.designsystem.theme.components.CircularProgressIndicator
 import io.element.android.libraries.designsystem.theme.components.Icon
+import io.element.android.libraries.designsystem.theme.components.IconButton
 import io.element.android.libraries.designsystem.theme.components.IconSource
 import io.element.android.libraries.designsystem.theme.components.OutlinedButton
+import io.element.android.libraries.designsystem.theme.components.Scaffold
+import io.element.android.libraries.designsystem.theme.components.Surface
 import io.element.android.libraries.designsystem.theme.components.Text
 import io.element.android.libraries.designsystem.theme.components.TextButton
 import io.element.android.libraries.designsystem.theme.components.TextField
-import io.element.android.libraries.designsystem.theme.components.TopAppBar
 import io.element.android.libraries.designsystem.theme.placeholderBackground
 import io.element.android.libraries.matrix.api.core.RoomIdOrAlias
 import io.element.android.libraries.matrix.api.spaces.SpaceRoomVisibility
@@ -93,59 +85,67 @@ fun JoinRoomView(
     onDeclineInviteAndBlockUser: (InviteData) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Box(
+    Scaffold(
         modifier = modifier.fillMaxSize(),
-    ) {
-        HeaderFooterPage(
-            containerColor = Color.Transparent,
-            contentPadding = PaddingValues(
-                horizontal = 16.dp,
-                vertical = 24.dp
-            ),
-            topBar = {
-                JoinRoomTopBar(
-                    contentState = state.contentState,
-                    hideAvatarImage = state.hideAvatarsImages,
-                    onBackClick = onBackClick,
-                )
-            },
-            content = {
-                JoinRoomContent(
-                    roomIdOrAlias = state.roomIdOrAlias,
-                    contentState = state.contentState,
-                    knockMessage = state.knockMessage,
-                    hideAvatarsImages = state.hideAvatarsImages,
-                    onKnockMessageUpdate = { state.eventSink(JoinRoomEvents.UpdateKnockMessage(it)) },
-                )
-            },
-            footer = {
-                JoinRoomFooter(
-                    joinAuthorisationStatus = state.joinAuthorisationStatus,
-                    onAcceptInvite = { inviteData ->
-                        state.eventSink(JoinRoomEvents.AcceptInvite(inviteData))
-                    },
-                    onDeclineInvite = { inviteData, blockUser ->
-                        if (state.canReportRoom && blockUser) {
-                            onDeclineInviteAndBlockUser(inviteData)
-                        } else {
-                            state.eventSink(JoinRoomEvents.DeclineInvite(inviteData, blockUser = blockUser))
-                        }
-                    },
-                    onJoinRoom = {
-                        state.eventSink(JoinRoomEvents.JoinRoom)
-                    },
-                    onKnockRoom = {
-                        state.eventSink(JoinRoomEvents.KnockRoom)
-                    },
-                    onCancelKnock = {
-                        state.eventSink(JoinRoomEvents.CancelKnock(requiresConfirmation = true))
-                    },
-                    onForgetRoom = {
-                        state.eventSink(JoinRoomEvents.ForgetRoom)
-                    },
-                    onGoBack = onBackClick,
-                )
+        containerColor = ElementTheme.colors.bgCanvasDefault,
+        topBar = {
+            JoinRoomTopBar(
+                contentState = state.contentState,
+                hideAvatarImage = state.hideAvatarsImages,
+                onBackClick = onBackClick,
+            )
+        },
+        bottomBar = {
+            if (state.joinAuthorisationStatus != JoinAuthorisationStatus.None) {
+                Surface(
+                    color = ElementTheme.colors.bgCanvasDefault,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    JoinRoomFooter(
+                        joinAuthorisationStatus = state.joinAuthorisationStatus,
+                        onAcceptInvite = { inviteData ->
+                            state.eventSink(JoinRoomEvents.AcceptInvite(inviteData))
+                        },
+                        onDeclineInvite = { inviteData, blockUser ->
+                            if (state.canReportRoom && blockUser) {
+                                onDeclineInviteAndBlockUser(inviteData)
+                            } else {
+                                state.eventSink(JoinRoomEvents.DeclineInvite(inviteData, blockUser = blockUser))
+                            }
+                        },
+                        onJoinRoom = {
+                            state.eventSink(JoinRoomEvents.JoinRoom)
+                        },
+                        onKnockRoom = {
+                            state.eventSink(JoinRoomEvents.KnockRoom)
+                        },
+                        onCancelKnock = {
+                            state.eventSink(JoinRoomEvents.CancelKnock(requiresConfirmation = true))
+                        },
+                        onForgetRoom = {
+                            state.eventSink(JoinRoomEvents.ForgetRoom)
+                        },
+                        onGoBack = onBackClick,
+                        modifier = Modifier
+                            .navigationBarsPadding()
+                            .imePadding()
+                            .padding(start = 24.dp, top = 12.dp, end = 24.dp, bottom = 16.dp),
+                    )
+                }
             }
+        },
+    ) { padding ->
+        JoinRoomContent(
+            roomIdOrAlias = state.roomIdOrAlias,
+            contentState = state.contentState,
+            knockMessage = state.knockMessage,
+            hideAvatarsImages = state.hideAvatarsImages,
+            onKnockMessageUpdate = { state.eventSink(JoinRoomEvents.UpdateKnockMessage(it)) },
+            modifier = Modifier
+                .padding(padding)
+                .consumeWindowInsets(padding)
+                .fillMaxSize()
+                .padding(horizontal = 24.dp),
         )
     }
     if (state.contentState is ContentState.Failure) {
@@ -214,38 +214,37 @@ private fun JoinRoomFooter(
     onGoBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(top = 8.dp)
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         when (joinAuthorisationStatus) {
             is JoinAuthorisationStatus.IsInvited -> {
-                Column {
-                    ButtonRowMolecule(horizontalArrangement = Arrangement.spacedBy(20.dp)) {
-                        OutlinedButton(
-                            text = stringResource(CommonStrings.action_decline),
-                            onClick = { onDeclineInvite(joinAuthorisationStatus.inviteData, false) },
-                            modifier = Modifier.weight(1f),
-                            size = ButtonSize.LargeLowPadding,
-                            leadingIcon = IconSource.Vector(CompoundIcons.Close())
-                        )
-                        Button(
-                            text = stringResource(CommonStrings.action_accept),
-                            onClick = { onAcceptInvite(joinAuthorisationStatus.inviteData) },
-                            modifier = Modifier.weight(1f),
-                            size = ButtonSize.LargeLowPadding,
-                            leadingIcon = IconSource.Vector(CompoundIcons.Check())
-                        )
-                    }
-                    Spacer(modifier = Modifier.height(24.dp))
-                    TextButton(
-                        text = stringResource(R.string.screen_join_room_decline_and_block_button_title),
-                        onClick = { onDeclineInvite(joinAuthorisationStatus.inviteData, true) },
-                        modifier = Modifier.fillMaxWidth(),
-                        destructive = true
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    OutlinedButton(
+                        text = stringResource(CommonStrings.action_decline),
+                        onClick = { onDeclineInvite(joinAuthorisationStatus.inviteData, false) },
+                        modifier = Modifier.weight(1f),
+                        size = ButtonSize.LargeLowPadding,
+                        leadingIcon = IconSource.Vector(CompoundIcons.Close())
+                    )
+                    Button(
+                        text = stringResource(CommonStrings.action_accept),
+                        onClick = { onAcceptInvite(joinAuthorisationStatus.inviteData) },
+                        modifier = Modifier.weight(1f),
+                        size = ButtonSize.LargeLowPadding,
+                        leadingIcon = IconSource.Vector(CompoundIcons.Check())
                     )
                 }
+                TextButton(
+                    text = stringResource(R.string.screen_join_room_decline_and_block_button_title),
+                    onClick = { onDeclineInvite(joinAuthorisationStatus.inviteData, true) },
+                    modifier = Modifier.fillMaxWidth(),
+                    destructive = true
+                )
             }
             JoinAuthorisationStatus.CanJoin -> {
                 SuperButton(
@@ -278,10 +277,8 @@ private fun JoinRoomFooter(
                 )
             }
             JoinAuthorisationStatus.NeedInvite -> {
-                Announcement(
+                JoinRoomNoticeCard(
                     title = stringResource(R.string.screen_join_room_invite_required_message),
-                    description = null,
-                    type = AnnouncementType.Informative(isCritical = false),
                 )
             }
             is JoinAuthorisationStatus.IsBanned -> JoinBannedFooter(joinAuthorisationStatus, onForgetRoom)
@@ -298,13 +295,15 @@ private fun JoinUnauthorizedFooter(
     onOkClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Column(modifier = modifier) {
-        Announcement(
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        JoinRoomNoticeCard(
             title = stringResource(R.string.screen_join_room_fail_message),
             description = stringResource(R.string.screen_join_room_fail_reason),
-            type = AnnouncementType.Informative(isCritical = true),
+            isCritical = true,
         )
-        Spacer(Modifier.height(24.dp))
         Button(
             text = stringResource(CommonStrings.action_ok),
             onClick = onOkClick,
@@ -319,7 +318,10 @@ private fun JoinBannedFooter(
     onForgetRoom: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Column(modifier = modifier) {
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
         val banReason = status.reason?.let {
             stringResource(R.string.screen_join_room_ban_reason, it.removeSuffix("."))
         }
@@ -328,12 +330,11 @@ private fun JoinBannedFooter(
         } else {
             stringResource(R.string.screen_join_room_ban_message)
         }
-        Announcement(
+        JoinRoomNoticeCard(
             title = title,
             description = banReason,
-            type = AnnouncementType.Informative(isCritical = true),
+            isCritical = true,
         )
-        Spacer(Modifier.height(24.dp))
         Button(
             text = stringResource(R.string.screen_join_room_forget_action),
             onClick = onForgetRoom,
@@ -348,13 +349,13 @@ private fun JoinRestrictedFooter(
     onJoinRoom: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Column(modifier = modifier) {
-        Announcement(
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        JoinRoomNoticeCard(
             title = stringResource(R.string.screen_join_room_join_restricted_message),
-            description = null,
-            type = AnnouncementType.Informative(),
         )
-        Spacer(Modifier.height(24.dp))
         SuperButton(
             onClick = onJoinRoom,
             modifier = Modifier.fillMaxWidth(),
@@ -368,6 +369,47 @@ private fun JoinRestrictedFooter(
 }
 
 @Composable
+private fun JoinRoomNoticeCard(
+    title: String,
+    modifier: Modifier = Modifier,
+    description: String? = null,
+    isCritical: Boolean = false,
+) {
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(14.dp),
+        color = if (isCritical) ElementTheme.colors.bgCriticalSubtle else ElementTheme.colors.bgSubtleSecondary,
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.Top,
+        ) {
+            Icon(
+                imageVector = if (isCritical) CompoundIcons.ErrorSolid() else CompoundIcons.Info(),
+                contentDescription = null,
+                tint = if (isCritical) ElementTheme.colors.iconCriticalPrimary else ElementTheme.colors.iconSecondary,
+                modifier = Modifier.size(20.dp),
+            )
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    text = title,
+                    style = ElementTheme.typography.fontBodyMdMedium,
+                    color = if (isCritical) ElementTheme.colors.textCriticalPrimary else ElementTheme.colors.textPrimary,
+                )
+                if (description != null) {
+                    Text(
+                        text = description,
+                        style = ElementTheme.typography.fontBodyMdRegular,
+                        color = if (isCritical) ElementTheme.colors.textCriticalPrimary else ElementTheme.colors.textSecondary,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
 private fun JoinRoomContent(
     roomIdOrAlias: RoomIdOrAlias,
     contentState: ContentState,
@@ -376,17 +418,24 @@ private fun JoinRoomContent(
     onKnockMessageUpdate: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Box(modifier = modifier) {
+    Box(
+        modifier = modifier,
+        contentAlignment = Alignment.Center,
+    ) {
         when (contentState) {
             is ContentState.Loaded -> {
                 when (contentState.joinAuthorisationStatus) {
                     is JoinAuthorisationStatus.IsKnocked -> {
-                        IsKnockedLoadedContent()
+                        IsKnockedLoadedContent(modifier = Modifier.fillMaxWidth())
                     }
                     else -> {
                         Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .verticalScroll(rememberScrollState())
+                                .padding(vertical = 24.dp),
                             horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier.verticalScroll(rememberScrollState())
+                            verticalArrangement = Arrangement.spacedBy(16.dp),
                         ) {
                             DefaultLoadedContent(
                                 contentState = contentState,
@@ -396,24 +445,18 @@ private fun JoinRoomContent(
                                 is JoinAuthorisationStatus.IsInvited -> {
                                     val inviteSender = contentState.joinAuthorisationStatus.inviteSender
                                     if (inviteSender != null) {
-                                        Spacer(Modifier.height(16.dp))
                                         InvitedByView(inviteSender, hideAvatarsImages)
                                     }
                                 }
                                 is JoinAuthorisationStatus.CanKnock -> {
-                                    Spacer(modifier = Modifier.height(24.dp))
-                                    val supportingText = if (knockMessage.isNotEmpty()) {
-                                        "${knockMessage.length}/$MAX_KNOCK_MESSAGE_LENGTH"
-                                    } else {
-                                        stringResource(R.string.screen_join_room_knock_message_description)
-                                    }
                                     TextField(
                                         value = knockMessage,
-                                        onValueChange = onKnockMessageUpdate,
-                                        maxLines = 3,
-                                        minLines = 3,
+                                        onValueChange = { onKnockMessageUpdate(it.take(MAX_KNOCK_MESSAGE_LENGTH)) },
+                                        placeholder = stringResource(R.string.screen_join_room_knock_message_description),
+                                        maxLines = 4,
+                                        minLines = 4,
                                         modifier = Modifier.fillMaxWidth(),
-                                        supportingText = supportingText
+                                        supportingText = "${knockMessage.length}/$MAX_KNOCK_MESSAGE_LENGTH",
                                     )
                                 }
                                 else -> Unit
@@ -422,10 +465,10 @@ private fun JoinRoomContent(
                     }
                 }
             }
-            is ContentState.UnknownRoom -> UnknownRoomContent()
-            is ContentState.Loading -> IncompleteContent(roomIdOrAlias, isLoading = true)
-            is ContentState.Dismissing -> IncompleteContent(roomIdOrAlias, isLoading = false)
-            is ContentState.Failure -> IncompleteContent(roomIdOrAlias, isLoading = false)
+            is ContentState.UnknownRoom -> UnknownRoomContent(modifier = Modifier.fillMaxWidth())
+            is ContentState.Loading -> IncompleteContent(roomIdOrAlias, isLoading = true, modifier = Modifier.fillMaxWidth())
+            is ContentState.Dismissing -> IncompleteContent(roomIdOrAlias, isLoading = false, modifier = Modifier.fillMaxWidth())
+            is ContentState.Failure -> IncompleteContent(roomIdOrAlias, isLoading = false, modifier = Modifier.fillMaxWidth())
         }
     }
 }
@@ -473,31 +516,42 @@ private fun InvitedByView(
 private fun UnknownRoomContent(
     modifier: Modifier = Modifier
 ) {
-    RoomPreviewOrganism(
-        modifier = modifier,
-        avatar = {
-            Box(
-                modifier = Modifier
-                    .size(AvatarSize.RoomPreviewHeader.dp)
-                    .background(
-                        color = ElementTheme.colors.placeholderBackground,
-                        shape = CircleShape
-                    )
-            ) {
-                Icon(
-                    modifier = Modifier.align(Alignment.Center),
-                    tint = ElementTheme.colors.iconPrimary,
-                    imageVector = CompoundIcons.VisibilityOff(),
-                    contentDescription = null,
+    Column(
+        modifier = modifier
+            .verticalScroll(rememberScrollState())
+            .padding(vertical = 24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .size(AvatarSize.RoomPreviewHeader.dp)
+                .background(
+                    color = ElementTheme.colors.placeholderBackground,
+                    shape = CircleShape
                 )
-            }
-        },
-        title = {
-            RoomPreviewTitleAtom(stringResource(R.string.screen_join_room_title_no_preview))
-        },
-        subtitle = {
-        },
-    )
+        ) {
+            Icon(
+                modifier = Modifier.align(Alignment.Center),
+                tint = ElementTheme.colors.iconPrimary,
+                imageVector = CompoundIcons.VisibilityOff(),
+                contentDescription = null,
+            )
+        }
+        Text(
+            text = stringResource(R.string.screen_join_room_title_no_preview),
+            style = ElementTheme.typography.fontHeadingLgBold,
+            color = ElementTheme.colors.textPrimary,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.semantics { heading() },
+        )
+        Text(
+            text = stringResource(R.string.screen_join_room_subtitle_no_preview),
+            style = ElementTheme.typography.fontBodyLgRegular,
+            color = ElementTheme.colors.textSecondary,
+            textAlign = TextAlign.Center,
+        )
+    }
 }
 
 @Composable
@@ -506,38 +560,53 @@ private fun IncompleteContent(
     isLoading: Boolean,
     modifier: Modifier = Modifier
 ) {
-    RoomPreviewOrganism(
-        modifier = modifier,
-        avatar = {
-            PlaceholderAtom(width = AvatarSize.RoomPreviewHeader.dp, height = AvatarSize.RoomPreviewHeader.dp)
-        },
-        title = {
-            when (roomIdOrAlias) {
-                is RoomIdOrAlias.Alias -> {
-                    RoomPreviewAliasAtom(roomIdOrAlias.identifier)
-                }
-                is RoomIdOrAlias.Id -> {
-                    PlaceholderAtom(width = 200.dp, height = 22.dp)
-                }
+    Column(
+        modifier = modifier.padding(vertical = 24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        PlaceholderAtom(width = AvatarSize.RoomPreviewHeader.dp, height = AvatarSize.RoomPreviewHeader.dp)
+        when (roomIdOrAlias) {
+            is RoomIdOrAlias.Alias -> {
+                Text(
+                    text = roomIdOrAlias.identifier,
+                    style = ElementTheme.typography.fontBodyLgRegular,
+                    color = ElementTheme.colors.textSecondary,
+                    textAlign = TextAlign.Center,
+                )
             }
-        },
-        subtitle = {
-            if (isLoading) {
-                Spacer(Modifier.height(8.dp))
-                CircularProgressIndicator()
+            is RoomIdOrAlias.Id -> {
+                PlaceholderAtom(width = 200.dp, height = 22.dp)
             }
-        },
-    )
+        }
+        if (isLoading) {
+            CircularProgressIndicator()
+        }
+    }
 }
 
 @Composable
 private fun IsKnockedLoadedContent(modifier: Modifier = Modifier) {
-    IconTitleSubtitleMolecule(
+    Column(
         modifier = modifier.padding(horizontal = 8.dp),
-        iconStyle = BigIcon.Style.SuccessSolid,
-        title = stringResource(R.string.screen_join_room_knock_sent_title),
-        subTitle = stringResource(R.string.screen_join_room_knock_sent_description),
-    )
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        BigIcon(style = BigIcon.Style.SuccessSolid)
+        Text(
+            text = stringResource(R.string.screen_join_room_knock_sent_title),
+            style = ElementTheme.typography.fontHeadingMdBold,
+            color = ElementTheme.colors.textPrimary,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.semantics { heading() },
+        )
+        Text(
+            text = stringResource(R.string.screen_join_room_knock_sent_description),
+            style = ElementTheme.typography.fontBodyMdRegular,
+            color = ElementTheme.colors.textSecondary,
+            textAlign = TextAlign.Center,
+        )
+    }
 }
 
 @Composable
@@ -546,100 +615,120 @@ private fun DefaultLoadedContent(
     hideAvatarImage: Boolean,
     modifier: Modifier = Modifier,
 ) {
-    RoomPreviewOrganism(
-        modifier = modifier,
-        avatar = {
-            Avatar(
-                contentState.avatarData(AvatarSize.RoomPreviewHeader),
-                hideImage = hideAvatarImage,
-                avatarType = if (contentState.isSpace) AvatarType.Space() else AvatarType.Room(),
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Avatar(
+            contentState.avatarData(AvatarSize.RoomPreviewHeader),
+            hideImage = hideAvatarImage,
+            avatarType = if (contentState.isSpace) AvatarType.Space() else AvatarType.Room(),
+        )
+        Text(
+            text = contentState.name ?: stringResource(id = CommonStrings.common_no_room_name),
+            style = ElementTheme.typography.fontHeadingLgBold.copy(
+                fontStyle = if (contentState.name == null) FontStyle.Italic else FontStyle.Normal
+            ),
+            color = ElementTheme.colors.textPrimary,
+            textAlign = TextAlign.Center,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.semantics { heading() },
+        )
+        if (contentState.alias != null) {
+            Text(
+                text = contentState.alias.value,
+                style = ElementTheme.typography.fontBodyLgRegular,
+                color = ElementTheme.colors.textSecondary,
+                textAlign = TextAlign.Center,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
-        },
-        title = {
-            if (contentState.name != null) {
-                RoomPreviewTitleAtom(title = contentState.name)
+        }
+        if (contentState.details is LoadedDetails.Space) {
+            SpaceInfoRow(visibility = SpaceRoomVisibility.fromJoinRule(contentState.joinRule))
+        }
+        if (contentState.showMemberCount) {
+            val membersCount = contentState.numberOfMembers?.toInt() ?: 0
+            if (contentState.isSpace) {
+                SpaceMembersView(persistentListOf(), membersCount)
             } else {
-                RoomPreviewTitleAtom(
-                    title = stringResource(id = CommonStrings.common_no_room_name),
-                    fontStyle = FontStyle.Italic
-                )
-            }
-        },
-        subtitle = {
-            if (contentState.alias != null) {
-                RoomPreviewAliasAtom(contentState.alias.value)
-            }
-            if (contentState.details is LoadedDetails.Space) {
-                Spacer(Modifier.height(8.dp))
-                SpaceInfoRow(visibility = SpaceRoomVisibility.fromJoinRule(contentState.joinRule))
-            }
-        },
-        description = {
-            RoomPreviewDescriptionAtom(
-                contentState.topic ?: "",
-                maxLines = if (contentState.joinAuthorisationStatus is JoinAuthorisationStatus.CanJoin) Int.MAX_VALUE else 2
-            )
-        },
-        memberCount = {
-            if (contentState.showMemberCount) {
-                val membersCount = contentState.numberOfMembers?.toInt() ?: 0
-                if (contentState.isSpace) {
-                    SpaceMembersView(persistentListOf(), membersCount)
-                } else {
-                    MembersCountMolecule(memberCount = membersCount)
-                }
+                MembersCountMolecule(memberCount = membersCount)
             }
         }
-    )
+        val topic = contentState.topic
+        if (!topic.isNullOrBlank()) {
+            Text(
+                text = topic,
+                style = ElementTheme.typography.fontBodyMdRegular,
+                color = ElementTheme.colors.textPrimary,
+                textAlign = TextAlign.Center,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun JoinRoomTopBar(
     contentState: ContentState,
     hideAvatarImage: Boolean,
     onBackClick: () -> Unit,
 ) {
-    TopAppBar(
-        navigationIcon = {
-            BackButton(onClick = onBackClick)
-        },
-        title = {
-            if (contentState is ContentState.Loaded && contentState.joinAuthorisationStatus is JoinAuthorisationStatus.IsKnocked) {
-                val roundedCornerShape = RoundedCornerShape(8.dp)
-                val titleModifier = Modifier
-                    .clip(roundedCornerShape)
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(64.dp)
+            .padding(horizontal = 8.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        IconButton(
+            onClick = onBackClick,
+            modifier = Modifier.align(Alignment.CenterStart),
+        ) {
+            Icon(
+                imageVector = CompoundIcons.ChevronLeft(),
+                contentDescription = stringResource(CommonStrings.action_back),
+                tint = ElementTheme.colors.iconPrimary,
+            )
+        }
+        if (contentState is ContentState.Loaded && contentState.joinAuthorisationStatus is JoinAuthorisationStatus.IsKnocked) {
+            Row(
+                modifier = Modifier
+                    .widthIn(max = 280.dp)
+                    .padding(horizontal = 56.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center,
+            ) {
                 if (contentState.name != null) {
-                    Row(
-                        modifier = titleModifier,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Avatar(
-                            avatarData = contentState.avatarData(AvatarSize.TimelineRoom),
-                            hideImage = hideAvatarImage,
-                            avatarType = AvatarType.Room(),
-                        )
-                        Text(
-                            modifier = Modifier
-                                .padding(horizontal = 8.dp)
-                                .semantics {
-                                    heading()
-                                },
-                            text = contentState.name,
-                            style = ElementTheme.typography.fontBodyLgMedium,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
+                    Avatar(
+                        avatarData = contentState.avatarData(AvatarSize.TimelineRoom),
+                        hideImage = hideAvatarImage,
+                        avatarType = if (contentState.isSpace) AvatarType.Space() else AvatarType.Room(),
+                    )
+                    Text(
+                        modifier = Modifier
+                            .padding(start = 8.dp)
+                            .semantics { heading() },
+                        text = contentState.name,
+                        style = ElementTheme.typography.fontBodyLgMedium,
+                        color = ElementTheme.colors.textPrimary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
                 } else {
-                    IconTitlePlaceholdersRowMolecule(
-                        iconSize = AvatarSize.TimelineRoom.dp,
-                        modifier = titleModifier
+                    PlaceholderAtom(width = AvatarSize.TimelineRoom.dp, height = AvatarSize.TimelineRoom.dp)
+                    PlaceholderAtom(
+                        width = 120.dp,
+                        height = 18.dp,
+                        modifier = Modifier.padding(start = 8.dp)
                     )
                 }
             }
-        },
-    )
+        }
+    }
 }
 
 @PreviewsDayNight

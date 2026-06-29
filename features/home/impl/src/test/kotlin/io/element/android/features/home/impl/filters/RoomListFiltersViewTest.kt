@@ -12,6 +12,9 @@ package io.element.android.features.home.impl.filters
 
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.assertIsNotSelected
+import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.v2.runAndroidComposeUiTest
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.element.android.features.home.impl.R
@@ -33,10 +36,10 @@ class RoomListFiltersViewTest {
                 state = aRoomListFiltersState(eventSink = eventsRecorder),
             )
         }
-        clickOn(R.string.screen_roomlist_filter_rooms)
+        clickOn(R.string.screen_roomlist_filter_groups)
         eventsRecorder.assertList(
             listOf(
-                RoomListFiltersEvent.ToggleFilter(RoomListFilter.Rooms),
+                RoomListFiltersEvent.ToggleFilter(RoomListFilter.Groups),
             )
         )
     }
@@ -47,7 +50,7 @@ class RoomListFiltersViewTest {
         setContent {
             RoomListFiltersView(
                 state = aRoomListFiltersState(
-                    filterSelectionStates = RoomListFilter.entries.map { FilterSelectionState(it, isSelected = true) },
+                    filterSelectionStates = RoomListFilter.entries.map { FilterSelectionState(it, isSelected = it == RoomListFilter.Direct) },
                     eventSink = eventsRecorder
                 ),
             )
@@ -58,5 +61,21 @@ class RoomListFiltersViewTest {
                 RoomListFiltersEvent.ClearSelectedFilters,
             )
         )
+    }
+
+    @Test
+    fun `selected filter exposes selected tab semantics`() = runAndroidComposeUiTest<ComponentActivity> {
+        val eventsRecorder = EventsRecorder<RoomListFiltersEvent>(expectEvents = false)
+        setContent {
+            RoomListFiltersView(
+                state = aRoomListFiltersState(
+                    filterSelectionStates = RoomListFilter.entries.map { FilterSelectionState(it, isSelected = it == RoomListFilter.Direct) },
+                    eventSink = eventsRecorder
+                ),
+            )
+        }
+
+        onNodeWithText(activity!!.getString(R.string.screen_roomlist_filter_all)).assertIsNotSelected()
+        onNodeWithText(activity!!.getString(R.string.screen_roomlist_filter_direct)).assertIsSelected()
     }
 }

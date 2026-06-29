@@ -44,12 +44,15 @@ import io.element.android.libraries.matrix.api.timeline.item.event.Receipt
 import io.element.android.libraries.matrix.api.timeline.item.virtual.VirtualTimelineItem
 import io.element.android.libraries.matrix.test.AN_EVENT_ID
 import io.element.android.libraries.matrix.test.AN_EVENT_ID_2
+import io.element.android.libraries.matrix.test.AN_EVENT_ID_3
 import io.element.android.libraries.matrix.test.A_ROOM_ID
 import io.element.android.libraries.matrix.test.A_THREAD_ID
 import io.element.android.libraries.matrix.test.A_THREAD_ID_2
 import io.element.android.libraries.matrix.test.A_UNIQUE_ID
 import io.element.android.libraries.matrix.test.A_UNIQUE_ID_2
 import io.element.android.libraries.matrix.test.A_USER_ID
+import io.element.android.libraries.matrix.test.A_USER_ID_2
+import io.element.android.libraries.matrix.test.A_USER_ID_3
 import io.element.android.libraries.matrix.test.room.FakeBaseRoom
 import io.element.android.libraries.matrix.test.room.FakeJoinedRoom
 import io.element.android.libraries.matrix.test.room.aRoomMember
@@ -852,10 +855,11 @@ class TimelinePresenterTest {
                     MatrixTimelineItem.Event(
                         A_UNIQUE_ID,
                         anEventTimelineItem(
+                            isOwn = true,
                             sender = A_USER_ID,
                             receipts = persistentListOf(
                                 Receipt(
-                                    userId = A_USER_ID,
+                                    userId = A_USER_ID_2,
                                     timestamp = 0L,
                                 )
                             )
@@ -884,12 +888,114 @@ class TimelinePresenterTest {
 
             room.givenRoomMembersState(
                 RoomMembersState.Ready(
-                    persistentListOf(aRoomMember(userId = A_USER_ID, avatarUrl = avatarUrl))
+                    persistentListOf(aRoomMember(userId = A_USER_ID_2, avatarUrl = avatarUrl))
                 )
             )
 
             val updatedEvent = awaitItem().timelineItems.first() as TimelineItem.Event
             assertThat(updatedEvent.readReceiptState.receipts.first().avatarData.url).isEqualTo(avatarUrl)
+        }
+    }
+
+    @Test
+    fun `present - own read receipts are not shown in timeline item state`() = runTest {
+        val timeline = FakeTimeline(
+            timelineItems = flowOf(
+                listOf(
+                    MatrixTimelineItem.Event(
+                        A_UNIQUE_ID,
+                        anEventTimelineItem(
+                            isOwn = true,
+                            receipts = persistentListOf(
+                                Receipt(
+                                    userId = A_USER_ID,
+                                    timestamp = 0L,
+                                )
+                            )
+                        )
+                    )
+                )
+            )
+        )
+        val room = FakeJoinedRoom(
+            liveTimeline = timeline,
+            baseRoom = FakeBaseRoom(
+                roomPermissions = roomPermissions(),
+            ),
+        )
+
+        val presenter = createTimelinePresenter(timeline, room)
+        presenter.test {
+            val initialState = consumeItemsUntilPredicate(30.seconds) { it.timelineItems.isNotEmpty() }.last()
+            val event = initialState.timelineItems.first() as TimelineItem.Event
+            assertThat(event.readReceiptState.receipts).isEmpty()
+        }
+    }
+
+    @Test
+    fun `present - read receipts are aggregated on older outgoing timeline items`() = runTest {
+        val timeline = FakeTimeline(
+            timelineItems = flowOf(
+                listOf(
+                    MatrixTimelineItem.Event(
+                        A_UNIQUE_ID,
+                        anEventTimelineItem(
+                            eventId = AN_EVENT_ID,
+                            isOwn = true,
+                            timestamp = 1L,
+                            content = aMessageContent("Old outgoing message"),
+                        )
+                    ),
+                    MatrixTimelineItem.Event(
+                        A_UNIQUE_ID_2,
+                        anEventTimelineItem(
+                            eventId = AN_EVENT_ID_2,
+                            timestamp = 2L,
+                            content = aMessageContent("Middle message"),
+                            receipts = persistentListOf(
+                                Receipt(
+                                    userId = A_USER_ID_2,
+                                    timestamp = 2L,
+                                )
+                            )
+                        )
+                    ),
+                    MatrixTimelineItem.Event(
+                        UniqueId("aUniqueId3"),
+                        anEventTimelineItem(
+                            eventId = AN_EVENT_ID_3,
+                            timestamp = 3L,
+                            content = aMessageContent("Latest message"),
+                            receipts = persistentListOf(
+                                Receipt(
+                                    userId = A_USER_ID_3,
+                                    timestamp = 3L,
+                                )
+                            )
+                        )
+                    ),
+                )
+            )
+        )
+        val room = FakeJoinedRoom(
+            liveTimeline = timeline,
+            baseRoom = FakeBaseRoom(
+                roomPermissions = roomPermissions(),
+            ),
+        )
+
+        val presenter = createTimelinePresenter(timeline, room)
+        presenter.test {
+            val initialState = consumeItemsUntilPredicate(30.seconds) { it.timelineItems.size == 3 }.last()
+            val timelineEvents = initialState.timelineItems.filterIsInstance<TimelineItem.Event>()
+
+            val oldOutgoingEvent = timelineEvents.first { it.eventId == AN_EVENT_ID }
+            assertThat(oldOutgoingEvent.readReceiptState.receipts.map { it.avatarData.id })
+                .containsExactly(A_USER_ID_3.value, A_USER_ID_2.value)
+                .inOrder()
+
+            val incomingEvents = timelineEvents.filterNot { it.eventId == AN_EVENT_ID }
+            assertThat(incomingEvents.flatMap { it.readReceiptState.receipts }).isEmpty()
         }
     }
 

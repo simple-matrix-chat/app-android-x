@@ -6,20 +6,25 @@
  * Please see LICENSE files in the repository root for full details.
  */
 
-@file:OptIn(ExperimentalMaterial3Api::class)
-
 package io.element.android.features.roomdetailsedit.impl
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -27,24 +32,29 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
+import io.element.android.compound.theme.ElementTheme
 import io.element.android.libraries.architecture.AsyncAction
 import io.element.android.libraries.designsystem.components.async.AsyncActionView
 import io.element.android.libraries.designsystem.components.async.AsyncActionViewDefaults
 import io.element.android.libraries.designsystem.components.avatar.AvatarData
 import io.element.android.libraries.designsystem.components.avatar.AvatarSize
 import io.element.android.libraries.designsystem.components.avatar.AvatarType
-import io.element.android.libraries.designsystem.components.button.BackButton
 import io.element.android.libraries.designsystem.components.dialogs.SaveChangesDialog
 import io.element.android.libraries.designsystem.modifiers.clearFocusOnTap
 import io.element.android.libraries.designsystem.preview.ElementPreview
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
 import io.element.android.libraries.designsystem.theme.components.Scaffold
+import io.element.android.libraries.designsystem.theme.components.Surface
+import io.element.android.libraries.designsystem.theme.components.Text
 import io.element.android.libraries.designsystem.theme.components.TextButton
 import io.element.android.libraries.designsystem.theme.components.TextField
-import io.element.android.libraries.designsystem.theme.components.TopAppBar
 import io.element.android.libraries.matrix.ui.components.AvatarActionBottomSheet
 import io.element.android.libraries.matrix.ui.components.AvatarPickerState
 import io.element.android.libraries.matrix.ui.components.AvatarPickerView
@@ -75,38 +85,34 @@ fun RoomDetailsEditView(
         state.eventSink(RoomDetailsEditEvent.OnBackPress)
     }
     Scaffold(
-        modifier = modifier.clearFocusOnTap(focusManager),
-        topBar = {
-            TopAppBar(
-                titleStr = stringResource(id = R.string.screen_room_details_edit_room_title),
-                navigationIcon = {
-                    BackButton(
-                        onClick = {
-                            state.eventSink(RoomDetailsEditEvent.OnBackPress)
-                        }
-                    )
-                },
-                actions = {
-                    TextButton(
-                        text = stringResource(CommonStrings.action_save),
-                        enabled = state.saveButtonEnabled,
-                        onClick = {
-                            focusManager.clearFocus()
-                            state.eventSink(RoomDetailsEditEvent.Save)
-                        },
-                    )
-                }
-            )
-        },
+        modifier = modifier
+            .fillMaxSize()
+            .clearFocusOnTap(focusManager),
+        containerColor = ElementTheme.colors.bgSubtleSecondary,
     ) { padding ->
         Column(
             modifier = Modifier
                 .padding(padding)
-                .padding(horizontal = 16.dp)
-                .imePadding()
+                .consumeWindowInsets(padding)
                 .verticalScroll(rememberScrollState())
+                .padding(horizontal = 20.dp)
+                .padding(top = 8.dp, bottom = 32.dp)
+                .imePadding()
+                .navigationBarsPadding(),
+            verticalArrangement = Arrangement.spacedBy(28.dp),
         ) {
-            Spacer(modifier = Modifier.height(24.dp))
+            MomentRoomDetailsEditTopBar(
+                title = stringResource(id = R.string.screen_room_details_edit_room_title),
+                saveEnabled = state.saveButtonEnabled,
+                onCancelClick = {
+                    focusManager.clearFocus()
+                    state.eventSink(RoomDetailsEditEvent.OnBackPress)
+                },
+                onSaveClick = {
+                    focusManager.clearFocus()
+                    state.eventSink(RoomDetailsEditEvent.Save)
+                },
+            )
             val avatarPickerState = remember(state.roomAvatarUrl, state.roomRawName) {
                 val size = if (state.isSpace) AvatarSize.EditSpaceDetails else AvatarSize.EditRoomDetails
                 val type = if (state.isSpace) AvatarType.Space() else AvatarType.Room()
@@ -121,34 +127,43 @@ fun RoomDetailsEditView(
                 enabled = state.canChangeAvatar,
                 modifier = Modifier.align(Alignment.CenterHorizontally),
             )
-            Spacer(modifier = Modifier.height(32.dp))
 
-            TextField(
-                label = stringResource(id = CommonStrings.common_name),
-                value = state.roomRawName,
-                placeholder = stringResource(CommonStrings.common_room_name_placeholder),
-                singleLine = true,
-                readOnly = !state.canChangeName,
-                onValueChange = { state.eventSink(RoomDetailsEditEvent.UpdateRoomName(it)) },
-            )
+            MomentRoomDetailsEditSection(
+                title = stringResource(id = CommonStrings.common_name),
+            ) {
+                TextField(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp, vertical = 18.dp),
+                    value = state.roomRawName,
+                    placeholder = stringResource(CommonStrings.common_room_name_placeholder),
+                    singleLine = true,
+                    readOnly = !state.canChangeName,
+                    onValueChange = { state.eventSink(RoomDetailsEditEvent.UpdateRoomName(it)) },
+                )
+            }
 
-            Spacer(modifier = Modifier.height(32.dp))
-
-            TextField(
-                label = stringResource(CommonStrings.common_topic),
-                value = state.roomTopic,
-                placeholder = if (state.isSpace) {
-                    stringResource(CommonStrings.common_space_topic_placeholder)
-                } else {
-                    stringResource(CommonStrings.common_topic_placeholder)
-                },
-                maxLines = 10,
-                readOnly = !state.canChangeTopic,
-                onValueChange = { state.eventSink(RoomDetailsEditEvent.UpdateRoomTopic(it)) },
-                keyboardOptions = KeyboardOptions(
-                    capitalization = KeyboardCapitalization.Sentences,
-                ),
-            )
+            MomentRoomDetailsEditSection(
+                title = stringResource(id = CommonStrings.common_topic),
+            ) {
+                TextField(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp, vertical = 18.dp),
+                    value = state.roomTopic,
+                    placeholder = if (state.isSpace) {
+                        stringResource(CommonStrings.common_space_topic_placeholder)
+                    } else {
+                        stringResource(CommonStrings.common_topic_placeholder)
+                    },
+                    maxLines = 10,
+                    readOnly = !state.canChangeTopic,
+                    onValueChange = { state.eventSink(RoomDetailsEditEvent.UpdateRoomTopic(it)) },
+                    keyboardOptions = KeyboardOptions(
+                        capitalization = KeyboardCapitalization.Sentences,
+                    ),
+                )
+            }
         }
     }
     AvatarActionBottomSheet(
@@ -181,6 +196,76 @@ fun RoomDetailsEditView(
     PermissionsView(
         state = state.cameraPermissionState,
     )
+}
+
+@Composable
+private fun MomentRoomDetailsEditTopBar(
+    title: String,
+    saveEnabled: Boolean,
+    onCancelClick: () -> Unit,
+    onSaveClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(56.dp),
+    ) {
+        val backContentDescription = stringResource(CommonStrings.action_back)
+        TextButton(
+            modifier = Modifier
+                .align(Alignment.CenterStart)
+                .semantics {
+                    contentDescription = backContentDescription
+                },
+            text = stringResource(CommonStrings.action_cancel),
+            onClick = onCancelClick,
+        )
+        Text(
+            modifier = Modifier
+                .align(Alignment.Center)
+                .fillMaxWidth()
+                .padding(horizontal = 112.dp),
+            text = title,
+            style = ElementTheme.typography.fontHeadingMdBold,
+            color = ElementTheme.colors.textPrimary,
+            textAlign = TextAlign.Center,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        TextButton(
+            modifier = Modifier.align(Alignment.CenterEnd),
+            text = stringResource(CommonStrings.action_save),
+            enabled = saveEnabled,
+            onClick = onSaveClick,
+        )
+    }
+}
+
+@Composable
+private fun MomentRoomDetailsEditSection(
+    title: String,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    Column(
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Text(
+            modifier = Modifier.padding(horizontal = 8.dp),
+            text = title,
+            style = ElementTheme.typography.fontBodyMdMedium,
+            color = ElementTheme.colors.textSecondary,
+        )
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(28.dp),
+            color = ElementTheme.colors.bgCanvasDefault,
+            border = BorderStroke(1.dp, ElementTheme.colors.borderDisabled),
+            shadowElevation = 3.dp,
+        ) {
+            Column(content = content)
+        }
+    }
 }
 
 @PreviewsDayNight

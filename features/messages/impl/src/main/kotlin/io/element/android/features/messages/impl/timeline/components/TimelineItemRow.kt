@@ -114,10 +114,7 @@ internal fun TimelineItemRow(
                     is TimelineItemStateContent, is TimelineItemLegacyCallInviteContent -> {
                         TimelineItemStateEventRow(
                             event = timelineItem,
-                            renderReadReceipts = renderReadReceipts,
-                            isLastOutgoingMessage = isLastOutgoingMessage,
                             onClick = { onContentClick(timelineItem) },
-                            onReadReceiptsClick = onReadReceiptClick,
                             onLongClick = { onLongClick(timelineItem) },
                             eventSink = eventSink,
                         )

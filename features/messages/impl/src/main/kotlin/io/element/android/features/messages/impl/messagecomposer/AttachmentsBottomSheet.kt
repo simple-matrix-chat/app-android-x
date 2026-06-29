@@ -9,11 +9,19 @@
 package io.element.android.features.messages.impl.messagecomposer
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -23,20 +31,22 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
+import io.element.android.compound.theme.ElementTheme
 import io.element.android.compound.tokens.generated.CompoundIcons
 import io.element.android.features.messages.impl.R
 import io.element.android.libraries.androidutils.ui.hideKeyboard
-import io.element.android.libraries.designsystem.components.list.ListItemContent
 import io.element.android.libraries.designsystem.preview.ElementPreview
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
-import io.element.android.libraries.designsystem.theme.components.IconSource
-import io.element.android.libraries.designsystem.theme.components.ListItem
-import io.element.android.libraries.designsystem.theme.components.ListItemStyle
+import io.element.android.libraries.designsystem.theme.components.Icon
 import io.element.android.libraries.designsystem.theme.components.ModalBottomSheet
 import io.element.android.libraries.designsystem.theme.components.Text
+import io.element.android.libraries.ui.strings.CommonStrings
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -44,6 +54,7 @@ internal fun AttachmentsBottomSheet(
     state: MessageComposerState,
     onSendLocationClick: () -> Unit,
     onCreatePollClick: () -> Unit,
+    onStartVoiceMessageRecordingClick: () -> Unit,
     enableTextFormatting: Boolean,
     modifier: Modifier = Modifier,
 ) {
@@ -84,6 +95,7 @@ internal fun AttachmentsBottomSheet(
                 enableTextFormatting = enableTextFormatting,
                 onSendLocationClick = onSendLocationClick,
                 onCreatePollClick = onCreatePollClick,
+                onStartVoiceMessageRecordingClick = onStartVoiceMessageRecordingClick,
             )
         }
     }
@@ -94,66 +106,120 @@ private fun AttachmentSourcePickerMenu(
     state: MessageComposerState,
     onSendLocationClick: () -> Unit,
     onCreatePollClick: () -> Unit,
+    onStartVoiceMessageRecordingClick: () -> Unit,
     enableTextFormatting: Boolean,
 ) {
     Column(
         modifier = Modifier
             .navigationBarsPadding()
             .imePadding()
+            .padding(horizontal = 8.dp, vertical = 8.dp)
             .verticalScroll(rememberScrollState())
     ) {
-        ListItem(
-            modifier = Modifier.clickable { state.eventSink(MessageComposerEvent.PickAttachmentSource.PhotoFromCamera) },
-            leadingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.TakePhoto())),
-            headlineContent = { Text(stringResource(R.string.screen_room_attachment_source_camera_photo)) },
-            style = ListItemStyle.Primary,
+        AttachmentSourceItem(
+            icon = CompoundIcons.ReactionAdd(),
+            title = stringResource(R.string.screen_room_attachment_source_emoji),
+            onClick = { state.eventSink(MessageComposerEvent.PickAttachmentSource.Emoji) },
         )
-        ListItem(
-            modifier = Modifier.clickable { state.eventSink(MessageComposerEvent.PickAttachmentSource.VideoFromCamera) },
-            leadingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.VideoCall())),
-            headlineContent = { Text(stringResource(R.string.screen_room_attachment_source_camera_video)) },
-            style = ListItemStyle.Primary,
-        )
-        ListItem(
-            modifier = Modifier.clickable { state.eventSink(MessageComposerEvent.PickAttachmentSource.FromGallery) },
-            leadingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.Image())),
-            headlineContent = { Text(stringResource(R.string.screen_room_attachment_source_gallery)) },
-            style = ListItemStyle.Primary,
-        )
-        ListItem(
-            modifier = Modifier.clickable { state.eventSink(MessageComposerEvent.PickAttachmentSource.FromFiles) },
-            leadingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.Attachment())),
-            headlineContent = { Text(stringResource(R.string.screen_room_attachment_source_files)) },
-            style = ListItemStyle.Primary,
+        AttachmentSourceItem(
+            icon = CompoundIcons.Image(),
+            title = stringResource(CommonStrings.common_sticker),
+            onClick = { state.eventSink(MessageComposerEvent.PickAttachmentSource.Sticker) },
         )
         if (state.canShareLocation) {
-            ListItem(
-                modifier = Modifier.clickable {
+            AttachmentSourceItem(
+                icon = CompoundIcons.LocationPin(),
+                title = stringResource(R.string.screen_room_attachment_source_location),
+                onClick = {
                     state.eventSink(MessageComposerEvent.PickAttachmentSource.Location)
                     onSendLocationClick()
                 },
-                leadingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.LocationPin())),
-                headlineContent = { Text(stringResource(R.string.screen_room_attachment_source_location)) },
-                style = ListItemStyle.Primary,
             )
         }
-        ListItem(
-            modifier = Modifier.clickable {
+        AttachmentSourceItem(
+            icon = CompoundIcons.Image(),
+            title = stringResource(R.string.screen_room_attachment_source_photo),
+            onClick = { state.eventSink(MessageComposerEvent.PickAttachmentSource.FromGallery) },
+        )
+        AttachmentSourceItem(
+            icon = CompoundIcons.VideoCall(),
+            title = stringResource(CommonStrings.common_video),
+            onClick = { state.eventSink(MessageComposerEvent.PickAttachmentSource.FromVideoGallery) },
+        )
+        AttachmentSourceItem(
+            icon = CompoundIcons.Attachment(),
+            title = stringResource(CommonStrings.common_file),
+            onClick = { state.eventSink(MessageComposerEvent.PickAttachmentSource.FromFiles) },
+        )
+        AttachmentSourceItem(
+            icon = CompoundIcons.UserProfile(),
+            title = stringResource(R.string.screen_room_attachment_source_contact),
+            onClick = { state.eventSink(MessageComposerEvent.PickAttachmentSource.Contact) },
+        )
+        AttachmentSourceItem(
+            icon = CompoundIcons.MicOn(),
+            title = stringResource(CommonStrings.common_voice_message),
+            onClick = {
+                state.eventSink(MessageComposerEvent.PickAttachmentSource.VoiceMessage)
+                onStartVoiceMessageRecordingClick()
+            },
+        )
+        AttachmentSourceItem(
+            icon = CompoundIcons.TakePhoto(),
+            title = stringResource(R.string.screen_room_attachment_source_camera),
+            onClick = { state.eventSink(MessageComposerEvent.PickAttachmentSource.FromCamera) },
+        )
+        AttachmentSourceItem(
+            icon = CompoundIcons.Polls(),
+            title = stringResource(R.string.screen_room_attachment_source_poll),
+            onClick = {
                 state.eventSink(MessageComposerEvent.PickAttachmentSource.Poll)
                 onCreatePollClick()
             },
-            leadingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.Polls())),
-            headlineContent = { Text(stringResource(R.string.screen_room_attachment_source_poll)) },
-            style = ListItemStyle.Primary,
         )
         if (enableTextFormatting) {
-            ListItem(
-                modifier = Modifier.clickable { state.eventSink(MessageComposerEvent.ToggleTextFormatting(enabled = true)) },
-                leadingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.TextFormatting())),
-                headlineContent = { Text(stringResource(R.string.screen_room_attachment_text_formatting)) },
-                style = ListItemStyle.Primary,
+            AttachmentSourceItem(
+                icon = CompoundIcons.TextFormatting(),
+                title = stringResource(R.string.screen_room_attachment_text_formatting),
+                onClick = { state.eventSink(MessageComposerEvent.ToggleTextFormatting(enabled = true)) },
             )
         }
+    }
+}
+
+@Composable
+private fun AttachmentSourceItem(
+    icon: ImageVector,
+    title: String,
+    onClick: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 56.dp)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 8.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .background(ElementTheme.colors.bgSubtleSecondary, CircleShape),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                modifier = Modifier.size(22.dp),
+                imageVector = icon,
+                contentDescription = null,
+                tint = ElementTheme.colors.iconPrimary,
+            )
+        }
+        Text(
+            modifier = Modifier.padding(start = 12.dp),
+            text = title,
+            style = ElementTheme.typography.fontBodyLgRegular,
+            color = ElementTheme.colors.textPrimary,
+        )
     }
 }
 
@@ -166,6 +232,7 @@ internal fun AttachmentSourcePickerMenuPreview() = ElementPreview {
         ),
         onSendLocationClick = {},
         onCreatePollClick = {},
+        onStartVoiceMessageRecordingClick = {},
         enableTextFormatting = true,
     )
 }

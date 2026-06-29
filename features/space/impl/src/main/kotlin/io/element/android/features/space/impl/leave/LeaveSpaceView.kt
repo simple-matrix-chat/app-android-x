@@ -6,8 +6,6 @@
  * Please see LICENSE files in the repository root for full details.
  */
 
-@file:OptIn(ExperimentalMaterial3Api::class)
-
 package io.element.android.features.space.impl.leave
 
 import androidx.annotation.StringRes
@@ -23,7 +21,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.selection.toggleable
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -47,16 +44,15 @@ import io.element.android.libraries.designsystem.components.async.AsyncLoading
 import io.element.android.libraries.designsystem.components.avatar.Avatar
 import io.element.android.libraries.designsystem.components.avatar.AvatarSize
 import io.element.android.libraries.designsystem.components.avatar.AvatarType
-import io.element.android.libraries.designsystem.components.button.BackButton
 import io.element.android.libraries.designsystem.preview.ElementPreview
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
 import io.element.android.libraries.designsystem.theme.components.Button
 import io.element.android.libraries.designsystem.theme.components.Checkbox
+import io.element.android.libraries.designsystem.theme.components.HorizontalDivider
 import io.element.android.libraries.designsystem.theme.components.Icon
 import io.element.android.libraries.designsystem.theme.components.IconSource
 import io.element.android.libraries.designsystem.theme.components.Text
 import io.element.android.libraries.designsystem.theme.components.TextButton
-import io.element.android.libraries.designsystem.theme.components.TopAppBar
 import io.element.android.libraries.matrix.api.room.join.JoinRule
 import io.element.android.libraries.matrix.ui.model.getAvatarData
 import io.element.android.libraries.ui.strings.CommonPlurals
@@ -75,15 +71,8 @@ fun LeaveSpaceView(
 ) {
     HeaderFooterPage(
         modifier = modifier,
-        contentPadding = PaddingValues(bottom = 14.dp),
-        topBar = {
-            TopAppBar(
-                navigationIcon = {
-                    BackButton(onClick = onCancel)
-                },
-                title = {},
-            )
-        },
+        contentPadding = PaddingValues(start = 0.dp, top = 19.dp, end = 0.dp, bottom = 14.dp),
+        containerColor = ElementTheme.colors.bgCanvasDefault,
         header = {
             LeaveSpaceHeader(state = state)
         },
@@ -103,9 +92,7 @@ fun LeaveSpaceView(
         },
         content = {
             if (state.needsOwnerChange.not()) {
-                LazyColumn(
-                    modifier = Modifier.padding(top = 20.dp),
-                ) {
+                LazyColumn {
                     when (state.selectableSpaceRooms) {
                         is AsyncData.Success -> {
                             // List rooms where the user is the only admin
@@ -153,7 +140,7 @@ private fun LeaveSpaceHeader(
 ) {
     Column {
         IconTitleSubtitleMolecule(
-            modifier = Modifier.padding(top = 24.dp, bottom = 8.dp, start = 24.dp, end = 24.dp),
+            modifier = Modifier.padding(24.dp),
             iconStyle = BigIcon.Style.AlertSolid,
             title = if (state.needsOwnerChange) {
                 if (state.areCreatorsPrivileged) {
@@ -203,11 +190,11 @@ private fun ColumnScope.QuickActionButton(
     Text(
         modifier = Modifier
             .align(Alignment.End)
-            .padding(end = 8.dp)
+            .padding(end = 16.dp, bottom = 8.dp)
             .clickable(onClick = onClick)
             .padding(8.dp),
         text = stringResource(resId),
-        color = ElementTheme.colors.textActionPrimary,
+        color = ElementTheme.colors.textActionAccent,
         style = ElementTheme.typography.fontBodyMdMedium,
     )
 }
@@ -223,9 +210,7 @@ private fun LeaveSpaceButtons(
     onChooseOwnersButtonClick: () -> Unit,
     onCancel: () -> Unit,
 ) {
-    ButtonColumnMolecule(
-        modifier = Modifier.padding(top = 16.dp)
-    ) {
+    ButtonColumnMolecule {
         if (showLeaveButton) {
             val text = if (selectedRoomsCount > 0) {
                 pluralStringResource(R.plurals.screen_leave_space_submit, selectedRoomsCount, selectedRoomsCount)
@@ -271,95 +256,97 @@ private fun SpaceItem(
     onClick: () -> Unit,
 ) {
     val room = selectableSpaceRoom.spaceRoom
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .heightIn(min = 66.dp)
-            .padding(horizontal = 16.dp)
-            .toggleable(
-                value = selectableSpaceRoom.isSelected,
-                role = Role.Checkbox,
-                enabled = selectableSpaceRoom.isLastOwner.not(),
-                onValueChange = { onClick() }
-            )
-            .clickable(
-                enabled = selectableSpaceRoom.isLastOwner.not(),
-                // TODO
-                onClickLabel = null,
-                role = Role.Checkbox,
-                onClick = onClick,
-            ),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
-    ) {
-        Avatar(
-            avatarData = room.getAvatarData(AvatarSize.LeaveSpaceRoom),
-            avatarType = if (room.isSpace) AvatarType.Space() else AvatarType.Room(),
-        )
-        Column(
-            modifier = Modifier.weight(1f),
-        ) {
-            Text(
-                modifier = Modifier
-                    .padding(end = 16.dp),
-                text = room.displayName,
-                color = ElementTheme.colors.textPrimary,
-                style = ElementTheme.typography.fontBodyLgMedium,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                if (room.joinRule == JoinRule.Invite) {
-                    // Picto for invite only
-                    Icon(
-                        modifier = Modifier
-                            .size(16.dp)
-                            .padding(end = 4.dp),
-                        imageVector = CompoundIcons.LockSolid(),
-                        contentDescription = null,
-                        tint = ElementTheme.colors.iconTertiary,
-                    )
-                } else if (room.worldReadable) {
-                    // Picto for world readable
-                    Icon(
-                        modifier = Modifier
-                            .size(16.dp)
-                            .padding(end = 4.dp),
-                        imageVector = CompoundIcons.Public(),
-                        contentDescription = null,
-                        tint = ElementTheme.colors.iconTertiary,
-                    )
-                }
-                // Number of members
-                val membersCount = pluralStringResource(
-                    CommonPlurals.common_member_count,
-                    room.numJoinedMembers,
-                    room.numJoinedMembers
+    Column {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 66.dp)
+                .padding(horizontal = 16.dp)
+                .toggleable(
+                    value = selectableSpaceRoom.isSelected,
+                    role = Role.Checkbox,
+                    enabled = selectableSpaceRoom.isLastOwner.not(),
+                    onValueChange = { onClick() }
                 )
-                val subTitle = if (selectableSpaceRoom.isLastOwner) {
-                    stringResource(R.string.screen_leave_space_last_admin_info, membersCount)
-                } else {
-                    membersCount
-                }
+                .clickable(
+                    enabled = selectableSpaceRoom.isLastOwner.not(),
+                    onClickLabel = null,
+                    role = Role.Checkbox,
+                    onClick = onClick,
+                ),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            Avatar(
+                avatarData = room.getAvatarData(AvatarSize.LeaveSpaceRoom),
+                avatarType = if (room.isSpace) AvatarType.Space() else AvatarType.Room(),
+            )
+            Column(
+                modifier = Modifier.weight(1f),
+            ) {
                 Text(
-                    modifier = Modifier.padding(end = 16.dp),
-                    text = subTitle,
-                    color = ElementTheme.colors.textSecondary,
-                    style = ElementTheme.typography.fontBodyMdRegular,
+                    modifier = Modifier
+                        .padding(end = 16.dp),
+                    text = room.displayName,
+                    color = ElementTheme.colors.textPrimary,
+                    style = ElementTheme.typography.fontBodyLgMedium,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    if (room.joinRule == JoinRule.Invite) {
+                        // Picto for invite only
+                        Icon(
+                            modifier = Modifier
+                                .size(16.dp)
+                                .padding(end = 4.dp),
+                            imageVector = CompoundIcons.LockSolid(),
+                            contentDescription = null,
+                            tint = ElementTheme.colors.iconTertiary,
+                        )
+                    } else if (room.worldReadable) {
+                        // Picto for world readable
+                        Icon(
+                            modifier = Modifier
+                                .size(16.dp)
+                                .padding(end = 4.dp),
+                            imageVector = CompoundIcons.Public(),
+                            contentDescription = null,
+                            tint = ElementTheme.colors.iconTertiary,
+                        )
+                    }
+                    // Number of members
+                    val membersCount = pluralStringResource(
+                        CommonPlurals.common_member_count,
+                        room.numJoinedMembers,
+                        room.numJoinedMembers
+                    )
+                    val subTitle = if (selectableSpaceRoom.isLastOwner) {
+                        stringResource(R.string.screen_leave_space_last_admin_info, membersCount)
+                    } else {
+                        membersCount
+                    }
+                    Text(
+                        modifier = Modifier.padding(end = 16.dp),
+                        text = subTitle,
+                        color = ElementTheme.colors.textSecondary,
+                        style = ElementTheme.typography.fontBodyMdRegular,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
+            if (showCheckBox && selectableSpaceRoom.isLastOwner.not()) {
+                Checkbox(
+                    checked = selectableSpaceRoom.isSelected,
+                    onCheckedChange = null,
+                    enabled = true,
+                )
             }
         }
-        if (showCheckBox) {
-            Checkbox(
-                checked = selectableSpaceRoom.isSelected,
-                onCheckedChange = null,
-                enabled = selectableSpaceRoom.isLastOwner.not(),
-            )
-        }
+        HorizontalDivider(modifier = Modifier.padding(start = 80.dp))
     }
 }
 

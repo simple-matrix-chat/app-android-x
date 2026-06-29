@@ -32,6 +32,8 @@ fun aSelectRoomInfo(
     avatarUrl: String? = null,
     heroes: ImmutableList<MatrixUser> = persistentListOf(),
     isTombstoned: Boolean = false,
+    isDirect: Boolean = false,
+    activeMembersCount: Long = 0,
 ) = SelectRoomInfo(
     roomId = roomId,
     name = name,
@@ -39,4 +41,6 @@ fun aSelectRoomInfo(
     avatarUrl = avatarUrl,
     heroes = heroes,
     isTombstoned = isTombstoned,
+    isDirect = isDirect,
+    activeMembersCount = activeMembersCount,
 )

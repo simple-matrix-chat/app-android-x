@@ -35,6 +35,8 @@ import io.element.android.libraries.matrix.api.core.RoomId
 import io.element.android.libraries.matrix.api.core.UserId
 import io.element.android.libraries.matrix.api.room.powerlevels.canCall
 import io.element.android.libraries.matrix.api.room.powerlevels.use
+import io.element.android.libraries.matrix.api.user.MatrixProfileLink
+import io.element.android.libraries.matrix.api.user.MatrixProfileUsernameException
 import io.element.android.libraries.matrix.api.user.MatrixUser
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -42,6 +44,7 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
+import timber.log.Timber
 
 @AssistedInject
 class UserProfilePresenter(
@@ -99,6 +102,55 @@ class UserProfilePresenter(
                 .launchIn(this)
         }
         val userProfile by produceState<MatrixUser?>(null) { value = client.getProfile(userId).getOrNull() }
+        var username by remember(userId) { mutableStateOf<String?>(null) }
+        var phoneNumber by remember(userId) { mutableStateOf<String?>(null) }
+        var profileStatus by remember(userId) { mutableStateOf<String?>(null) }
+        var profileLink by remember(userId) { mutableStateOf<String?>(MatrixProfileLink.fallbackUserLink(userId)) }
+
+        LaunchedEffect(userId) {
+            launch {
+                client.getProfileUsername(userId)
+                    .onSuccess { value ->
+                        value.cleanUsername()?.let { username = it }
+                    }
+                    .onFailure {
+                        if (it !is MatrixProfileUsernameException.Unsupported) {
+                            Timber.d(it, "Failed to load Moment username")
+                        }
+                    }
+            }
+            launch {
+                client.getPublicProfile(userId)
+                    .onSuccess { profile ->
+                        phoneNumber = profile?.phoneNumber.blankToNull()
+                        if (username.isNullOrBlank()) {
+                            profile?.username.cleanUsername()?.let { username = it }
+                        }
+                    }
+                    .onFailure {
+                        Timber.d(it, "Failed to load Moment public profile")
+                    }
+            }
+            launch {
+                client.getProfileStatus(userId)
+                    .onSuccess { status ->
+                        profileStatus = status.blankToNull()
+                    }
+                    .onFailure {
+                        Timber.d(it, "Failed to load Moment profile status")
+                    }
+            }
+            launch {
+                client.createUserProfileLink(userId)
+                    .onSuccess { link ->
+                        profileLink = link.blankToNull() ?: MatrixProfileLink.fallbackUserLink(userId)
+                    }
+                    .onFailure {
+                        profileLink = MatrixProfileLink.fallbackUserLink(userId)
+                        Timber.d(it, "Failed to create Moment profile link")
+                    }
+            }
+        }
 
         fun handleEvent(event: UserProfileEvents) {
             when (event) {
@@ -144,6 +196,15 @@ class UserProfilePresenter(
             userId = userId,
             userName = userProfile?.displayName,
             avatarUrl = userProfile?.avatarUrl,
+            username = username,
+            phoneNumber = phoneNumber,
+            status = profileStatus,
+            profileShareText = buildProfileShareText(
+                profileLink = profileLink,
+                userId = userId,
+                displayName = userProfile?.displayName,
+                username = username,
+            ),
             isBlocked = isBlocked.value,
             startDmActionState = startDmActionState.value,
             displayConfirmationDialog = confirmationDialog,
@@ -177,3 +238,22 @@ class UserProfilePresenter(
         // Note: on success, ignoredUsersFlow will emit new item.
     }
 }
+
+private fun buildProfileShareText(
+    profileLink: String?,
+    userId: UserId,
+    displayName: String?,
+    username: String?,
+): String? {
+    val link = profileLink.blankToNull() ?: MatrixProfileLink.fallbackUserLink(userId) ?: return null
+    val trimmedDisplayName = displayName.blankToNull()
+    val label = when {
+        trimmedDisplayName == null || trimmedDisplayName == userId.value -> username.cleanUsername()?.let { "@$it" } ?: userId.value
+        else -> trimmedDisplayName
+    }
+    return "$label\n$link"
+}
+
+private fun String?.blankToNull(): String? = this?.trim()?.takeIf { it.isNotEmpty() }
+
+private fun String?.cleanUsername(): String? = blankToNull()?.removePrefix("@")?.takeIf { it.isNotEmpty() }

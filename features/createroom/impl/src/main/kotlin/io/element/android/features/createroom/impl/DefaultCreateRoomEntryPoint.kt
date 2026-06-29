@@ -15,6 +15,7 @@ import io.element.android.features.createroom.api.CreateRoomEntryPoint
 import io.element.android.libraries.architecture.createNode
 import io.element.android.libraries.di.SessionScope
 import io.element.android.libraries.matrix.api.core.RoomId
+import io.element.android.libraries.matrix.api.createroom.MomentRoomKind
 
 @ContributesBinding(SessionScope::class)
 class DefaultCreateRoomEntryPoint : CreateRoomEntryPoint {
@@ -25,6 +26,7 @@ class DefaultCreateRoomEntryPoint : CreateRoomEntryPoint {
     ) : CreateRoomEntryPoint.Builder {
         private var isSpace = false
         private var parentSpaceId: RoomId? = null
+        private var momentRoomKind: MomentRoomKind? = null
 
         override fun setIsSpace(isSpace: Boolean): Builder {
             this.isSpace = isSpace
@@ -36,8 +38,13 @@ class DefaultCreateRoomEntryPoint : CreateRoomEntryPoint {
             return this
         }
 
+        override fun setMomentRoomKind(momentRoomKind: MomentRoomKind): Builder {
+            this.momentRoomKind = momentRoomKind
+            return this
+        }
+
         override fun build(): Node {
-            val inputs = CreateRoomFlowNode.Inputs(isSpace = isSpace, parentSpaceId = parentSpaceId)
+            val inputs = CreateRoomFlowNode.Inputs(isSpace = isSpace, parentSpaceId = parentSpaceId, momentRoomKind = momentRoomKind)
             return parentNode.createNode<CreateRoomFlowNode>(buildContext, listOf(inputs, callback))
         }
     }

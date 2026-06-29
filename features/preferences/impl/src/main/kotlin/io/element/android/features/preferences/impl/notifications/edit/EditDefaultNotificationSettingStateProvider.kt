@@ -34,6 +34,7 @@ private fun anEditDefaultNotificationSettingsState(
 ) = EditDefaultNotificationSettingState(
     isOneToOne = isOneToOne,
     mode = RoomNotificationMode.MENTIONS_AND_KEYWORDS_ONLY,
+    pendingMode = RoomNotificationMode.MENTIONS_AND_KEYWORDS_ONLY.takeIf { changeNotificationSettingAction == AsyncAction.Loading },
     roomsWithUserDefinedMode = persistentListOf(
         anEditNotificationSettingRoomInfo("Room"),
         anEditNotificationSettingRoomInfo(null),

@@ -8,10 +8,14 @@
 
 package io.element.android.features.messages.impl.timeline.components.event
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
@@ -29,9 +33,12 @@ fun TimelineItemLegacyCallInviteView(
     modifier: Modifier = Modifier,
 ) {
     Row(
-        modifier = modifier,
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(
+            modifier = Modifier.size(20.dp),
             imageVector = CompoundIcons.VoiceCallSolid(),
             contentDescription = null,
             tint = ElementTheme.colors.iconSecondary,
@@ -41,7 +48,7 @@ fun TimelineItemLegacyCallInviteView(
             color = ElementTheme.colors.textSecondary,
             style = ElementTheme.typography.fontBodyMdRegular,
             text = stringResource(R.string.screen_room_timeline_legacy_call),
-            textAlign = TextAlign.Start,
+            textAlign = TextAlign.Center,
         )
     }
 }

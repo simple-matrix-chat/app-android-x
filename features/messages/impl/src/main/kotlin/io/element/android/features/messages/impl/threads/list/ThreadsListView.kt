@@ -7,14 +7,17 @@
 
 package io.element.android.features.messages.impl.threads.list
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -22,7 +25,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -31,6 +33,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.element.android.compound.theme.ElementTheme
@@ -40,16 +45,15 @@ import io.element.android.libraries.designsystem.components.avatar.Avatar
 import io.element.android.libraries.designsystem.components.avatar.AvatarData
 import io.element.android.libraries.designsystem.components.avatar.AvatarSize
 import io.element.android.libraries.designsystem.components.avatar.AvatarType
-import io.element.android.libraries.designsystem.components.button.BackButton
 import io.element.android.libraries.designsystem.preview.ElementPreview
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
 import io.element.android.libraries.designsystem.preview.ROOM_NAME
 import io.element.android.libraries.designsystem.preview.USER_NAME_ALICE
 import io.element.android.libraries.designsystem.theme.components.HorizontalDivider
 import io.element.android.libraries.designsystem.theme.components.Icon
+import io.element.android.libraries.designsystem.theme.components.IconButton
 import io.element.android.libraries.designsystem.theme.components.Scaffold
 import io.element.android.libraries.designsystem.theme.components.Text
-import io.element.android.libraries.designsystem.theme.components.TopAppBar
 import io.element.android.libraries.matrix.api.core.RoomId
 import io.element.android.libraries.matrix.api.core.ThreadId
 import io.element.android.libraries.matrix.api.core.UserId
@@ -66,7 +70,6 @@ import io.element.android.libraries.ui.strings.CommonStrings
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.delay
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ThreadsListView(
     state: ThreadsListState,
@@ -77,41 +80,7 @@ fun ThreadsListView(
     Scaffold(
         modifier = modifier,
         topBar = {
-            TopAppBar(
-                title = {
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Avatar(
-                            avatarData = AvatarData(
-                                id = state.roomId.value,
-                                name = state.roomName,
-                                url = state.roomAvatarUrl,
-                                size = AvatarSize.CurrentUserTopBar,
-                            ),
-                            avatarType = AvatarType.Room(isTombstoned = state.isRoomTombstoned),
-                            contentDescription = null,
-                        )
-                        Column {
-                            Text(
-                                text = stringResource(CommonStrings.common_threads),
-                                style = ElementTheme.typography.fontBodyLgMedium,
-                                color = ElementTheme.colors.textPrimary,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                            Text(
-                                text = state.roomName,
-                                style = ElementTheme.typography.fontBodyXsRegular,
-                                color = ElementTheme.colors.textSecondary,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                        }
-                    }
-                },
-                navigationIcon = {
-                    BackButton(onBackClick)
-                }
-            )
+            ThreadsListTopBar(onBackClick = onBackClick)
         }
     ) { padding ->
         val lazyListState = rememberLazyListState()
@@ -135,6 +104,49 @@ fun ThreadsListView(
         ScrollHelper(lazyListState) {
             state.eventSink(ThreadsListEvents.Paginate)
         }
+    }
+}
+
+@Composable
+private fun ThreadsListTopBar(
+    onBackClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .background(ElementTheme.colors.bgCanvasDefault)
+            .padding(horizontal = 20.dp)
+            .padding(top = 8.dp, bottom = 6.dp)
+            .heightIn(min = 44.dp),
+    ) {
+        IconButton(
+            modifier = Modifier
+                .align(Alignment.CenterStart)
+                .size(40.dp),
+            onClick = onBackClick,
+        ) {
+            Icon(
+                imageVector = CompoundIcons.ChevronLeft(),
+                contentDescription = stringResource(CommonStrings.action_back),
+                tint = ElementTheme.colors.iconPrimary,
+            )
+        }
+
+        Text(
+            modifier = Modifier
+                .align(Alignment.Center)
+                .padding(horizontal = 56.dp)
+                .semantics {
+                    heading()
+                },
+            text = stringResource(CommonStrings.common_threads),
+            style = ElementTheme.typography.fontBodyLgMedium,
+            color = ElementTheme.colors.textPrimary,
+            textAlign = TextAlign.Center,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 
@@ -169,7 +181,7 @@ private fun ThreadListItemRow(
         modifier = Modifier
             .clickable { onClick(threadItem.item.threadId) }
             .fillMaxWidth()
-            .padding(top = 4.dp, bottom = 8.dp, start = 16.dp, end = 16.dp),
+            .padding(horizontal = 16.dp, vertical = 8.dp),
     ) {
         val rootEvent = threadItem.item.rootEvent
         val senderProfile = rootEvent.senderProfile
@@ -251,10 +263,18 @@ private fun ThreadListItemRow(
 
             Row(
                 verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
             ) {
+                Icon(
+                    modifier = Modifier.size(14.dp),
+                    imageVector = CompoundIcons.Threads(),
+                    contentDescription = null,
+                    tint = ElementTheme.colors.iconSecondary
+                )
+
                 Text(
                     text = "${threadItem.item.numberOfReplies}",
-                    style = ElementTheme.typography.fontBodySmRegular,
+                    style = ElementTheme.typography.fontBodySmMedium,
                     color = ElementTheme.colors.textSecondary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -262,28 +282,19 @@ private fun ThreadListItemRow(
 
                 Spacer(modifier = Modifier.width(4.dp))
 
-                Icon(
-                    modifier = Modifier.size(20.dp),
-                    imageVector = CompoundIcons.ThreadsSolid(),
-                    contentDescription = null,
-                    tint = ElementTheme.colors.iconSecondary
-                )
-
-                Spacer(modifier = Modifier.width(8.dp))
-
                 threadItem.item.latestEvent?.let { latestEvent ->
                     Avatar(
                         avatarData = AvatarData(
                             id = latestEvent.senderId.value,
                             name = latestEvent.senderProfile.getDisambiguatedDisplayName(latestEvent.senderId),
                             url = latestEvent.senderProfile.getAvatarUrl(),
-                            size = AvatarSize.TimelineThreadLatestEventSender,
+                            size = AvatarSize.TimelineThreadSummary,
                         ),
                         avatarType = AvatarType.User,
                         contentDescription = null,
                     )
 
-                    Spacer(modifier = Modifier.width(8.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
 
                     Text(
                         text = threadItem.latestEventText.orEmpty(),

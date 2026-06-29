@@ -111,18 +111,18 @@ private fun PinUnlockPage(
                 .fillMaxSize()
                 .systemBarsPadding()
                 .imePadding()
-                .padding(all = 20.dp)
+                .padding(horizontal = 24.dp, vertical = 20.dp)
 
         val header = @Composable {
             PinUnlockHeader(
                 state = state,
                 isInAppUnlock = isInAppUnlock,
-                modifier = Modifier.padding(top = 60.dp)
+                modifier = Modifier.padding(top = 56.dp)
             )
         }
         val footer = @Composable {
             PinUnlockFooter(
-                modifier = Modifier.padding(top = 24.dp),
+                modifier = Modifier.padding(top = 24.dp, bottom = 8.dp),
                 showBiometricUnlock = state.showBiometricUnlock,
                 onUseBiometric = {
                     state.eventSink(PinUnlockEvent.OnUseBiometric)
@@ -241,7 +241,7 @@ private fun PinUnlockExpandedView(
             modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth()
-                    .padding(top = 40.dp),
+                    .padding(top = 36.dp),
         ) {
             content()
         }
@@ -254,7 +254,7 @@ private fun PinDotsRow(
     pinEntry: PinEntry,
 ) {
     Row(
-        horizontalArrangement = spacedBy(8.dp),
+        horizontalArrangement = spacedBy(24.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         for (digit in pinEntry.digits) {
@@ -358,7 +358,11 @@ private fun PinUnlockFooter(
     onForgotPin: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceAround) {
+    Row(
+        modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(24.dp, Alignment.CenterHorizontally),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
         if (showBiometricUnlock) {
             TextButton(text = stringResource(id = R.string.screen_app_lock_use_biometric_android), onClick = onUseBiometric)
         }

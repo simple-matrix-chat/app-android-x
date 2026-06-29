@@ -15,8 +15,10 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.test.AndroidComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
+import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.longClick
-import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
@@ -25,6 +27,7 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeRight
 import androidx.compose.ui.test.v2.runAndroidComposeUiTest
@@ -33,6 +36,8 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.element.android.emojibasebindings.Emoji
 import io.element.android.emojibasebindings.EmojibaseCategory
 import io.element.android.emojibasebindings.EmojibaseStore
+import io.element.android.features.messages.api.timeline.voicemessages.composer.VoiceMessageComposerEvent
+import io.element.android.features.messages.api.timeline.voicemessages.composer.aVoiceMessageComposerState
 import io.element.android.features.messages.impl.actionlist.ActionListEvent
 import io.element.android.features.messages.impl.actionlist.ActionListState
 import io.element.android.features.messages.impl.actionlist.anActionListState
@@ -42,8 +47,10 @@ import io.element.android.features.messages.impl.crypto.sendfailure.resolve.aCha
 import io.element.android.features.messages.impl.messagecomposer.aMessageComposerState
 import io.element.android.features.messages.impl.pinned.banner.PinnedMessagesBannerItem
 import io.element.android.features.messages.impl.pinned.banner.aLoadedPinnedMessagesBannerState
+import io.element.android.features.messages.impl.search.RoomMessageSearchEvent
 import io.element.android.features.messages.impl.timeline.FOCUS_ON_PINNED_EVENT_DEBOUNCE_DURATION_IN_MILLIS
 import io.element.android.features.messages.impl.timeline.TimelineEvent
+import io.element.android.features.messages.impl.timeline.aGroupedEvents
 import io.element.android.features.messages.impl.timeline.aTimelineItemEvent
 import io.element.android.features.messages.impl.timeline.aTimelineItemList
 import io.element.android.features.messages.impl.timeline.aTimelineItemReadReceipts
@@ -55,7 +62,9 @@ import io.element.android.features.messages.impl.timeline.components.reactionsum
 import io.element.android.features.messages.impl.timeline.components.receipt.aReadReceiptData
 import io.element.android.features.messages.impl.timeline.components.receipt.bottomsheet.ReadReceiptBottomSheetEvent
 import io.element.android.features.messages.impl.timeline.model.TimelineItem
+import io.element.android.features.messages.impl.timeline.model.event.aTimelineItemStateEventContent
 import io.element.android.features.messages.impl.timeline.model.event.aTimelineItemTextContent
+import io.element.android.features.messages.impl.topbars.MomentRoomHeaderActionSpacing
 import io.element.android.features.roomcall.api.aStandByCallState
 import io.element.android.libraries.matrix.api.core.RoomId
 import io.element.android.libraries.matrix.api.core.UserId
@@ -65,6 +74,7 @@ import io.element.android.libraries.matrix.api.timeline.item.event.getDisplayNam
 import io.element.android.libraries.matrix.api.user.MatrixUser
 import io.element.android.libraries.matrix.test.AN_EVENT_ID
 import io.element.android.libraries.testtags.TestTags
+import io.element.android.libraries.textcomposer.model.VoiceMessageRecorderEvent
 import io.element.android.libraries.ui.strings.CommonStrings
 import io.element.android.tests.testutils.EnsureCalledOnceWithTwoParamsAndResult
 import io.element.android.tests.testutils.EnsureNeverCalled
@@ -73,6 +83,7 @@ import io.element.android.tests.testutils.EnsureNeverCalledWithTwoParams
 import io.element.android.tests.testutils.EnsureNeverCalledWithTwoParamsAndResult
 import io.element.android.tests.testutils.EventsRecorder
 import io.element.android.tests.testutils.assertNoNodeWithText
+import io.element.android.tests.testutils.assertNodeWithTextIsDisplayed
 import io.element.android.tests.testutils.clickOn
 import io.element.android.tests.testutils.ensureCalledOnce
 import io.element.android.tests.testutils.ensureCalledOnceWithParam
@@ -81,10 +92,13 @@ import io.element.android.tests.testutils.pressBack
 import io.element.android.tests.testutils.setSafeContent
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.persistentMapOf
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
+import kotlin.math.abs
 import kotlin.time.Duration.Companion.milliseconds
+import io.element.android.libraries.ui.strings.R as UiStringsR
 
 @RunWith(AndroidJUnit4::class)
 class MessagesViewTest {
@@ -119,6 +133,38 @@ class MessagesViewTest {
     }
 
     @Test
+    fun `room header title stays centered with trailing actions`() = runAndroidComposeUiTest<ComponentActivity> {
+        setMessagesView(
+            state = aMessagesState(
+                roomMessageSearchState = aRoomMessageSearchState(isSearchEnabled = true),
+                roomCallState = aStandByCallState(isDM = true),
+            ),
+        )
+
+        val headerBounds = onNodeWithTag(TestTags.roomHeader.value, useUnmergedTree = true).getUnclippedBoundsInRoot()
+        val titleBounds = onNodeWithTag(TestTags.roomHeaderTitle.value, useUnmergedTree = true).getUnclippedBoundsInRoot()
+        val headerCenter = (headerBounds.left + headerBounds.right).value / 2f
+        val titleCenter = (titleBounds.left + titleBounds.right).value / 2f
+
+        assertTrue(
+            "Expected the room header title to stay centered in the Moment-style header.",
+            abs(titleCenter - headerCenter) < 1f,
+        )
+
+        val searchBounds = onNodeWithContentDescription(activity!!.getString(CommonStrings.action_search)).getUnclippedBoundsInRoot()
+        val callBounds = onNodeWithContentDescription(activity!!.getString(UiStringsR.string.action_call)).getUnclippedBoundsInRoot()
+        val settingsBounds = onNodeWithContentDescription(activity!!.getString(UiStringsR.string.common_settings)).getUnclippedBoundsInRoot()
+        val searchToCallGap = callBounds.left.value - searchBounds.right.value
+        val callToSettingsGap = settingsBounds.left.value - callBounds.right.value
+
+        assertTrue(
+            "Expected Moment room header actions to use iOS-like spacing.",
+            abs(searchToCallGap - MomentRoomHeaderActionSpacing.value) < 1f &&
+                abs(callToSettingsGap - MomentRoomHeaderActionSpacing.value) < 1f,
+        )
+    }
+
+    @Test
     fun `clicking on join call invoke expected callback`() = runAndroidComposeUiTest {
         val eventsRecorder = EventsRecorder<MessagesEvent>(expectEvents = false)
         val state = aMessagesState(
@@ -146,9 +192,117 @@ class MessagesViewTest {
                 state = state,
                 onJoinCallClick = callback,
             )
-            val joinVoiceCallContentDescription = activity!!.getString(CommonStrings.a11y_start_voice_call)
-            onNodeWithContentDescription(joinVoiceCallContentDescription).performClick()
+            val callContentDescription = activity!!.getString(CommonStrings.action_call)
+            onNodeWithContentDescription(callContentDescription).performClick()
+            onNodeWithText("Start a voice call").performClick()
         }
+    }
+
+    @Test
+    fun `clicking on direct room video call menu item invoke expected callback`() = runAndroidComposeUiTest {
+        val eventsRecorder = EventsRecorder<MessagesEvent>(expectEvents = false)
+        val state = aMessagesState(
+            eventSink = eventsRecorder,
+            roomCallState = aStandByCallState(isDM = true)
+        )
+        ensureCalledOnceWithParam(false) { callback ->
+            setMessagesView(
+                state = state,
+                onJoinCallClick = callback,
+            )
+            val callContentDescription = activity!!.getString(CommonStrings.action_call)
+            onNodeWithContentDescription(callContentDescription).performClick()
+            onNodeWithText("Start a video call").performClick()
+        }
+    }
+
+    @Test
+    fun `room search action is hidden when disabled`() = runAndroidComposeUiTest {
+        setMessagesView(
+            state = aMessagesState(
+                roomMessageSearchState = aRoomMessageSearchState(isSearchEnabled = false),
+            ),
+        )
+        val searchContentDescription = activity!!.getString(CommonStrings.action_search)
+        onNodeWithContentDescription(searchContentDescription).assertDoesNotExist()
+    }
+
+    @Test
+    fun `clicking room search action emits toggle event`() = runAndroidComposeUiTest {
+        val eventsRecorder = EventsRecorder<RoomMessageSearchEvent>()
+        setMessagesView(
+            state = aMessagesState(
+                roomMessageSearchState = aRoomMessageSearchState(
+                    isSearchEnabled = true,
+                    eventSink = eventsRecorder,
+                ),
+            ),
+        )
+        val searchContentDescription = activity!!.getString(CommonStrings.action_search)
+        onNodeWithContentDescription(searchContentDescription).performClick()
+        eventsRecorder.assertSingle(RoomMessageSearchEvent.ToggleSearchVisibility)
+    }
+
+    @Test
+    fun `room search action keeps call action visible`() = runAndroidComposeUiTest {
+        val state = aMessagesState(
+            roomMessageSearchState = aRoomMessageSearchState(isSearchEnabled = true),
+        )
+
+        ensureCalledOnceWithParam(false) { callback ->
+            setMessagesView(
+                state = state,
+                onJoinCallClick = callback,
+            )
+            val searchContentDescription = activity!!.getString(CommonStrings.action_search)
+            val joinCallContentDescription = "Start a call"
+            onNodeWithContentDescription(searchContentDescription).assertExists()
+            onNodeWithContentDescription(joinCallContentDescription).performClick()
+        }
+    }
+
+    @Test
+    fun `clicking room search result emits select result`() = runAndroidComposeUiTest {
+        val eventsRecorder = EventsRecorder<RoomMessageSearchEvent>()
+        val state = aMessagesState(
+            roomMessageSearchState = aRoomMessageSearchState(
+                isSearchEnabled = true,
+                isSearchActive = true,
+                query = "hello",
+                results = persistentListOf(
+                    aRoomMessageSearchResult(
+                        eventId = AN_EVENT_ID,
+                        title = "Alice",
+                        description = "hello from search",
+                    )
+                ),
+                eventSink = eventsRecorder,
+            ),
+        )
+
+        setMessagesView(state = state)
+
+        onNodeWithText("hello from search").performClick()
+        eventsRecorder.assertList(
+            listOf(
+                RoomMessageSearchEvent.UpdateVisibleRange(0..0),
+                RoomMessageSearchEvent.SelectResult(AN_EVENT_ID),
+            )
+        )
+    }
+
+    @Test
+    fun `active room search overlay does not show Android cancel button`() = runAndroidComposeUiTest<ComponentActivity> {
+        setMessagesView(
+            state = aMessagesState(
+                roomMessageSearchState = aRoomMessageSearchState(
+                    isSearchEnabled = true,
+                    isSearchActive = true,
+                ),
+            ),
+        )
+
+        onNodeWithText(activity!!.getString(CommonStrings.action_cancel)).assertDoesNotExist()
     }
 
     @Test
@@ -234,7 +388,7 @@ class MessagesViewTest {
 
     @Test
     @Config(qualifiers = "h1024dp")
-    fun `clicking on a read receipt list emits the expected Event`() = runAndroidComposeUiTest {
+    fun `read receipt list is hidden in Moment timeline style`() = runAndroidComposeUiTest {
         val eventsRecorder = EventsRecorder<ReadReceiptBottomSheetEvent>()
         val state = aMessagesState(
             timelineState = aTimelineState(
@@ -253,12 +407,62 @@ class MessagesViewTest {
                 eventSink = eventsRecorder
             ),
         )
-        val timelineItem = state.timelineState.timelineItems.first() as TimelineItem.Event
         setMessagesView(
             state = state,
         )
-        onNodeWithTag(TestTags.messageReadReceipts.value, useUnmergedTree = true).performClick()
-        eventsRecorder.assertSingle(ReadReceiptBottomSheetEvent.EventSelected(timelineItem))
+        onNodeWithTag(TestTags.messageReadReceipts.value, useUnmergedTree = true).assertDoesNotExist()
+        eventsRecorder.assertEmpty()
+    }
+
+    @Test
+    @Config(qualifiers = "h1024dp")
+    fun `grouped event read receipt list is hidden in Moment timeline style`() = runAndroidComposeUiTest {
+        val eventsRecorder = EventsRecorder<ReadReceiptBottomSheetEvent>()
+        val state = aMessagesState(
+            timelineState = aTimelineState(
+                renderReadReceipts = true,
+                timelineItems = persistentListOf(
+                    aGroupedEvents(withReadReceipts = true),
+                ),
+            ),
+            readReceiptBottomSheetState = aReadReceiptBottomSheetState(
+                eventSink = eventsRecorder
+            ),
+        )
+        setMessagesView(
+            state = state,
+        )
+        onNodeWithTag(TestTags.messageReadReceipts.value, useUnmergedTree = true).assertDoesNotExist()
+        eventsRecorder.assertEmpty()
+    }
+
+    @Test
+    @Config(qualifiers = "h1024dp")
+    fun `state event read receipt list is hidden in Moment timeline style`() = runAndroidComposeUiTest {
+        val eventsRecorder = EventsRecorder<ReadReceiptBottomSheetEvent>()
+        val state = aMessagesState(
+            timelineState = aTimelineState(
+                renderReadReceipts = true,
+                timelineItems = persistentListOf(
+                    aTimelineItemEvent(
+                        content = aTimelineItemStateEventContent(),
+                        readReceiptState = aTimelineItemReadReceipts(
+                            receipts = listOf(
+                                aReadReceiptData(0),
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            readReceiptBottomSheetState = aReadReceiptBottomSheetState(
+                eventSink = eventsRecorder
+            ),
+        )
+        setMessagesView(
+            state = state,
+        )
+        onNodeWithTag(TestTags.messageReadReceipts.value, useUnmergedTree = true).assertDoesNotExist()
+        eventsRecorder.assertEmpty()
     }
 
     @Test
@@ -331,8 +535,48 @@ class MessagesViewTest {
                 onCreatePollClick = callback,
             )
             // Then click on the poll action
-            clickOn(R.string.screen_room_attachment_source_poll)
+            clickOnAttachmentAction(R.string.screen_room_attachment_source_poll)
         }
+    }
+
+    @Test
+    fun `attachment source picker uses Moment supported action labels`() = runAndroidComposeUiTest {
+        val state = aMessagesState(
+            composerState = aMessageComposerState(
+                showAttachmentSourcePicker = true,
+                canShareLocation = true,
+            ),
+        )
+        setMessagesView(state = state)
+
+        assertAttachmentActionIsDisplayed(R.string.screen_room_attachment_source_location)
+        assertAttachmentActionIsDisplayed(R.string.screen_room_attachment_source_photo)
+        assertAttachmentActionIsDisplayed(CommonStrings.common_video)
+        assertAttachmentActionIsDisplayed(CommonStrings.common_file)
+        assertAttachmentActionIsDisplayed(R.string.screen_room_attachment_source_contact)
+        assertAttachmentActionIsDisplayed(CommonStrings.common_voice_message)
+        assertAttachmentActionIsDisplayed(R.string.screen_room_attachment_source_camera)
+        assertAttachmentActionIsDisplayed(R.string.screen_room_attachment_source_poll)
+        assertAttachmentActionIsDisplayed(R.string.screen_room_attachment_text_formatting)
+    }
+
+    @Test
+    fun `clicking on voice message attachment starts recording`() = runAndroidComposeUiTest {
+        val voiceMessageEventsRecorder = EventsRecorder<VoiceMessageComposerEvent>()
+        val state = aMessagesState(
+            composerState = aMessageComposerState(
+                showAttachmentSourcePicker = true,
+            ),
+            voiceMessageComposerState = aVoiceMessageComposerState().copy(eventSink = voiceMessageEventsRecorder),
+        )
+        setMessagesView(state = state)
+        voiceMessageEventsRecorder.clear()
+
+        clickOnAttachmentAction(CommonStrings.common_voice_message)
+
+        voiceMessageEventsRecorder.assertSingle(
+            VoiceMessageComposerEvent.RecorderEvent(VoiceMessageRecorderEvent.Start)
+        )
     }
 
     @Test
@@ -447,23 +691,17 @@ class MessagesViewTest {
     }
 
     @Test
-    fun `clicking on more reaction emits the expected Event`() = runAndroidComposeUiTest {
-        val eventsRecorder = EventsRecorder<CustomReactionEvent>()
+    fun `more reaction button is hidden in the timeline`() = runAndroidComposeUiTest {
         val state = aMessagesState(
             timelineState = aTimelineState(
                 timelineItems = aTimelineItemList(aTimelineItemTextContent()),
             ),
-            customReactionState = aCustomReactionState(
-                eventSink = eventsRecorder,
-            ),
         )
-        val timelineItem = state.timelineState.timelineItems.first() as TimelineItem.Event
         setMessagesView(
             state = state,
         )
         val moreReactionContentDescription = activity!!.getString(R.string.screen_room_timeline_add_reaction)
-        onAllNodesWithContentDescription(moreReactionContentDescription).onFirst().performClick()
-        eventsRecorder.assertSingle(CustomReactionEvent.ShowCustomReactionSheet(timelineItem))
+        onNodeWithContentDescription(moreReactionContentDescription).assertDoesNotExist()
     }
 
     @Test
@@ -681,6 +919,20 @@ class MessagesViewTest {
         clickOn(CommonStrings.screen_room_live_location_banner)
         eventsRecorder.assertSingle(MessagesEvent.ShowLiveLocationShare)
     }
+}
+
+private fun AndroidComposeUiTest<ComponentActivity>.clickOnAttachmentAction(res: Int) {
+    val text = activity!!.getString(res)
+    onNode(hasText(text) and hasClickAction())
+        .performScrollTo()
+        .performClick()
+}
+
+private fun AndroidComposeUiTest<ComponentActivity>.assertAttachmentActionIsDisplayed(res: Int) {
+    val text = activity!!.getString(res)
+    onNodeWithText(text)
+        .performScrollTo()
+    assertNodeWithTextIsDisplayed(res)
 }
 
 private fun AndroidComposeUiTest<ComponentActivity>.setMessagesView(

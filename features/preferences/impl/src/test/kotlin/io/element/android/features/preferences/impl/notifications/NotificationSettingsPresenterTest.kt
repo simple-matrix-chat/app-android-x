@@ -51,6 +51,59 @@ class NotificationSettingsPresenterTest {
             assertThat(valid?.inviteForMeNotificationsEnabled).isFalse()
             assertThat(valid?.defaultGroupNotificationMode).isEqualTo(RoomNotificationMode.MENTIONS_AND_KEYWORDS_ONLY)
             assertThat(valid?.defaultOneToOneNotificationMode).isEqualTo(RoomNotificationMode.ALL_MESSAGES)
+            assertThat(valid?.inconsistentSettings).isEmpty()
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `present - inconsistent encrypted and unencrypted defaults fallback to all messages`() = runTest {
+        val notificationSettingsService = FakeNotificationSettingsService(
+            initialGroupDefaultMode = RoomNotificationMode.ALL_MESSAGES,
+            initialEncryptedGroupDefaultMode = RoomNotificationMode.MENTIONS_AND_KEYWORDS_ONLY,
+        )
+        val presenter = createNotificationSettingsPresenter(notificationSettingsService)
+        presenter.test {
+            val loadedState = consumeItemsUntilPredicate {
+                (it.matrixSettings as? NotificationSettingsState.MatrixSettings.Valid)?.inconsistentSettings?.isNotEmpty() == true
+            }.last()
+            val valid = loadedState.matrixSettings as? NotificationSettingsState.MatrixSettings.Valid
+            assertThat(valid?.defaultGroupNotificationMode).isEqualTo(RoomNotificationMode.ALL_MESSAGES)
+            assertThat(valid?.inconsistentSettings).containsExactly(
+                NotificationSettingsState.InconsistentSetting(
+                    isOneToOne = false,
+                    isEncrypted = true,
+                )
+            )
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `present - fix configuration mismatch sets inconsistent default modes to all messages`() = runTest {
+        val notificationSettingsService = FakeNotificationSettingsService(
+            initialGroupDefaultMode = RoomNotificationMode.ALL_MESSAGES,
+            initialEncryptedGroupDefaultMode = RoomNotificationMode.MENTIONS_AND_KEYWORDS_ONLY,
+        )
+        val presenter = createNotificationSettingsPresenter(notificationSettingsService)
+        presenter.test {
+            val loadedState = consumeItemsUntilPredicate {
+                (it.matrixSettings as? NotificationSettingsState.MatrixSettings.Valid)?.inconsistentSettings?.isNotEmpty() == true
+            }.last()
+            loadedState.eventSink(NotificationSettingsEvents.FixConfigurationMismatch)
+            val fixedState = consumeItemsUntilPredicate {
+                val valid = it.matrixSettings as? NotificationSettingsState.MatrixSettings.Valid
+                valid != null && valid.inconsistentSettings.isEmpty() && valid.defaultGroupNotificationMode == RoomNotificationMode.ALL_MESSAGES
+            }.last()
+            val valid = fixedState.matrixSettings as? NotificationSettingsState.MatrixSettings.Valid
+            assertThat(valid?.inconsistentSettings).isEmpty()
+            assertThat(notificationSettingsService.setDefaultRoomNotificationModeRequests).contains(
+                FakeNotificationSettingsService.SetDefaultRoomNotificationModeRequest(
+                    isEncrypted = true,
+                    mode = RoomNotificationMode.ALL_MESSAGES,
+                    isDm = false,
+                )
+            )
             cancelAndIgnoreRemainingEvents()
         }
     }

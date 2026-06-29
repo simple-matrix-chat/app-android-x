@@ -24,7 +24,6 @@ import dev.zacsweers.metro.Assisted
 import dev.zacsweers.metro.AssistedInject
 import im.vector.app.features.analytics.plan.Interaction
 import io.element.android.annotations.ContributesNode
-import io.element.android.appconfig.LearnMoreConfig
 import io.element.android.features.call.api.CallData
 import io.element.android.features.call.api.ElementCallEntryPoint
 import io.element.android.features.knockrequests.api.list.KnockRequestsListEntryPoint
@@ -40,6 +39,7 @@ import io.element.android.features.roomdetails.impl.members.RoomMemberListNode
 import io.element.android.features.roomdetails.impl.members.details.RoomMemberDetailsNode
 import io.element.android.features.roomdetails.impl.notificationsettings.RoomNotificationSettingsNode
 import io.element.android.features.roomdetailsedit.api.RoomDetailsEditEntryPoint
+import io.element.android.features.securityandprivacy.api.SecurityAndPrivacyEntryPoint
 import io.element.android.features.userprofile.shared.UserProfileNodeHelper
 import io.element.android.libraries.architecture.BackstackWithOverlayBox
 import io.element.android.libraries.architecture.BaseFlowNode
@@ -82,6 +82,7 @@ class RoomDetailsFlowNode(
     private val changeRoomMemberRolesEntryPoint: ChangeRoomMemberRolesEntryPoint,
     private val rolesAndPermissionsEntryPoint: RolesAndPermissionsEntryPoint,
     private val roomDetailsEditEntryPoint: RoomDetailsEditEntryPoint,
+    private val securityAndPrivacyEntryPoint: SecurityAndPrivacyEntryPoint,
 ) : BaseFlowNode<RoomDetailsFlowNode.NavTarget>(
     backstack = BackStack(
         initialElement = plugins.filterIsInstance<RoomDetailsEntryPoint.Params>().first().initialElement.toNavTarget(),
@@ -126,6 +127,9 @@ class RoomDetailsFlowNode(
 
         @Parcelize
         data object AdminSettings : NavTarget
+
+        @Parcelize
+        data object SecurityAndPrivacy : NavTarget
 
         @Parcelize
         data object PinnedMessagesList : NavTarget
@@ -195,6 +199,10 @@ class RoomDetailsFlowNode(
 
                     override fun navigateToAdminSettings() {
                         backstack.push(NavTarget.AdminSettings)
+                    }
+
+                    override fun navigateToSecurityAndPrivacy() {
+                        backstack.push(NavTarget.SecurityAndPrivacy)
                     }
 
                     override fun navigateToPinnedMessagesList() {
@@ -357,6 +365,18 @@ class RoomDetailsFlowNode(
                     }
                 }
                 rolesAndPermissionsEntryPoint.createNode(
+                    parentNode = this,
+                    buildContext = buildContext,
+                    callback = callback,
+                )
+            }
+            NavTarget.SecurityAndPrivacy -> {
+                val callback = object : SecurityAndPrivacyEntryPoint.Callback {
+                    override fun onDone() {
+                        backstack.pop()
+                    }
+                }
+                securityAndPrivacyEntryPoint.createNode(
                     parentNode = this,
                     buildContext = buildContext,
                     callback = callback,
