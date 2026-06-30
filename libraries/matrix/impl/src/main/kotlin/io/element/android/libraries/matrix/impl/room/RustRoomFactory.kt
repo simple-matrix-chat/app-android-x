@@ -8,6 +8,7 @@
 
 package io.element.android.libraries.matrix.impl.room
 
+import io.element.android.appconfig.MatrixE2EEConfig
 import io.element.android.appconfig.TimelineConfig
 import io.element.android.libraries.core.coroutine.CoroutineDispatchers
 import io.element.android.libraries.featureflag.api.FeatureFlagService
@@ -135,7 +136,7 @@ class RustRoomFactory(
                                 internalIdPrefix = "live",
                                 dateDividerMode = DateDividerMode.DAILY,
                                 trackReadReceipts = TimelineReadReceiptTracking.ALL_EVENTS,
-                                reportUtds = true,
+                                reportUtds = MatrixE2EEConfig.ENABLED,
                             )
                         )
                     }

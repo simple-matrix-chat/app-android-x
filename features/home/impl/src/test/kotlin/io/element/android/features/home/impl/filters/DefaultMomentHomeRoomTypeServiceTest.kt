@@ -12,8 +12,6 @@ import io.element.android.features.home.impl.model.aRoomListRoomSummary
 import io.element.android.libraries.matrix.api.core.RoomId
 import io.element.android.libraries.matrix.test.A_SESSION_ID
 import io.element.android.libraries.matrix.test.FakeMatrixClient
-import io.element.android.libraries.sessionstorage.test.InMemorySessionStore
-import io.element.android.libraries.sessionstorage.test.aSessionData
 import io.element.android.tests.testutils.lambda.lambdaError
 import io.element.android.tests.testutils.testCoroutineDispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -26,11 +24,11 @@ class DefaultMomentHomeRoomTypeServiceTest {
     @Test
     @OptIn(ExperimentalCoroutinesApi::class)
     fun `resolveRoomTypes fetches room kind state and maps channel rooms`() = runTest {
-        val requestedUrls = mutableListOf<String>()
+        val requestedStateEvents = mutableListOf<Pair<RoomId, String>>()
         val service = createService(
-            getUrlResult = { url ->
-                requestedUrls += url
-                Result.success("""{"kind":"channel"}""".encodeToByteArray())
+            getRoomStateEventContentResult = { roomId, eventType ->
+                requestedStateEvents += roomId to eventType
+                Result.success("""{"kind":"channel"}""")
             }
         )
 
@@ -39,9 +37,7 @@ class DefaultMomentHomeRoomTypeServiceTest {
         )
         advanceUntilIdle()
 
-        assertThat(requestedUrls).containsExactly(
-            "https://matrix.example.org/api/client/v3/rooms/%21room%2Fid%3Aserver.org/state/io.moment.room_kind/"
-        )
+        assertThat(requestedStateEvents).containsExactly(RoomId("!room/id:server.org") to "io.moment.room_kind")
         assertThat(service.roomTypes.value).containsEntry(RoomId("!room/id:server.org"), MomentHomeRoomType.Channel)
     }
 
@@ -49,8 +45,8 @@ class DefaultMomentHomeRoomTypeServiceTest {
     @OptIn(ExperimentalCoroutinesApi::class)
     fun `resolveRoomTypes maps non-channel state to group rooms`() = runTest {
         val service = createService(
-            getUrlResult = {
-                Result.success("""{"kind":"group"}""".encodeToByteArray())
+            getRoomStateEventContentResult = { _, _ ->
+                Result.success("""{"kind":"group"}""")
             }
         )
 
@@ -64,9 +60,66 @@ class DefaultMomentHomeRoomTypeServiceTest {
 
     @Test
     @OptIn(ExperimentalCoroutinesApi::class)
+    fun `resolveRoomTypes retries room kind state fetches`() = runTest {
+        var requestCount = 0
+        val service = createService(
+            getRoomStateEventContentResult = { _, _ ->
+                requestCount++
+                if (requestCount == 1) {
+                    Result.failure(IllegalStateException("Room kind state is not synced yet"))
+                } else {
+                    Result.success("""{"kind":"channel"}""")
+                }
+            }
+        )
+
+        service.resolveRoomTypes(
+            listOf(aRoomListRoomSummary(id = "!room:server.org"))
+        )
+        advanceUntilIdle()
+
+        assertThat(requestCount).isEqualTo(2)
+        assertThat(service.roomTypes.value).containsEntry(RoomId("!room:server.org"), MomentHomeRoomType.Channel)
+    }
+
+    @Test
+    @OptIn(ExperimentalCoroutinesApi::class)
+    fun `resolveRoomTypes does not cache failed room kind fetches as unknown`() = runTest {
+        var shouldFail = true
+        var requestCount = 0
+        val service = createService(
+            getRoomStateEventContentResult = { _, _ ->
+                requestCount++
+                if (shouldFail) {
+                    Result.failure(IllegalStateException("Room kind state is not synced yet"))
+                } else {
+                    Result.success("""{"kind":"channel"}""")
+                }
+            }
+        )
+
+        service.resolveRoomTypes(
+            listOf(aRoomListRoomSummary(id = "!room:server.org"))
+        )
+        advanceUntilIdle()
+
+        assertThat(requestCount).isAtLeast(2)
+        assertThat(service.roomTypes.value).isEmpty()
+
+        shouldFail = false
+        service.resolveRoomTypes(
+            listOf(aRoomListRoomSummary(id = "!room:server.org"))
+        )
+        advanceUntilIdle()
+
+        assertThat(service.roomTypes.value).containsEntry(RoomId("!room:server.org"), MomentHomeRoomType.Channel)
+    }
+
+    @Test
+    @OptIn(ExperimentalCoroutinesApi::class)
     fun `resolveRoomTypes ignores direct and space rooms`() = runTest {
         val service = createService(
-            getUrlResult = { lambdaError() }
+            getRoomStateEventContentResult = { _, _ -> lambdaError() }
         )
 
         service.resolveRoomTypes(
@@ -81,22 +134,15 @@ class DefaultMomentHomeRoomTypeServiceTest {
     }
 
     private fun TestScope.createService(
-        getUrlResult: (String) -> Result<ByteArray>,
+        getRoomStateEventContentResult: (RoomId, String) -> Result<String>,
     ): DefaultMomentHomeRoomTypeService {
         val matrixClient = FakeMatrixClient(
             sessionId = A_SESSION_ID,
             sessionCoroutineScope = this,
-            getUrlLambda = getUrlResult,
-        )
-        val sessionStore = InMemorySessionStore(
-            initialList = listOf(
-                aSessionData(sessionId = A_SESSION_ID.value)
-                    .copy(homeserverUrl = "https://matrix.example.org/")
-            )
+            getRoomStateEventContentLambda = getRoomStateEventContentResult,
         )
         return DefaultMomentHomeRoomTypeService(
             matrixClient = matrixClient,
-            sessionStore = sessionStore,
             dispatchers = testCoroutineDispatchers(),
             sessionCoroutineScope = this,
         )

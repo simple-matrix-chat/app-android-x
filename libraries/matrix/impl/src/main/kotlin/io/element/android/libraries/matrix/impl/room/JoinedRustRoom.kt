@@ -258,7 +258,7 @@ class JoinedRustRoom(
                     internalIdPrefix = internalIdPrefix,
                     dateDividerMode = dateDividerMode,
                     trackReadReceipts = if (trackReadReceipts) TimelineReadReceiptTracking.ALL_EVENTS else TimelineReadReceiptTracking.DISABLED,
-                    reportUtds = true,
+                    reportUtds = MatrixE2EEConfig.ENABLED,
                 )
             ).let { innerTimeline ->
                 val mode = when (createTimelineParams) {

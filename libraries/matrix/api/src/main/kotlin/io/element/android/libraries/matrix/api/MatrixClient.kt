@@ -179,6 +179,11 @@ interface MatrixClient {
     suspend fun getUrl(url: String): Result<ByteArray>
 
     /**
+     * Get the content of a state event from a joined room through the authenticated Matrix client API.
+     */
+    suspend fun getRoomStateEventContent(roomId: RoomId, eventType: String): Result<String>
+
+    /**
      * Get a room preview for a given room ID or alias. This is especially useful for rooms that the user is not a member of, or hasn't joined yet.
      */
     suspend fun getRoomPreview(roomIdOrAlias: RoomIdOrAlias, serverNames: List<String>): Result<NotJoinedRoom>

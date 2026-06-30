@@ -393,6 +393,18 @@ class RustMatrixClient(
         }.mapFailure { it.mapClientException() }
     }
 
+    override suspend fun getRoomStateEventContent(roomId: RoomId, eventType: String): Result<String> = withContext(sessionDispatcher) {
+        runCatchingExceptions {
+            performStringRequest(
+                openMatrixRequest(
+                    session = innerClient.session(),
+                    method = "GET",
+                    path = "_matrix/client/v3/rooms/${roomId.value.urlEncodedPathSegment()}/state/${eventType.urlEncodedPathSegment()}/",
+                )
+            )
+        }.mapFailure { it.mapClientException() }
+    }
+
     override suspend fun getRoom(roomId: RoomId): BaseRoom? = withContext(sessionDispatcher) {
         roomFactory.getBaseRoom(roomId)
     }

@@ -10,7 +10,6 @@ package io.element.android.features.home.impl.filters
 import dev.zacsweers.metro.ContributesBinding
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
-import io.element.android.appconfig.MatrixAppApiAliasesConfig
 import io.element.android.features.home.impl.model.RoomListRoomSummary
 import io.element.android.features.home.impl.model.RoomSummaryDisplayType
 import io.element.android.libraries.core.coroutine.CoroutineDispatchers
@@ -18,20 +17,17 @@ import io.element.android.libraries.di.SessionScope
 import io.element.android.libraries.di.annotations.SessionCoroutineScope
 import io.element.android.libraries.matrix.api.MatrixClient
 import io.element.android.libraries.matrix.api.core.RoomId
-import io.element.android.libraries.sessionstorage.api.SessionStore
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
-import java.net.URLEncoder
-import java.nio.charset.StandardCharsets
 
 interface MomentHomeRoomTypeService {
     val roomTypes: StateFlow<Map<RoomId, MomentHomeRoomType>>
@@ -43,7 +39,6 @@ interface MomentHomeRoomTypeService {
 @SingleIn(SessionScope::class)
 class DefaultMomentHomeRoomTypeService @Inject constructor(
     private val matrixClient: MatrixClient,
-    private val sessionStore: SessionStore,
     private val dispatchers: CoroutineDispatchers,
     @SessionCoroutineScope
     private val sessionCoroutineScope: CoroutineScope,
@@ -51,6 +46,8 @@ class DefaultMomentHomeRoomTypeService @Inject constructor(
     private companion object {
         const val ROOM_KIND_EVENT_TYPE = "io.moment.room_kind"
         const val CHANNEL_KIND = "channel"
+        const val FETCH_ROOM_TYPE_ATTEMPTS = 5
+        const val FETCH_ROOM_TYPE_RETRY_DELAY_MS = 1_000L
         val JSON = Json { ignoreUnknownKeys = true }
     }
 
@@ -62,10 +59,12 @@ class DefaultMomentHomeRoomTypeService @Inject constructor(
     override fun resolveRoomTypes(roomSummaries: List<RoomListRoomSummary>) {
         val roomIds = synchronized(loadingRoomIds) {
             roomSummaries.mapNotNull { summary ->
+                val currentRoomType = _roomTypes.value[summary.roomId]
                 val shouldResolve = summary.displayType == RoomSummaryDisplayType.ROOM &&
                     !summary.isDirect &&
                     !summary.isSpace &&
-                    _roomTypes.value[summary.roomId] == null &&
+                    currentRoomType != MomentHomeRoomType.Group &&
+                    currentRoomType != MomentHomeRoomType.Channel &&
                     loadingRoomIds.add(summary.roomId)
                 summary.roomId.takeIf { shouldResolve }
             }
@@ -73,43 +72,49 @@ class DefaultMomentHomeRoomTypeService @Inject constructor(
 
         roomIds.forEach { roomId ->
             sessionCoroutineScope.launch(dispatchers.io) {
-                val roomType = fetchRoomType(roomId)
-                _roomTypes.update { roomTypes ->
-                    roomTypes + (roomId to roomType)
-                }
-                synchronized(loadingRoomIds) {
-                    loadingRoomIds.remove(roomId)
+                try {
+                    val roomType = fetchRoomTypeWithRetry(roomId)
+                    if (roomType != null) {
+                        _roomTypes.update { roomTypes ->
+                            roomTypes + (roomId to roomType)
+                        }
+                    }
+                } finally {
+                    synchronized(loadingRoomIds) {
+                        loadingRoomIds.remove(roomId)
+                    }
                 }
             }
         }
     }
 
-    private suspend fun fetchRoomType(roomId: RoomId): MomentHomeRoomType = withContext(dispatchers.io) {
-        val homeserverUrl = sessionStore.getSession(matrixClient.sessionId.value)
-            ?.homeserverUrl
-            ?.trimEnd('/')
-            ?: return@withContext MomentHomeRoomType.Unknown
-        val encodedRoomId = roomId.value.encodePathComponent()
-        val encodedEventType = ROOM_KIND_EVENT_TYPE.encodePathComponent()
-        val url =
-            "$homeserverUrl${MatrixAppApiAliasesConfig.CLIENT_API_PATH_PREFIX}/v3/rooms/$encodedRoomId/state/$encodedEventType/"
-        val response = matrixClient.getUrl(url).getOrElse {
-            return@withContext MomentHomeRoomType.Unknown
+    private suspend fun fetchRoomTypeWithRetry(roomId: RoomId): MomentHomeRoomType? {
+        repeat(FETCH_ROOM_TYPE_ATTEMPTS) { attempt ->
+            val roomType = fetchRoomType(roomId)
+            if (roomType != null) {
+                return roomType
+            }
+            if (attempt < FETCH_ROOM_TYPE_ATTEMPTS - 1) {
+                delay(FETCH_ROOM_TYPE_RETRY_DELAY_MS)
+            }
+        }
+        return null
+    }
+
+    private suspend fun fetchRoomType(roomId: RoomId): MomentHomeRoomType? {
+        val response = matrixClient.getRoomStateEventContent(roomId, ROOM_KIND_EVENT_TYPE).getOrElse {
+            return null
         }
         val kind = runCatching {
-            JSON.parseToJsonElement(response.decodeToString())
+            JSON.parseToJsonElement(response)
                 .jsonObject["kind"]
                 ?.jsonPrimitive
                 ?.contentOrNull
         }.getOrNull()
-        if (kind == CHANNEL_KIND) {
+        return if (kind == CHANNEL_KIND) {
             MomentHomeRoomType.Channel
         } else {
             MomentHomeRoomType.Group
         }
-    }
-
-    private fun String.encodePathComponent(): String {
-        return URLEncoder.encode(this, StandardCharsets.UTF_8.name()).replace("+", "%20")
     }
 }

@@ -136,6 +136,7 @@ class FakeMatrixClient(
     private val clearCacheLambda: () -> Unit = { lambdaError() },
     private val userIdServerNameLambda: () -> String = { lambdaError() },
     private val getUrlLambda: (String) -> Result<ByteArray> = { lambdaError() },
+    private val getRoomStateEventContentLambda: (RoomId, String) -> Result<String> = { _, _ -> lambdaError() },
     private val canDeactivateAccountResult: () -> Boolean = { lambdaError() },
     private val deactivateAccountResult: (String, Boolean) -> Result<Unit> = { _, _ -> lambdaError() },
     private val currentSlidingSyncVersionLambda: () -> Result<SlidingSyncVersion> = { lambdaError() },
@@ -540,6 +541,10 @@ class FakeMatrixClient(
 
     override suspend fun getUrl(url: String): Result<ByteArray> {
         return getUrlLambda(url)
+    }
+
+    override suspend fun getRoomStateEventContent(roomId: RoomId, eventType: String): Result<String> {
+        return getRoomStateEventContentLambda(roomId, eventType)
     }
 
     override suspend fun currentSlidingSyncVersion(): Result<SlidingSyncVersion> {
