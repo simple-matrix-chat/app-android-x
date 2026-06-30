@@ -9,6 +9,7 @@
 package io.element.android.libraries.matrix.impl
 
 import dev.zacsweers.metro.Inject
+import io.element.android.appconfig.MatrixE2EEConfig
 import io.element.android.libraries.core.coroutine.CoroutineDispatchers
 import io.element.android.libraries.core.data.ByteUnit
 import io.element.android.libraries.core.data.megaBytes
@@ -108,7 +109,9 @@ class RustMatrixClientFactory(
             client.enableAutomaticBackpagination()
         }
 
-        client.setUtdDelegate(UtdTracker(analyticsService))
+        if (MatrixE2EEConfig.ENABLED) {
+            client.setUtdDelegate(UtdTracker(analyticsService))
+        }
 
         val syncService = client.syncService()
             .withSharePos(true)
@@ -150,7 +153,7 @@ class RustMatrixClientFactory(
             .addRootCertificates(userCertificatesProvider.provides())
             .autoEnableBackups(false)
             .autoEnableCrossSigning(false)
-            .enableShareHistoryOnInvite(true)
+            .enableShareHistoryOnInvite(MatrixE2EEConfig.ENABLED)
             .threadsEnabled(featureFlagService.isFeatureEnabled(FeatureFlags.Threads), threadSubscriptions = false)
             .dmRoomDefinition(DmRoomDefinition.TWO_MEMBERS)
             .requestConfig(
