@@ -10,6 +10,7 @@ package io.element.android.features.home.impl.filters
 import dev.zacsweers.metro.ContributesBinding
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
+import io.element.android.appconfig.MatrixAppApiAliasesConfig
 import io.element.android.features.home.impl.model.RoomListRoomSummary
 import io.element.android.features.home.impl.model.RoomSummaryDisplayType
 import io.element.android.libraries.core.coroutine.CoroutineDispatchers
@@ -88,7 +89,10 @@ class DefaultMomentHomeRoomTypeService @Inject constructor(
             ?.homeserverUrl
             ?.trimEnd('/')
             ?: return@withContext MomentHomeRoomType.Unknown
-        val url = "$homeserverUrl/_matrix/client/v3/rooms/${roomId.value.encodePathComponent()}/state/${ROOM_KIND_EVENT_TYPE.encodePathComponent()}/"
+        val encodedRoomId = roomId.value.encodePathComponent()
+        val encodedEventType = ROOM_KIND_EVENT_TYPE.encodePathComponent()
+        val url =
+            "$homeserverUrl${MatrixAppApiAliasesConfig.CLIENT_API_PATH_PREFIX}/v3/rooms/$encodedRoomId/state/$encodedEventType/"
         val response = matrixClient.getUrl(url).getOrElse {
             return@withContext MomentHomeRoomType.Unknown
         }

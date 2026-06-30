@@ -9,6 +9,7 @@
 package io.element.android.libraries.matrix.impl
 
 import io.element.android.appconfig.AuthenticationConfig
+import io.element.android.appconfig.MatrixAppApiAliasesConfig
 import io.element.android.appconfig.MatrixE2EEConfig
 import io.element.android.libraries.androidutils.file.getSizeOfFiles
 import io.element.android.libraries.core.bool.orFalse
@@ -1371,7 +1372,7 @@ private fun openMatrixRequest(
     path: String,
     body: String? = null,
 ): HttpURLConnection {
-    val url = URI("${session.homeserverUrl.trimEnd('/')}/${path.trimStart('/')}").toURL()
+    val url = URI("${session.homeserverUrl.trimEnd('/')}/${path.withAppApiAliasesIfEnabled()}").toURL()
     val connection = url.openConnection() as HttpURLConnection
     connection.requestMethod = method
     connection.connectTimeout = MATRIX_REQUEST_TIMEOUT_MILLIS
@@ -1388,6 +1389,20 @@ private fun openMatrixRequest(
         }
     }
     return connection
+}
+
+private fun String.withAppApiAliasesIfEnabled(): String {
+    val path = trimStart('/')
+    if (!MatrixAppApiAliasesConfig.ENABLED) {
+        return path
+    }
+    return when {
+        path == "_matrix/client" -> MatrixAppApiAliasesConfig.CLIENT_API_PATH_PREFIX.trimStart('/')
+        path.startsWith("_matrix/client/") -> MatrixAppApiAliasesConfig.CLIENT_API_PATH_PREFIX.trimStart('/') + path.removePrefix("_matrix/client")
+        path == "_matrix/media" -> MatrixAppApiAliasesConfig.MEDIA_API_PATH_PREFIX.trimStart('/')
+        path.startsWith("_matrix/media/") -> MatrixAppApiAliasesConfig.MEDIA_API_PATH_PREFIX.trimStart('/') + path.removePrefix("_matrix/media")
+        else -> path
+    }
 }
 
 private fun openBffRequest(

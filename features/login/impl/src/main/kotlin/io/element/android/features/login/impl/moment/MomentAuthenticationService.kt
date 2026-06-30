@@ -16,6 +16,7 @@ import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
 import io.element.android.appconfig.ApplicationConfig
 import io.element.android.appconfig.AuthenticationConfig
+import io.element.android.appconfig.MatrixAppApiAliasesConfig
 import io.element.android.libraries.androidutils.json.JsonProvider
 import io.element.android.libraries.core.coroutine.CoroutineDispatchers
 import io.element.android.libraries.core.extensions.runCatchingExceptions
@@ -194,7 +195,7 @@ class DefaultMomentAuthenticationService private constructor(
 
     private fun loginWithToken(loginToken: String): ExternalSession {
         return postJson<MatrixLoginTokenRequest, MatrixLoginResponse>(
-            url = "${runtimeConfig.defaultHomeserverUrl}/_matrix/client/v3/login",
+            url = "${runtimeConfig.defaultHomeserverUrl.trimEnd('/')}${MatrixAppApiAliasesConfig.CLIENT_API_PATH_PREFIX}/v3/login",
             body = MatrixLoginTokenRequest(
                 type = "m.login.token",
                 token = loginToken,

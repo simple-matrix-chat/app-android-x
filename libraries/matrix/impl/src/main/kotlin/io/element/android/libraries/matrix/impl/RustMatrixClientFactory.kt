@@ -116,6 +116,7 @@ class RustMatrixClientFactory(
 
         val syncService = client.syncService()
             .withSharePos(true)
+            .withEncryptionSync(MatrixE2EEConfig.ENABLED)
             .withOfflineMode()
             .finish()
 

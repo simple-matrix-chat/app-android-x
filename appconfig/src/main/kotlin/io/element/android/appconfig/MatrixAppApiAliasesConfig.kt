@@ -8,5 +8,7 @@
 package io.element.android.appconfig
 
 object MatrixAppApiAliasesConfig {
-    const val ENABLED = false
+    const val ENABLED = true
+    const val CLIENT_API_PATH_PREFIX = "/api/client"
+    const val MEDIA_API_PATH_PREFIX = "/api/media"
 }

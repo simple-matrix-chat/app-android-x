@@ -40,7 +40,7 @@ class DefaultMomentHomeRoomTypeServiceTest {
         advanceUntilIdle()
 
         assertThat(requestedUrls).containsExactly(
-            "https://matrix.example.org/_matrix/client/v3/rooms/%21room%2Fid%3Aserver.org/state/io.moment.room_kind/"
+            "https://matrix.example.org/api/client/v3/rooms/%21room%2Fid%3Aserver.org/state/io.moment.room_kind/"
         )
         assertThat(service.roomTypes.value).containsEntry(RoomId("!room/id:server.org"), MomentHomeRoomType.Channel)
     }

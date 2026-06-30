@@ -127,7 +127,7 @@ class DefaultMomentAuthenticationServiceTest {
         assertThat(result.homeserverUrl).isEqualTo(homeserverUrl)
 
         val request = server.takeRequest()
-        assertThat(request.path).isEqualTo("/_matrix/client/v3/login")
+        assertThat(request.path).isEqualTo("/api/client/v3/login")
         JSONObject(request.body.readUtf8()).let {
             assertThat(it.getString("type")).isEqualTo("m.login.token")
             assertThat(it.getString("token")).isEqualTo("login-token")
