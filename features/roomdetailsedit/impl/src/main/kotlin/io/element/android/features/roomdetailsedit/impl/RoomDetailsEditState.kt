@@ -10,6 +10,9 @@ package io.element.android.features.roomdetailsedit.impl
 
 import io.element.android.libraries.architecture.AsyncAction
 import io.element.android.libraries.matrix.api.core.RoomId
+import io.element.android.libraries.matrix.api.createroom.MomentRoomKind
+import io.element.android.libraries.matrix.api.room.history.RoomHistoryVisibility
+import io.element.android.libraries.matrix.api.room.join.JoinRule
 import io.element.android.libraries.matrix.ui.media.AvatarAction
 import io.element.android.libraries.permissions.api.PermissionsState
 import kotlinx.collections.immutable.ImmutableList
@@ -28,5 +31,13 @@ data class RoomDetailsEditState(
     val saveAction: AsyncAction<Unit>,
     val cameraPermissionState: PermissionsState,
     val isSpace: Boolean,
+    val momentRoomKind: MomentRoomKind?,
+    val isResolvingMomentRoomKind: Boolean,
+    val roomJoinRule: JoinRule?,
+    val roomHistoryVisibility: RoomHistoryVisibility,
+    val canEditSecurityAndPrivacy: Boolean,
+    val canEditRolesAndPermissions: Boolean,
     val eventSink: (RoomDetailsEditEvent) -> Unit
-)
+) {
+    val usesMomentRoomSettings = !isSpace && momentRoomKind != null
+}

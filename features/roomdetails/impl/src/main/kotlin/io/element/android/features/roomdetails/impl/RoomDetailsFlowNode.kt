@@ -252,7 +252,16 @@ class RoomDetailsFlowNode(
             }
 
             NavTarget.RoomDetailsEdit -> {
-                roomDetailsEditEntryPoint.createNode(this, buildContext)
+                val callback = object : RoomDetailsEditEntryPoint.Callback {
+                    override fun navigateToSecurityAndPrivacy() {
+                        backstack.push(NavTarget.SecurityAndPrivacy)
+                    }
+
+                    override fun navigateToRolesAndPermissions() {
+                        backstack.push(NavTarget.AdminSettings)
+                    }
+                }
+                roomDetailsEditEntryPoint.createNode(this, buildContext, callback)
             }
 
             NavTarget.InviteMembers -> {

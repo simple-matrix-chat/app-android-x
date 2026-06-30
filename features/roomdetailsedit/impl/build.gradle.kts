@@ -41,9 +41,11 @@ dependencies {
     implementation(projects.libraries.preferences.api)
     implementation(projects.services.analytics.api)
     implementation(projects.libraries.testtags)
+    implementation(projects.features.securityandprivacy.api)
     api(projects.features.roomdetailsedit.api)
     api(projects.services.apperror.api)
     implementation(libs.coil.compose)
+    implementation(libs.serialization.json)
 
     testCommonDependencies(libs, true)
     testImplementation(projects.libraries.matrix.test)

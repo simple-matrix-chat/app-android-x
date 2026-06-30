@@ -17,6 +17,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -25,13 +26,18 @@ import androidx.core.net.toUri
 import dev.zacsweers.metro.Inject
 import io.element.android.features.roomdetailsedit.api.RoomDetailsEditPermissions
 import io.element.android.features.roomdetailsedit.api.roomDetailsEditPermissions
+import io.element.android.features.securityandprivacy.api.SecurityAndPrivacyPermissions
+import io.element.android.features.securityandprivacy.api.securityAndPrivacyPermissions
 import io.element.android.libraries.androidutils.file.TemporaryUriDeleter
 import io.element.android.libraries.architecture.AsyncAction
 import io.element.android.libraries.architecture.Presenter
 import io.element.android.libraries.architecture.runCatchingUpdatingState
 import io.element.android.libraries.core.extensions.runCatchingExceptions
 import io.element.android.libraries.core.mimetype.MimeTypes
+import io.element.android.libraries.matrix.api.MatrixClient
+import io.element.android.libraries.matrix.api.createroom.MomentRoomKind
 import io.element.android.libraries.matrix.api.room.JoinedRoom
+import io.element.android.libraries.matrix.api.room.powerlevels.canEditRolesAndPermissions
 import io.element.android.libraries.matrix.api.room.powerlevels.permissionsAsState
 import io.element.android.libraries.matrix.ui.media.AvatarAction
 import io.element.android.libraries.mediapickers.api.PickerProvider
@@ -46,6 +52,7 @@ import timber.log.Timber
 
 @Inject
 class RoomDetailsEditPresenter(
+    private val client: MatrixClient,
     private val room: JoinedRoom,
     private val mediaPickerProvider: PickerProvider,
     private val mediaPreProcessor: MediaPreProcessor,
@@ -95,6 +102,19 @@ class RoomDetailsEditPresenter(
 
         val permissions by room.permissionsAsState(RoomDetailsEditPermissions.DEFAULT) { perms ->
             perms.roomDetailsEditPermissions()
+        }
+        val securityAndPrivacyPermissions by room.permissionsAsState(SecurityAndPrivacyPermissions.DEFAULT) { perms ->
+            perms.securityAndPrivacyPermissions()
+        }
+        val canEditRolesAndPermissions by room.permissionsAsState(false) { perms ->
+            perms.canEditRolesAndPermissions()
+        }
+        val momentRoomKindResult by produceState<MomentRoomKindResult>(MomentRoomKindResult.Loading, room.roomId, roomInfo.isSpace, roomInfo.isDirect) {
+            value = if (roomInfo.isSpace || roomInfo.isDirect) {
+                MomentRoomKindResult.Resolved(null)
+            } else {
+                MomentRoomKindResult.Resolved(MomentRoomKindResolver.fetch(client, room.roomId))
+            }
         }
 
         val cameraPhotoPicker = mediaPickerProvider.registerCameraPhotoPicker(
@@ -185,6 +205,12 @@ class RoomDetailsEditPresenter(
             saveAction = saveAction.value,
             cameraPermissionState = cameraPermissionState,
             isSpace = roomInfo.isSpace,
+            momentRoomKind = momentRoomKindResult.kind,
+            isResolvingMomentRoomKind = momentRoomKindResult is MomentRoomKindResult.Loading,
+            roomJoinRule = roomInfo.joinRule,
+            roomHistoryVisibility = roomInfo.historyVisibility,
+            canEditSecurityAndPrivacy = securityAndPrivacyPermissions.hasAny(roomInfo.isSpace, roomInfo.joinRule),
+            canEditRolesAndPermissions = canEditRolesAndPermissions,
             eventSink = ::handleEvent,
         )
     }
@@ -234,4 +260,14 @@ class RoomDetailsEditPresenter(
             }
         }
     }
+}
+
+private sealed interface MomentRoomKindResult {
+    val kind: MomentRoomKind?
+
+    data object Loading : MomentRoomKindResult {
+        override val kind: MomentRoomKind? = null
+    }
+
+    data class Resolved(override val kind: MomentRoomKind?) : MomentRoomKindResult
 }

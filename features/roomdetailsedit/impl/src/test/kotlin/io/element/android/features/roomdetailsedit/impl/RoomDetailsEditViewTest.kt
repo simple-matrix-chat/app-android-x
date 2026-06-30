@@ -11,6 +11,7 @@ package io.element.android.features.roomdetailsedit.impl
 
 import androidx.activity.ComponentActivity
 import androidx.annotation.StringRes
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.AndroidComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assert
@@ -18,10 +19,14 @@ import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.isEditable
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.v2.runAndroidComposeUiTest
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.element.android.libraries.architecture.AsyncAction
+import io.element.android.libraries.matrix.api.createroom.MomentRoomKind
+import io.element.android.libraries.matrix.api.room.history.RoomHistoryVisibility
+import io.element.android.libraries.matrix.api.room.join.JoinRule
 import io.element.android.libraries.matrix.ui.media.AvatarAction
 import io.element.android.libraries.testtags.TestTags
 import io.element.android.libraries.ui.strings.CommonStrings
@@ -234,16 +239,71 @@ class RoomDetailsEditViewTest {
         clickOn(CommonStrings.action_ok)
         eventsRecorder.assertSingle(RoomDetailsEditEvent.CloseDialog)
     }
+
+    @Test
+    fun `Moment channel settings shows channel title and access rows`() = runAndroidComposeUiTest {
+        setRoomDetailsEditView(
+            aRoomDetailsEditState(
+                roomTopic = "",
+                momentRoomKind = MomentRoomKind.Channel,
+                roomJoinRule = JoinRule.Public,
+                roomHistoryVisibility = RoomHistoryVisibility.Shared,
+            ),
+        )
+        onNodeWithText("Channel settings").assertExists()
+        onNodeWithText("Description").assertExists()
+        onNodeWithText("Add a description").assertExists()
+        onNodeWithText("Access").assertExists()
+        onNodeWithText("Room history").assertExists()
+        onNodeWithText("Members (full history)").assertExists()
+        onNodeWithText("Room access").assertExists()
+        onNodeWithText("Anyone").assertExists()
+        onNodeWithText("Room permissions").assertExists()
+    }
+
+    @Test
+    fun `clicking Moment room access opens security and privacy`() = runAndroidComposeUiTest {
+        ensureCalledOnce { callback ->
+            setRoomDetailsEditView(
+                aRoomDetailsEditState(
+                    momentRoomKind = MomentRoomKind.Group,
+                    canEditSecurityAndPrivacy = true,
+                ),
+                onOpenSecurityAndPrivacy = callback,
+            )
+            onNode(hasTestTag(MOMENT_ROOM_DETAILS_EDIT_ROOM_ACCESS_TAG)).performSemanticsAction(SemanticsActions.OnClick)
+            waitForIdle()
+        }
+    }
+
+    @Test
+    fun `clicking Moment room permissions opens roles and permissions`() = runAndroidComposeUiTest {
+        ensureCalledOnce { callback ->
+            setRoomDetailsEditView(
+                aRoomDetailsEditState(
+                    momentRoomKind = MomentRoomKind.Group,
+                    canEditRolesAndPermissions = true,
+                ),
+                onOpenRolesAndPermissions = callback,
+            )
+            onNode(hasTestTag(MOMENT_ROOM_DETAILS_EDIT_ROOM_PERMISSIONS_TAG)).performSemanticsAction(SemanticsActions.OnClick)
+            waitForIdle()
+        }
+    }
 }
 
 private fun AndroidComposeUiTest<ComponentActivity>.setRoomDetailsEditView(
     state: RoomDetailsEditState,
     onDone: () -> Unit = EnsureNeverCalled(),
+    onOpenSecurityAndPrivacy: () -> Unit = EnsureNeverCalled(),
+    onOpenRolesAndPermissions: () -> Unit = EnsureNeverCalled(),
 ) {
     setContent {
         RoomDetailsEditView(
             state = state,
             onDone = onDone,
+            onOpenSecurityAndPrivacy = onOpenSecurityAndPrivacy,
+            onOpenRolesAndPermissions = onOpenRolesAndPermissions,
         )
     }
 }

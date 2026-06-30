@@ -8,6 +8,25 @@
 
 package io.element.android.features.roomdetailsedit.api
 
-import io.element.android.libraries.architecture.SimpleFeatureEntryPoint
+import com.bumble.appyx.core.modality.BuildContext
+import com.bumble.appyx.core.node.Node
+import com.bumble.appyx.core.plugin.Plugin
+import io.element.android.libraries.architecture.FeatureEntryPoint
 
-fun interface RoomDetailsEditEntryPoint : SimpleFeatureEntryPoint
+interface RoomDetailsEditEntryPoint : FeatureEntryPoint {
+    interface Callback : Plugin {
+        fun navigateToSecurityAndPrivacy()
+        fun navigateToRolesAndPermissions()
+
+        data object Noop : Callback {
+            override fun navigateToSecurityAndPrivacy() = Unit
+            override fun navigateToRolesAndPermissions() = Unit
+        }
+    }
+
+    fun createNode(parentNode: Node, buildContext: BuildContext, callback: Callback): Node
+
+    fun createNode(parentNode: Node, buildContext: BuildContext): Node {
+        return createNode(parentNode, buildContext, Callback.Noop)
+    }
+}

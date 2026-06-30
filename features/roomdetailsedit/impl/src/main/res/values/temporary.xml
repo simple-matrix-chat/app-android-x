@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="screen_moment_room_profile_settings_title_group_android">Group settings</string>
+    <string name="screen_moment_room_profile_settings_title_channel_android">Channel settings</string>
+    <string name="screen_moment_room_settings_description_title_android">Description</string>
+    <string name="screen_moment_room_settings_description_placeholder_android">Add a description</string>
+    <string name="screen_moment_room_settings_access_section_title_android">Access</string>
+    <string name="screen_moment_room_settings_history_title_android">Room history</string>
+    <string name="screen_moment_room_settings_access_title_android">Room access</string>
+    <string name="screen_moment_room_settings_permissions_title_android">Room permissions</string>
+    <string name="screen_moment_room_settings_permissions_subtitle_android">Roles and permissions for members and admins.</string>
+    <string name="screen_moment_room_settings_history_invited_android">Members since invited</string>
+    <string name="screen_moment_room_settings_history_joined_android">Members since joining</string>
+    <string name="screen_moment_room_settings_history_shared_android">Members (full history)</string>
+    <string name="screen_moment_room_settings_history_world_readable_android">Anyone (history is public)</string>
+    <string name="screen_moment_room_settings_access_anyone_android">Anyone</string>
+    <string name="screen_moment_room_settings_access_ask_to_join_android">Ask to join</string>
+    <string name="screen_moment_room_settings_access_invite_only_android">Invite only</string>
+    <string name="screen_moment_room_settings_access_space_members_android">Space members</string>
+</resources>

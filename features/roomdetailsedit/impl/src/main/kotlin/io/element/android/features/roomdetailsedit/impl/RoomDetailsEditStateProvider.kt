@@ -11,6 +11,9 @@ package io.element.android.features.roomdetailsedit.impl
 import androidx.compose.ui.tooling.preview.PreviewParameterProvider
 import io.element.android.libraries.architecture.AsyncAction
 import io.element.android.libraries.matrix.api.core.RoomId
+import io.element.android.libraries.matrix.api.createroom.MomentRoomKind
+import io.element.android.libraries.matrix.api.room.history.RoomHistoryVisibility
+import io.element.android.libraries.matrix.api.room.join.JoinRule
 import io.element.android.libraries.matrix.ui.media.AvatarAction
 import io.element.android.libraries.permissions.api.PermissionsState
 import io.element.android.libraries.permissions.api.aPermissionsState
@@ -29,6 +32,8 @@ open class RoomDetailsEditStateProvider : PreviewParameterProvider<RoomDetailsEd
             aRoomDetailsEditState(saveAction = AsyncAction.Loading),
             aRoomDetailsEditState(saveAction = AsyncAction.Failure(RuntimeException("Whelp"))),
             aRoomDetailsEditState(saveAction = AsyncAction.ConfirmingCancellation),
+            aRoomDetailsEditState(momentRoomKind = MomentRoomKind.Group),
+            aRoomDetailsEditState(momentRoomKind = MomentRoomKind.Channel),
         )
 }
 
@@ -45,6 +50,12 @@ fun aRoomDetailsEditState(
     saveAction: AsyncAction<Unit> = AsyncAction.Uninitialized,
     cameraPermissionState: PermissionsState = aPermissionsState(showDialog = false),
     isSpace: Boolean = false,
+    momentRoomKind: MomentRoomKind? = null,
+    isResolvingMomentRoomKind: Boolean = false,
+    roomJoinRule: JoinRule? = JoinRule.Invite,
+    roomHistoryVisibility: RoomHistoryVisibility = RoomHistoryVisibility.Shared,
+    canEditSecurityAndPrivacy: Boolean = true,
+    canEditRolesAndPermissions: Boolean = true,
     eventSink: (RoomDetailsEditEvent) -> Unit = {},
 ) = RoomDetailsEditState(
     roomId = roomId,
@@ -59,5 +70,11 @@ fun aRoomDetailsEditState(
     saveAction = saveAction,
     cameraPermissionState = cameraPermissionState,
     isSpace = isSpace,
+    momentRoomKind = momentRoomKind,
+    isResolvingMomentRoomKind = isResolvingMomentRoomKind,
+    roomJoinRule = roomJoinRule,
+    roomHistoryVisibility = roomHistoryVisibility,
+    canEditSecurityAndPrivacy = canEditSecurityAndPrivacy,
+    canEditRolesAndPermissions = canEditRolesAndPermissions,
     eventSink = eventSink,
 )

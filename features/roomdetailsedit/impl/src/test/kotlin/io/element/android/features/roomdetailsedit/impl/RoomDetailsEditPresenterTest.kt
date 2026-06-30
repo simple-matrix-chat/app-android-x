@@ -13,12 +13,15 @@ import com.google.common.truth.Truth.assertThat
 import io.element.android.libraries.androidutils.file.TemporaryUriDeleter
 import io.element.android.libraries.architecture.AsyncAction
 import io.element.android.libraries.core.mimetype.MimeTypes
+import io.element.android.libraries.matrix.api.MatrixClient
+import io.element.android.libraries.matrix.api.createroom.MomentRoomKind
 import io.element.android.libraries.matrix.api.room.JoinedRoom
 import io.element.android.libraries.matrix.api.room.StateEventType
 import io.element.android.libraries.matrix.test.AN_AVATAR_URL
 import io.element.android.libraries.matrix.test.A_ROOM_NAME
 import io.element.android.libraries.matrix.test.A_ROOM_RAW_NAME
 import io.element.android.libraries.matrix.test.A_ROOM_TOPIC
+import io.element.android.libraries.matrix.test.FakeMatrixClient
 import io.element.android.libraries.matrix.test.room.FakeBaseRoom
 import io.element.android.libraries.matrix.test.room.FakeJoinedRoom
 import io.element.android.libraries.matrix.test.room.aRoomInfo
@@ -33,7 +36,6 @@ import io.element.android.libraries.permissions.test.FakePermissionsPresenter
 import io.element.android.libraries.permissions.test.FakePermissionsPresenterFactory
 import io.element.android.tests.testutils.WarmUpRule
 import io.element.android.tests.testutils.fake.FakeTemporaryUriDeleter
-import io.element.android.tests.testutils.lambda.lambdaError
 import io.element.android.tests.testutils.lambda.lambdaRecorder
 import io.element.android.tests.testutils.lambda.matching
 import io.element.android.tests.testutils.lambda.value
@@ -83,11 +85,15 @@ class RoomDetailsEditPresenterTest {
 
     private fun createRoomDetailsEditPresenter(
         room: JoinedRoom,
+        client: MatrixClient = FakeMatrixClient(
+            getRoomStateEventContentLambda = { _, _ -> Result.failure(IllegalStateException("No Moment room kind")) },
+        ),
         permissionsPresenter: PermissionsPresenter = FakePermissionsPresenter(),
         temporaryUriDeleter: TemporaryUriDeleter = FakeTemporaryUriDeleter(),
         mediaOptimizationConfigProvider: FakeMediaOptimizationConfigProvider = FakeMediaOptimizationConfigProvider(),
     ): RoomDetailsEditPresenter {
         return RoomDetailsEditPresenter(
+            client = client,
             room = room,
             mediaPickerProvider = fakePickerProvider,
             mediaPreProcessor = fakeMediaPreProcessor,
@@ -126,6 +132,30 @@ class RoomDetailsEditPresenterTest {
     }
 
     @Test
+    fun `present - resolves Moment channel settings type`() = runTest {
+        val room = aJoinedRoom()
+        val presenter = createRoomDetailsEditPresenter(
+            room = room,
+            client = FakeMatrixClient(
+                getRoomStateEventContentLambda = { roomId, eventType ->
+                    assertThat(roomId).isEqualTo(room.roomId)
+                    assertThat(eventType).isEqualTo("io.moment.room_kind")
+                    Result.success("""{"kind":"channel"}""")
+                },
+            ),
+            temporaryUriDeleter = FakeTemporaryUriDeleter {},
+        )
+        presenter.test {
+            var resolvedState = awaitFirstItem()
+            while (resolvedState.isResolvingMomentRoomKind) {
+                resolvedState = awaitItem()
+            }
+            assertThat(resolvedState.momentRoomKind).isEqualTo(MomentRoomKind.Channel)
+            assertThat(resolvedState.isResolvingMomentRoomKind).isFalse()
+        }
+    }
+
+    @Test
     fun `present - sets canChangeName if user has permission`() = runTest {
         val room = aJoinedRoom(
             canSendState = { stateEventType ->
@@ -133,7 +163,7 @@ class RoomDetailsEditPresenterTest {
                     StateEventType.RoomName -> true
                     StateEventType.RoomAvatar -> false
                     StateEventType.RoomTopic -> false
-                    else -> lambdaError()
+                    else -> false
                 }
             }
         )
@@ -166,7 +196,7 @@ class RoomDetailsEditPresenterTest {
                     StateEventType.RoomName -> false
                     StateEventType.RoomAvatar -> true
                     StateEventType.RoomTopic -> false
-                    else -> lambdaError()
+                    else -> false
                 }
             }
         )
@@ -198,7 +228,7 @@ class RoomDetailsEditPresenterTest {
                     StateEventType.RoomName -> false
                     StateEventType.RoomAvatar -> false
                     StateEventType.RoomTopic -> true
-                    else -> lambdaError()
+                    else -> false
                 }
             }
         )

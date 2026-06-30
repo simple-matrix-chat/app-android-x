@@ -17,7 +17,7 @@ import io.element.android.libraries.architecture.createNode
 
 @ContributesBinding(AppScope::class)
 class DefaultRoomDetailsEditEntryPoint : RoomDetailsEditEntryPoint {
-    override fun createNode(parentNode: Node, buildContext: BuildContext): Node {
-        return parentNode.createNode<RoomDetailsEditNode>(buildContext)
+    override fun createNode(parentNode: Node, buildContext: BuildContext, callback: RoomDetailsEditEntryPoint.Callback): Node {
+        return parentNode.createNode<RoomDetailsEditNode>(buildContext, listOf(callback))
     }
 }
