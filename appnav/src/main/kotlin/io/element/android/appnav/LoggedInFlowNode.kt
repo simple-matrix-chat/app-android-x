@@ -10,11 +10,15 @@ package io.element.android.appnav
 
 import android.os.Parcelable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.lifecycleScope
 import com.bumble.appyx.core.composable.PermanentChild
 import com.bumble.appyx.core.lifecycle.subscribe
@@ -600,8 +604,20 @@ class LoggedInFlowNode(
             ) { contentModifier ->
                 Box(modifier = contentModifier) {
                     val ftueState by ftueService.state.collectAsState()
+                    val activeRootTab = backstack.elements.collectAsState().value.activeRootTab()
                     BackstackView(transitionHandler = rememberLoggedInFlowTransitionHandler(backstack))
                     if (ftueState is FtueState.Complete) {
+                        if (activeRootTab != null) {
+                            LoggedInRootBottomBar(
+                                activeRootTab = activeRootTab,
+                                onChatsClick = ::switchToChatsTab,
+                                onProfileClick = ::switchToProfileTab,
+                                modifier = Modifier
+                                    .align(Alignment.BottomCenter)
+                                    .navigationBarsPadding()
+                                    .padding(bottom = 16.dp),
+                            )
+                        }
                         PermanentChild(permanentNavModel = permanentNavModel, navTarget = NavTarget.LoggedInPermanent)
                     }
                 }
@@ -634,6 +650,18 @@ internal fun LoggedInFlowNode.NavTarget.isRootTabTarget(): Boolean {
         LoggedInFlowNode.NavTarget.Home -> true
         is LoggedInFlowNode.NavTarget.Settings -> initialElement == PreferencesEntryPoint.InitialTarget.Root
         else -> false
+    }
+}
+
+private fun BackStackElements<LoggedInFlowNode.NavTarget>.activeRootTab(): LoggedInRootTab? {
+    val activeTarget = lastOrNull { element ->
+        element.targetState == ACTIVE
+    }?.key?.navTarget
+    return when {
+        activeTarget == LoggedInFlowNode.NavTarget.Home -> LoggedInRootTab.Chats
+        activeTarget is LoggedInFlowNode.NavTarget.Settings &&
+            activeTarget.initialElement == PreferencesEntryPoint.InitialTarget.Root -> LoggedInRootTab.Profile
+        else -> null
     }
 }
 

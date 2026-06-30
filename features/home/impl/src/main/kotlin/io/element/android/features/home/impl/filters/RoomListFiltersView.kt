@@ -14,6 +14,7 @@ import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.animateScrollBy
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -151,6 +152,7 @@ private fun RoomListFilterTab(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
     val textColour = animateColorAsState(
         targetValue = if (selected) ElementTheme.colors.textPrimary else ElementTheme.colors.textSecondary,
         animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
@@ -170,6 +172,8 @@ private fun RoomListFilterTab(
                 this.selected = selected
             }
             .clickable(
+                interactionSource = interactionSource,
+                indication = null,
                 role = Role.Tab,
                 onClick = onClick,
             )

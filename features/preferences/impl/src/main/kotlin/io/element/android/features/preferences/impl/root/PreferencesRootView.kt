@@ -9,7 +9,6 @@
 package io.element.android.features.preferences.impl.root
 
 import androidx.activity.compose.BackHandler
-import androidx.annotation.StringRes
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -31,19 +30,14 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.FabPosition
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -92,10 +86,6 @@ fun PreferencesRootView(
     Scaffold(
         modifier = modifier.fillMaxSize(),
         containerColor = ElementTheme.colors.bgSubtleSecondary,
-        floatingActionButton = {
-            MomentSettingsBottomBar(onChatsClick = onBackClick)
-        },
-        floatingActionButtonPosition = FabPosition.Center,
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { padding ->
         Column(
@@ -134,91 +124,6 @@ fun PreferencesRootView(
                     null
                 }
             )
-        }
-    }
-}
-
-@Composable
-private fun MomentSettingsBottomBar(
-    onChatsClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Row(
-        modifier = modifier
-            .shadow(
-                elevation = 12.dp,
-                shape = CircleShape,
-                ambientColor = Color.Black.copy(alpha = 0.12f),
-                spotColor = Color.Black.copy(alpha = 0.12f),
-            )
-            .clip(CircleShape)
-            .background(ElementTheme.colors.bgCanvasDefaultLevel1)
-            .border(
-                width = 1.dp,
-                color = ElementTheme.colors.borderInteractiveSecondary.copy(alpha = 0.55f),
-                shape = CircleShape,
-            )
-            .padding(8.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        MomentSettingsBottomBarButton(
-            item = MomentSettingsBottomBarItem.Chats,
-            isSelected = false,
-            onClick = onChatsClick,
-        )
-        MomentSettingsBottomBarButton(
-            item = MomentSettingsBottomBarItem.Profile,
-            isSelected = true,
-            onClick = {},
-        )
-    }
-}
-
-@Composable
-private fun MomentSettingsBottomBarButton(
-    item: MomentSettingsBottomBarItem,
-    isSelected: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val label = stringResource(item.labelRes)
-    Box(
-        modifier = modifier
-            .width(64.dp)
-            .height(44.dp)
-            .clip(CircleShape)
-            .background(if (isSelected) ElementTheme.colors.bgSubtleSecondary else Color.Transparent)
-            .clickable(
-                role = Role.Tab,
-                onClick = onClick,
-            )
-            .semantics {
-                contentDescription = label
-                selected = isSelected
-            },
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(
-            modifier = Modifier.size(24.dp),
-            imageVector = item.icon(isSelected),
-            contentDescription = null,
-            tint = if (isSelected) ElementTheme.colors.iconPrimary else ElementTheme.colors.iconSecondary,
-        )
-    }
-}
-
-private enum class MomentSettingsBottomBarItem(
-    @StringRes val labelRes: Int,
-) {
-    Chats(R.string.screen_preferences_root_tab_chats),
-    Profile(R.string.screen_preferences_root_tab_profile);
-
-    @Composable
-    fun icon(isSelected: Boolean): ImageVector {
-        return when (this) {
-            Chats -> if (isSelected) CompoundIcons.ChatSolid() else CompoundIcons.Chat()
-            Profile -> if (isSelected) CompoundIcons.UserProfileSolid() else CompoundIcons.UserProfile()
         }
     }
 }

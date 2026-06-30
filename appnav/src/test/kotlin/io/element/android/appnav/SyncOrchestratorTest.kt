@@ -381,6 +381,54 @@ class SyncOrchestratorTest {
         startSyncRecorder.assertions().isNeverCalled()
     }
 
+    @Test
+    fun `when sync enters error while app is active and network connected, sync service should restart`() = runTest {
+        val startSyncRecorder = lambdaRecorder<Result<Unit>> { Result.success(Unit) }
+        val syncService = FakeSyncService(initialSyncState = SyncState.Running).apply {
+            startSyncLambda = startSyncRecorder
+        }
+        val networkMonitor = FakeNetworkMonitor(initialStatus = NetworkStatus.Connected)
+        val appForegroundStateService = FakeAppForegroundStateService(initialForegroundValue = true)
+        val syncOrchestrator = createSyncOrchestrator(
+            syncService = syncService,
+            networkMonitor = networkMonitor,
+            appForegroundStateService = appForegroundStateService,
+        )
+
+        syncOrchestrator.observeStates()
+        advanceTimeBy(100.milliseconds)
+
+        syncService.emitSyncState(SyncState.Error)
+        advanceTimeBy(1.seconds)
+
+        startSyncRecorder.assertions().isCalledOnce()
+    }
+
+    @Test
+    fun `when sync is in error while network is offline, sync service should restart when network is connected again`() = runTest {
+        val startSyncRecorder = lambdaRecorder<Result<Unit>> { Result.success(Unit) }
+        val syncService = FakeSyncService(initialSyncState = SyncState.Error).apply {
+            startSyncLambda = startSyncRecorder
+        }
+        val networkMonitor = FakeNetworkMonitor(initialStatus = NetworkStatus.Disconnected)
+        val appForegroundStateService = FakeAppForegroundStateService(initialForegroundValue = true)
+        val syncOrchestrator = createSyncOrchestrator(
+            syncService = syncService,
+            networkMonitor = networkMonitor,
+            appForegroundStateService = appForegroundStateService,
+        )
+
+        syncOrchestrator.observeStates()
+        advanceTimeBy(1.seconds)
+
+        startSyncRecorder.assertions().isNeverCalled()
+
+        networkMonitor.connectivity.value = NetworkStatus.Connected
+        advanceTimeBy(1.seconds)
+
+        startSyncRecorder.assertions().isCalledOnce()
+    }
+
     private fun TestScope.createSyncOrchestrator(
         syncService: FakeSyncService = FakeSyncService(),
         networkMonitor: FakeNetworkMonitor = FakeNetworkMonitor(),

@@ -110,6 +110,8 @@ class SyncOrchestrator(
                 SyncStateAction.StopSync
             } else if (syncState == SyncState.Idle && isAppActive && isNetworkAvailable) {
                 SyncStateAction.StartSync
+            } else if (syncState == SyncState.Error && isAppActive && isNetworkAvailable) {
+                SyncStateAction.RestartSync
             } else {
                 SyncStateAction.NoOp
             }
@@ -117,7 +119,12 @@ class SyncOrchestrator(
             .distinctUntilChanged()
             .debounce { action ->
                 // Don't stop the sync immediately, wait a bit to avoid starting/stopping the sync too often
-                if (action == SyncStateAction.StopSync) 3.seconds else 0.seconds
+                when (action) {
+                    SyncStateAction.StopSync -> 3.seconds
+                    SyncStateAction.RestartSync -> 250.milliseconds
+                    SyncStateAction.StartSync,
+                    SyncStateAction.NoOp -> 0.seconds
+                }
             }
             .onCompletion {
                 Timber.tag(tag).d("has been stopped")
@@ -130,6 +137,9 @@ class SyncOrchestrator(
                     SyncStateAction.StopSync -> {
                         syncService.stopSync()
                     }
+                    SyncStateAction.RestartSync -> {
+                        syncService.startSync()
+                    }
                     SyncStateAction.NoOp -> Unit
                 }
             }
@@ -139,5 +149,6 @@ class SyncOrchestrator(
 private enum class SyncStateAction {
     StartSync,
     StopSync,
+    RestartSync,
     NoOp,
 }

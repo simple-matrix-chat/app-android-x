@@ -11,6 +11,7 @@ package io.element.android.features.startchat.impl.root
 import androidx.annotation.StringRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -33,6 +34,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -46,6 +48,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
 import io.element.android.compound.theme.ElementTheme
@@ -311,30 +314,38 @@ private fun MomentModeTabs(
     ) {
         MomentStartChatMode.entries.forEach { mode ->
             val isSelected = mode == selectedMode
+            val interactionSource = remember { MutableInteractionSource() }
             Row(
                 modifier = Modifier
                     .weight(1f)
+                    .heightIn(min = 48.dp)
                     .background(
                         color = if (isSelected) Color.Black else ElementTheme.colors.bgSubtleSecondary,
                         shape = RoundedCornerShape(14.dp),
                     )
                     .semantics(mergeDescendants = true) {}
-                    .clickable { onModeSelected(mode) }
-                    .padding(vertical = 12.dp),
+                    .clickable(
+                        interactionSource = interactionSource,
+                        indication = null,
+                    ) { onModeSelected(mode) }
+                    .padding(horizontal = 4.dp, vertical = 12.dp),
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Icon(
-                    modifier = Modifier.size(16.dp),
+                    modifier = Modifier.size(14.dp),
                     imageVector = mode.icon(),
                     contentDescription = null,
                     tint = if (isSelected) Color.White else ElementTheme.colors.iconPrimary,
                 )
-                Spacer(modifier = Modifier.width(8.dp))
+                Spacer(modifier = Modifier.width(4.dp))
                 Text(
+                    modifier = Modifier.weight(1f, fill = false),
                     text = stringResource(mode.titleRes),
-                    style = ElementTheme.typography.fontBodyMdMedium.copy(fontWeight = FontWeight.SemiBold),
+                    style = ElementTheme.typography.fontBodySmMedium.copy(fontWeight = FontWeight.SemiBold),
                     color = if (isSelected) Color.White else ElementTheme.colors.textPrimary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                     textAlign = TextAlign.Center,
                 )
             }
@@ -345,6 +356,7 @@ private fun MomentModeTabs(
 @Composable
 private fun MomentModeCard(mode: MomentStartChatMode) {
     MomentInfoCard(
+        modifier = Modifier.padding(horizontal = 20.dp),
         icon = mode.icon(),
         iconTint = mode.accentColor,
         title = stringResource(mode.titleRes),
@@ -353,8 +365,12 @@ private fun MomentModeCard(mode: MomentStartChatMode) {
 }
 
 @Composable
-private fun MomentDirectLookupCard(state: MomentDirectLookupState) {
+private fun MomentDirectLookupCard(
+    state: MomentDirectLookupState,
+    modifier: Modifier = Modifier,
+) {
     MomentInfoCard(
+        modifier = modifier,
         icon = state.icon(),
         iconTint = state.accentColor,
         title = stringResource(state.titleRes),
@@ -377,6 +393,7 @@ private fun MomentDirectLookupCard(state: MomentDirectLookupState) {
 
 @Composable
 private fun MomentInfoCard(
+    modifier: Modifier = Modifier,
     icon: ImageVector,
     iconTint: Color,
     title: String,
@@ -384,8 +401,7 @@ private fun MomentInfoCard(
     content: @Composable () -> Unit = {},
 ) {
     Row(
-        modifier = Modifier
-            .padding(horizontal = 20.dp)
+        modifier = modifier
             .fillMaxWidth()
             .background(ElementTheme.colors.bgSubtleSecondary, RoundedCornerShape(24.dp))
             .padding(18.dp),
@@ -466,7 +482,10 @@ private fun MomentDirectInputSection(
                 state.userListState.eventSink(UserListEvents.OnSearchActiveChanged(it))
             },
         )
-        MomentDirectLookupCard(lookupState)
+        MomentDirectLookupCard(
+            modifier = Modifier.fillMaxWidth(),
+            state = lookupState,
+        )
     }
 }
 
@@ -600,6 +619,7 @@ private fun MomentVisibilityToggle(
 @Composable
 private fun MomentFooterCard(mode: MomentStartChatMode) {
     MomentInfoCard(
+        modifier = Modifier.padding(horizontal = 20.dp),
         icon = CompoundIcons.FavouriteSolid(),
         iconTint = mode.accentColor,
         title = stringResource(mode.footerTitleRes),
