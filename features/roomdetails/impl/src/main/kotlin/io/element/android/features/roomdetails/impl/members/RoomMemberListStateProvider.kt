@@ -10,6 +10,7 @@ package io.element.android.features.roomdetails.impl.members
 
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.ui.tooling.preview.PreviewParameterProvider
+import io.element.android.features.roomdetails.impl.MomentRoomDetailsType
 import io.element.android.features.roommembermoderation.api.RoomMemberModerationEvents
 import io.element.android.features.roommembermoderation.api.RoomMemberModerationPermissions
 import io.element.android.features.roommembermoderation.api.RoomMemberModerationState
@@ -93,12 +94,14 @@ internal fun aRoomMemberListState(
     selectedSection: SelectedSection = SelectedSection.MEMBERS,
     searchQuery: String = "",
     canInvite: Boolean = false,
+    momentRoomType: MomentRoomDetailsType = MomentRoomDetailsType.Unknown,
     eventSink: (RoomMemberListEvent) -> Unit = {},
 ) = RoomMemberListState(
     roomMembers = roomMembers,
     filteredRoomMembers = roomMembers.map { it.filter(searchQuery) },
     searchQuery = TextFieldState(searchQuery),
     canInvite = canInvite,
+    momentRoomType = momentRoomType,
     moderationState = moderationState,
     selectedSection = selectedSection,
     eventSink = eventSink

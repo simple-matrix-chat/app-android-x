@@ -18,6 +18,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.v2.runAndroidComposeUiTest
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import io.element.android.features.roomdetails.impl.MomentRoomDetailsType
 import io.element.android.features.roomdetails.impl.R
 import io.element.android.libraries.architecture.AsyncData
 import kotlinx.collections.immutable.persistentListOf
@@ -85,6 +86,20 @@ class RoomMemberListViewTest {
 
         onNodeWithText("@mallory:server.org").assertIsDisplayed()
         onNodeWithText("Mallory").assertDoesNotExist()
+    }
+
+    @Test
+    fun `Moment channel member list uses subscribers title`() = runAndroidComposeUiTest {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        setRoomMemberListView(
+            aRoomMemberListState(
+                roomMembers = AsyncData.Success(emptyRoomMembers()),
+                momentRoomType = MomentRoomDetailsType.Channel,
+            )
+        )
+
+        onNodeWithText(context.getString(R.string.screen_moment_room_profile_subscribers_title_android))
+            .assertIsDisplayed()
     }
 }
 

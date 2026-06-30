@@ -21,6 +21,7 @@ import io.element.android.libraries.androidutils.clipboard.ClipboardHelper
 import io.element.android.libraries.androidutils.clipboard.FakeClipboardHelper
 import io.element.android.libraries.architecture.Presenter
 import io.element.android.libraries.core.coroutine.CoroutineDispatchers
+import io.element.android.libraries.matrix.api.core.RoomId
 import io.element.android.libraries.matrix.api.core.UserId
 import io.element.android.libraries.matrix.api.room.JoinedRoom
 import io.element.android.libraries.matrix.api.room.RoomMembersState
@@ -77,9 +78,15 @@ class RoomDetailsPresenterTest {
         notificationSettingsService: FakeNotificationSettingsService = FakeNotificationSettingsService(),
         analyticsService: AnalyticsService = FakeAnalyticsService(),
         clipboardHelper: ClipboardHelper = FakeClipboardHelper(),
-        appPreferencesStore: AppPreferencesStore = InMemoryAppPreferencesStore()
+        appPreferencesStore: AppPreferencesStore = InMemoryAppPreferencesStore(),
+        getRoomStateEventContentResult: (RoomId, String) -> Result<String> = { _, _ ->
+            Result.failure(IllegalStateException("No Moment room type"))
+        },
     ): RoomDetailsPresenter {
-        val matrixClient = FakeMatrixClient(notificationSettingsService = notificationSettingsService)
+        val matrixClient = FakeMatrixClient(
+            notificationSettingsService = notificationSettingsService,
+            getRoomStateEventContentLambda = getRoomStateEventContentResult,
+        )
         val roomMemberDetailsPresenterFactory = object : RoomMemberDetailsPresenter.Factory {
             override fun create(roomMemberId: UserId): RoomMemberDetailsPresenter {
                 return RoomMemberDetailsPresenter(
@@ -164,6 +171,47 @@ class RoomDetailsPresenterTest {
             val initialState = awaitItem()
             assertThat(initialState.roomName).isEqualTo(room.info().name)
 
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `present - resolves Moment group room type`() = runTest {
+        val requestedStateEvents = mutableListOf<Pair<RoomId, String>>()
+        val room = aJoinedRoom(roomPermissions = roomPermissions())
+        val presenter = createRoomDetailsPresenter(
+            room = room,
+            getRoomStateEventContentResult = { roomId, eventType ->
+                requestedStateEvents += roomId to eventType
+                Result.success("""{"kind":"group"}""")
+            },
+        )
+        presenter.testWithLifecycleOwner(lifecycleOwner = fakeLifecycleOwner) {
+            val updatedState = consumeItemsUntilPredicate {
+                it.momentRoomType == MomentRoomDetailsType.Group
+            }.last()
+
+            assertThat(requestedStateEvents).contains(room.roomId to "io.moment.room_kind")
+            assertThat(updatedState.momentRoomType).isEqualTo(MomentRoomDetailsType.Group)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `present - resolves Moment channel room type`() = runTest {
+        val room = aJoinedRoom(roomPermissions = roomPermissions())
+        val presenter = createRoomDetailsPresenter(
+            room = room,
+            getRoomStateEventContentResult = { _, _ ->
+                Result.success("""{"kind":"channel"}""")
+            },
+        )
+        presenter.testWithLifecycleOwner(lifecycleOwner = fakeLifecycleOwner) {
+            val updatedState = consumeItemsUntilPredicate {
+                it.momentRoomType == MomentRoomDetailsType.Channel
+            }.last()
+
+            assertThat(updatedState.momentRoomType).isEqualTo(MomentRoomDetailsType.Channel)
             cancelAndIgnoreRemainingEvents()
         }
     }

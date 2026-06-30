@@ -53,6 +53,7 @@ dependencies {
     implementation(projects.features.poll.api)
     implementation(projects.features.messages.api)
     implementation(projects.features.roomcall.api)
+    implementation(libs.serialization.json)
     implementation(projects.features.knockrequests.api)
     implementation(projects.features.reportroom.api)
     implementation(projects.features.roommembermoderation.api)

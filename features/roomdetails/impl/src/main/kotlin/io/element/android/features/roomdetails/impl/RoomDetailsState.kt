@@ -31,6 +31,7 @@ data class RoomDetailsState(
     val memberCount: Long,
     val isEncrypted: Boolean,
     val roomType: RoomDetailsType,
+    val momentRoomType: MomentRoomDetailsType,
     val roomMemberDetailsState: UserProfileState?,
     val canEdit: Boolean,
     val canInvite: Boolean,
@@ -55,6 +56,8 @@ data class RoomDetailsState(
     val roomHistoryVisibility: RoomHistoryVisibility,
     val eventSink: (RoomDetailsEvent) -> Unit
 ) {
+    val isMomentRoom = roomType is RoomDetailsType.Room && momentRoomType != MomentRoomDetailsType.Unknown
+
     val roomBadges = buildList {
         if (isPublic) {
             add(RoomBadge.PUBLIC)
@@ -66,6 +69,13 @@ data class RoomDetailsState(
 sealed interface RoomDetailsType {
     data object Room : RoomDetailsType
     data class Dm(val otherMember: RoomMember) : RoomDetailsType
+}
+
+@Immutable
+enum class MomentRoomDetailsType {
+    Unknown,
+    Group,
+    Channel,
 }
 
 @Immutable

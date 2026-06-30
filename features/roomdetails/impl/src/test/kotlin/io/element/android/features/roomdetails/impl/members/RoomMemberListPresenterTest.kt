@@ -10,17 +10,20 @@ package io.element.android.features.roomdetails.impl.members
 
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import com.google.common.truth.Truth.assertThat
+import io.element.android.features.roomdetails.impl.MomentRoomDetailsType
 import io.element.android.features.roommembermoderation.api.RoomMemberModerationState
 import io.element.android.libraries.architecture.Presenter
 import io.element.android.libraries.core.coroutine.CoroutineDispatchers
 import io.element.android.libraries.matrix.api.room.JoinedRoom
 import io.element.android.libraries.matrix.api.room.RoomMembersState
 import io.element.android.libraries.matrix.api.room.RoomMembershipState
+import io.element.android.libraries.matrix.test.FakeMatrixClient
 import io.element.android.libraries.matrix.test.room.FakeBaseRoom
 import io.element.android.libraries.matrix.test.room.FakeJoinedRoom
 import io.element.android.libraries.matrix.test.room.aRoomInfo
 import io.element.android.libraries.matrix.test.room.powerlevels.FakeRoomPermissions
 import io.element.android.tests.testutils.WarmUpRule
+import io.element.android.tests.testutils.consumeItemsUntilPredicate
 import io.element.android.tests.testutils.test
 import io.element.android.tests.testutils.testCoroutineDispatchers
 import kotlinx.collections.immutable.toImmutableList
@@ -195,6 +198,21 @@ class RoomMemberListPresenterTest {
     }
 
     @Test
+    fun `present - resolves Moment channel room type`() = runTest {
+        val presenter = createPresenter(
+            matrixClient = FakeMatrixClient(
+                getRoomStateEventContentLambda = { _, _ -> Result.success("""{"kind":"channel"}""") },
+            ),
+        )
+        presenter.test {
+            val updatedState = consumeItemsUntilPredicate {
+                it.momentRoomType == MomentRoomDetailsType.Channel
+            }.last()
+            assertThat(updatedState.momentRoomType).isEqualTo(MomentRoomDetailsType.Channel)
+        }
+    }
+
+    @Test
     fun `present - RoomMemberSelected will open the moderation options`() = runTest {
         val presenter = createPresenter(
             roomMemberModerationState = aRoomMemberModerationState(canBan = true, canKick = true)
@@ -226,10 +244,14 @@ private fun createFakeJoinedRoom(
 
 @ExperimentalCoroutinesApi
 private fun TestScope.createPresenter(
+    matrixClient: FakeMatrixClient = FakeMatrixClient(
+        getRoomStateEventContentLambda = { _, _ -> Result.failure(IllegalStateException("No Moment room type")) },
+    ),
     coroutineDispatchers: CoroutineDispatchers = testCoroutineDispatchers(useUnconfinedTestDispatcher = true),
     joinedRoom: JoinedRoom = createFakeJoinedRoom(),
     roomMemberModerationState: RoomMemberModerationState = aRoomMemberModerationState(),
 ) = RoomMemberListPresenter(
+    client = matrixClient,
     room = joinedRoom,
     coroutineDispatchers = coroutineDispatchers,
     roomMembersModerationPresenter = Presenter {

@@ -41,6 +41,7 @@ import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
 import io.element.android.compound.theme.ElementTheme
 import io.element.android.compound.tokens.generated.CompoundIcons
+import io.element.android.features.roomdetails.impl.MomentRoomDetailsType
 import io.element.android.features.roomdetails.impl.R
 import io.element.android.libraries.architecture.AsyncData
 import io.element.android.libraries.designsystem.atomic.molecules.IconTitleSubtitleMolecule
@@ -90,6 +91,7 @@ fun RoomMemberListView(
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             RoomMemberListTopBar(
+                momentRoomType = state.momentRoomType,
                 canInvite = state.canInvite,
                 onBackClick = navigator::exitRoomMemberList,
                 onInviteClick = navigator::openInviteMembers,
@@ -462,10 +464,16 @@ private fun RoomMemberListItem(
 
 @Composable
 private fun RoomMemberListTopBar(
+    momentRoomType: MomentRoomDetailsType,
     canInvite: Boolean,
     onBackClick: () -> Unit,
     onInviteClick: () -> Unit,
 ) {
+    val title = when (momentRoomType) {
+        MomentRoomDetailsType.Channel -> stringResource(R.string.screen_moment_room_profile_subscribers_title_android)
+        MomentRoomDetailsType.Group -> stringResource(R.string.screen_moment_room_profile_members_title_android)
+        MomentRoomDetailsType.Unknown -> stringResource(CommonStrings.common_people)
+    }
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -488,7 +496,7 @@ private fun RoomMemberListTopBar(
             modifier = Modifier
                 .align(Alignment.Center)
                 .padding(horizontal = 88.dp),
-            text = stringResource(CommonStrings.common_people),
+            text = title,
             style = ElementTheme.typography.fontHeadingSmMedium,
             color = ElementTheme.colors.textPrimary,
             textAlign = TextAlign.Center,

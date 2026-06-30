@@ -195,6 +195,70 @@ class RoomDetailsViewTest {
         }
     }
 
+    @Config(qualifiers = "h1024dp")
+    @Test
+    fun `click on Moment channel settings emits edit action`() = runAndroidComposeUiTest {
+        ensureCalledOnceWithParam<RoomDetailsAction>(RoomDetailsAction.Edit) { callback ->
+            setRoomDetailView(
+                state = aRoomDetailsState(
+                    eventSink = EventsRecorder(expectEvents = false),
+                    momentRoomType = MomentRoomDetailsType.Channel,
+                ),
+                onActionClick = callback,
+            )
+            clickOn(R.string.screen_moment_room_profile_settings_title_channel_android)
+        }
+    }
+
+    @Config(qualifiers = "h1024dp")
+    @Test
+    fun `click on Moment public link invokes share callback`() = runAndroidComposeUiTest {
+        ensureCalledOnce { callback ->
+            setRoomDetailView(
+                state = aRoomDetailsState(
+                    eventSink = EventsRecorder(expectEvents = false),
+                    momentRoomType = MomentRoomDetailsType.Channel,
+                    isPublic = true,
+                ),
+                onShareRoom = callback,
+            )
+            clickOn(R.string.screen_moment_room_profile_public_link_title_android)
+        }
+    }
+
+    @Config(qualifiers = "h1024dp")
+    @Test
+    fun `click on Moment channel subscribers invokes member list callback`() = runAndroidComposeUiTest {
+        ensureCalledOnce { callback ->
+            setRoomDetailView(
+                state = aRoomDetailsState(
+                    eventSink = EventsRecorder(expectEvents = false),
+                    momentRoomType = MomentRoomDetailsType.Channel,
+                ),
+                openRoomMemberList = callback,
+            )
+            clickOn(R.string.screen_moment_room_profile_subscribers_title_android)
+        }
+    }
+
+    @Config(qualifiers = "h1500dp")
+    @Test
+    fun `Moment channel keeps call shortcut but hides generic shortcuts`() = runAndroidComposeUiTest {
+        setRoomDetailView(
+            state = aRoomDetailsState(
+                eventSink = EventsRecorder(expectEvents = false),
+                momentRoomType = MomentRoomDetailsType.Channel,
+                canInvite = true,
+            ),
+        )
+
+        onNodeWithText(activity!!.getString(CommonStrings.common_video)).assertExists()
+        onNodeWithText("Share").assertDoesNotExist()
+        onNodeWithText("Invite").assertDoesNotExist()
+        onNodeWithText("Mute").assertDoesNotExist()
+        onNodeWithText("Unmute").assertDoesNotExist()
+    }
+
     @Test
     fun `click on avatar test`() = runAndroidComposeUiTest {
         val eventsRecorder = EventsRecorder<RoomDetailsEvent>(expectEvents = false)
@@ -279,6 +343,20 @@ class RoomDetailsViewTest {
             ),
         )
         clickOn(R.string.screen_room_details_leave_room_title)
+        eventsRecorder.assertSingle(RoomDetailsEvent.LeaveRoom(needsConfirmation = true))
+    }
+
+    @Config(qualifiers = "h1500dp")
+    @Test
+    fun `click on Moment channel leave emits expected Event`() = runAndroidComposeUiTest {
+        val eventsRecorder = EventsRecorder<RoomDetailsEvent>()
+        setRoomDetailView(
+            state = aRoomDetailsState(
+                eventSink = eventsRecorder,
+                momentRoomType = MomentRoomDetailsType.Channel,
+            ),
+        )
+        clickOn(R.string.screen_moment_room_profile_leave_channel_android)
         eventsRecorder.assertSingle(RoomDetailsEvent.LeaveRoom(needsConfirmation = true))
     }
 

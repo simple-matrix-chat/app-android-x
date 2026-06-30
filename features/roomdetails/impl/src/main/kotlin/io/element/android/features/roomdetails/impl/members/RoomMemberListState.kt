@@ -9,6 +9,7 @@
 package io.element.android.features.roomdetails.impl.members
 
 import androidx.compose.foundation.text.input.TextFieldState
+import io.element.android.features.roomdetails.impl.MomentRoomDetailsType
 import io.element.android.features.roommembermoderation.api.RoomMemberModerationState
 import io.element.android.libraries.architecture.AsyncData
 import io.element.android.libraries.core.bool.orFalse
@@ -22,6 +23,7 @@ data class RoomMemberListState(
     val filteredRoomMembers: AsyncData<RoomMembers>,
     val searchQuery: TextFieldState,
     val canInvite: Boolean,
+    val momentRoomType: MomentRoomDetailsType,
     val selectedSection: SelectedSection,
     val moderationState: RoomMemberModerationState,
     val eventSink: (RoomMemberListEvent) -> Unit,

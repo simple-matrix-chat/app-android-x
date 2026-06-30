@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="screen_moment_room_profile_settings_title_group_android">Group settings</string>
+    <string name="screen_moment_room_profile_settings_title_channel_android">Channel settings</string>
+    <string name="screen_moment_room_profile_members_title_android">Members</string>
+    <string name="screen_moment_room_profile_subscribers_title_android">Subscribers</string>
+    <string name="screen_moment_room_profile_public_link_title_android">Public link</string>
+    <string name="screen_moment_room_profile_leave_group_android">Leave group</string>
+    <string name="screen_moment_room_profile_leave_channel_android">Leave channel</string>
+</resources>

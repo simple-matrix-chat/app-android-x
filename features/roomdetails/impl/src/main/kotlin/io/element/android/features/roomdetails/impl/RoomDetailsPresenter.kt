@@ -126,6 +126,13 @@ class RoomDetailsPresenter(
 
         val snackbarDispatcher = LocalSnackbarDispatcher.current
         val snackbarMessage by snackbarDispatcher.collectSnackbarMessageAsState()
+        val momentRoomType by produceState(MomentRoomDetailsType.Unknown, room.roomId, isDm) {
+            value = if (isDm) {
+                MomentRoomDetailsType.Unknown
+            } else {
+                MomentRoomDetailsTypeResolver.fetch(client, room.roomId)
+            }
+        }
 
         fun handleEvent(event: RoomDetailsEvent) {
             when (event) {
@@ -172,6 +179,7 @@ class RoomDetailsPresenter(
             canEdit = canEditBaseInfo,
             roomCallState = roomCallState,
             roomType = roomType,
+            momentRoomType = momentRoomType,
             roomMemberDetailsState = roomMemberDetailsState,
             leaveRoomState = leaveRoomState,
             roomNotificationSettings = roomNotificationSettingsState.roomNotificationSettings(),

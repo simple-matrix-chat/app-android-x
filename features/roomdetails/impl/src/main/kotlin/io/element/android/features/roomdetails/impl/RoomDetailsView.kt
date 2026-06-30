@@ -138,7 +138,8 @@ fun RoomDetailsView(
             leaveRoomView()
             RoomDetailsTopBar(
                 goBack = goBack,
-                showEdit = state.canEdit,
+                showEdit = state.canEdit && !state.isMomentRoom,
+                showTitle = !state.isMomentRoom,
                 onActionClick = onActionClick
             )
 
@@ -177,12 +178,14 @@ fun RoomDetailsView(
                     )
                 }
             }
-            MainActionsSection(
-                state = state,
-                onShareRoom = onShareRoom,
-                onInvitePeople = invitePeople,
-                onCall = onJoinCallClick,
-            )
+            if (!state.isMomentRoom || state.roomCallState.hasPermissionToJoin()) {
+                MainActionsSection(
+                    state = state,
+                    onShareRoom = onShareRoom,
+                    onInvitePeople = invitePeople,
+                    onCall = onJoinCallClick,
+                )
+            }
 
             if (state.roomTopic is RoomTopicState.CanAddTopic) {
                 TopicSection(
@@ -192,29 +195,51 @@ fun RoomDetailsView(
             }
 
             MomentRoomDetailsCard {
-                if (state.roomNotificationSettings != null) {
-                    NotificationItem(
-                        isDefaultMode = state.roomNotificationSettings.isDefault,
-                        openRoomNotificationSettings = openRoomNotificationSettings
+                if (state.isMomentRoom) {
+                    RoomSettingsItem(
+                        momentRoomType = state.momentRoomType,
+                        onClick = { onActionClick(RoomDetailsAction.Edit) },
+                    )
+                    if (state.roomNotificationSettings != null) {
+                        NotificationItem(
+                            isDefaultMode = state.roomNotificationSettings.isDefault,
+                            openRoomNotificationSettings = openRoomNotificationSettings
+                        )
+                    }
+                    MediaGalleryItem(
+                        onClick = openMediaGallery,
+                        showDivider = state.isPublic,
+                    )
+                    if (state.isPublic) {
+                        PublicLinkItem(
+                            onClick = onShareRoom,
+                        )
+                    }
+                } else {
+                    if (state.roomNotificationSettings != null) {
+                        NotificationItem(
+                            isDefaultMode = state.roomNotificationSettings.isDefault,
+                            openRoomNotificationSettings = openRoomNotificationSettings
+                        )
+                    }
+
+                    FavoriteItem(
+                        isFavorite = state.isFavorite,
+                        onFavoriteChanges = {
+                            state.eventSink(RoomDetailsEvent.SetFavorite(it))
+                        }
+                    )
+                    PinnedMessagesItem(
+                        pinnedMessagesCount = state.pinnedMessagesCount,
+                        onPinnedMessagesClick = onPinnedMessagesClick
+                    )
+                    PollsItem(
+                        openPollHistory = openPollHistory
+                    )
+                    MediaGalleryItem(
+                        onClick = openMediaGallery
                     )
                 }
-
-                FavoriteItem(
-                    isFavorite = state.isFavorite,
-                    onFavoriteChanges = {
-                        state.eventSink(RoomDetailsEvent.SetFavorite(it))
-                    }
-                )
-                PinnedMessagesItem(
-                    pinnedMessagesCount = state.pinnedMessagesCount,
-                    onPinnedMessagesClick = onPinnedMessagesClick
-                )
-                PollsItem(
-                    openPollHistory = openPollHistory
-                )
-                MediaGalleryItem(
-                    onClick = openMediaGallery
-                )
             }
 
             if (state.roomMemberDetailsState != null || state.roomType is RoomDetailsType.Room) {
@@ -226,6 +251,7 @@ fun RoomDetailsView(
                     }
                     if (state.roomType is RoomDetailsType.Room) {
                         MembersItem(
+                            momentRoomType = state.momentRoomType,
                             memberCount = state.memberCount,
                             openRoomMemberList = openRoomMemberList,
                         )
@@ -235,14 +261,14 @@ fun RoomDetailsView(
                                 onKnockRequestsClick = onKnockRequestsClick
                             )
                         }
-                        if (state.displayRolesAndPermissionsSettings) {
+                        if (!state.isMomentRoom && state.displayRolesAndPermissionsSettings) {
                             MomentRoomDetailsRow(
                                 title = stringResource(R.string.screen_room_details_roles_and_permissions),
                                 imageVector = CompoundIcons.Admin(),
                                 onClick = openAdminSettings,
                             )
                         }
-                        if (state.displaySecurityAndPrivacySettings) {
+                        if (!state.isMomentRoom && state.displaySecurityAndPrivacySettings) {
                             MomentRoomDetailsRow(
                                 title = stringResource(R.string.screen_room_details_security_and_privacy_title),
                                 imageVector = CompoundIcons.LockSolid(),
@@ -261,6 +287,7 @@ fun RoomDetailsView(
 
             if (state.canLeaveRoom) {
                 OtherActionsSection(
+                    momentRoomType = state.momentRoomType,
                     canReportRoom = state.canReportRoom,
                     onReportRoomClick = onReportRoomClick,
                     onLeaveRoomClick = { state.eventSink(RoomDetailsEvent.LeaveRoom(needsConfirmation = true)) }
@@ -292,6 +319,7 @@ private fun RoomDetailsTopBar(
     goBack: () -> Unit,
     onActionClick: (RoomDetailsAction) -> Unit,
     showEdit: Boolean,
+    showTitle: Boolean,
 ) {
     var showMenu by remember { mutableStateOf(false) }
 
@@ -314,17 +342,19 @@ private fun RoomDetailsTopBar(
             )
         }
 
-        Text(
-            modifier = Modifier
-                .align(Alignment.Center)
-                .padding(horizontal = 56.dp),
-            text = stringResource(R.string.screen_room_details_title),
-            style = ElementTheme.typography.fontHeadingSmMedium,
-            color = ElementTheme.colors.textPrimary,
-            textAlign = TextAlign.Center,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
+        if (showTitle) {
+            Text(
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .padding(horizontal = 56.dp),
+                text = stringResource(R.string.screen_room_details_title),
+                style = ElementTheme.typography.fontHeadingSmMedium,
+                color = ElementTheme.colors.textPrimary,
+                textAlign = TextAlign.Center,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
 
         if (showEdit) {
             Box(modifier = Modifier.align(Alignment.CenterEnd)) {
@@ -375,23 +405,25 @@ private fun MainActionsSection(
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.Top,
         ) {
-            state.roomNotificationSettings?.let { roomNotificationSettings ->
-                if (roomNotificationSettings.mode == RoomNotificationMode.MUTE) {
-                    MomentRoomShortcutButton(
-                        title = stringResource(CommonStrings.common_unmute),
-                        imageVector = CompoundIcons.NotificationsOff(),
-                        onClick = {
-                            state.eventSink(RoomDetailsEvent.UnmuteNotification)
-                        },
-                    )
-                } else {
-                    MomentRoomShortcutButton(
-                        title = stringResource(CommonStrings.common_mute),
-                        imageVector = CompoundIcons.Notifications(),
-                        onClick = {
-                            state.eventSink(RoomDetailsEvent.MuteNotification)
-                        },
-                    )
+            if (!state.isMomentRoom) {
+                state.roomNotificationSettings?.let { roomNotificationSettings ->
+                    if (roomNotificationSettings.mode == RoomNotificationMode.MUTE) {
+                        MomentRoomShortcutButton(
+                            title = stringResource(CommonStrings.common_unmute),
+                            imageVector = CompoundIcons.NotificationsOff(),
+                            onClick = {
+                                state.eventSink(RoomDetailsEvent.UnmuteNotification)
+                            },
+                        )
+                    } else {
+                        MomentRoomShortcutButton(
+                            title = stringResource(CommonStrings.common_mute),
+                            imageVector = CompoundIcons.Notifications(),
+                            onClick = {
+                                state.eventSink(RoomDetailsEvent.MuteNotification)
+                            },
+                        )
+                    }
                 }
             }
 
@@ -412,7 +444,7 @@ private fun MainActionsSection(
                 )
             }
 
-            if (state.canInvite && state.roomType !is RoomDetailsType.Dm) {
+            if (!state.isMomentRoom && state.canInvite && state.roomType !is RoomDetailsType.Dm) {
                 MomentRoomShortcutButton(
                     title = stringResource(CommonStrings.action_invite),
                     imageVector = CompoundIcons.UserAdd(),
@@ -420,7 +452,7 @@ private fun MainActionsSection(
                 )
             }
 
-            if (state.roomType is RoomDetailsType.Room) {
+            if (!state.isMomentRoom && state.roomType is RoomDetailsType.Room) {
                 // Share CTA should be hidden for DMs.
                 MomentRoomShortcutButton(
                     title = stringResource(CommonStrings.action_share),
@@ -814,6 +846,22 @@ private fun TopicSection(
 }
 
 @Composable
+private fun RoomSettingsItem(
+    momentRoomType: MomentRoomDetailsType,
+    onClick: () -> Unit,
+) {
+    val title = when (momentRoomType) {
+        MomentRoomDetailsType.Channel -> stringResource(R.string.screen_moment_room_profile_settings_title_channel_android)
+        else -> stringResource(R.string.screen_moment_room_profile_settings_title_group_android)
+    }
+    MomentRoomDetailsRow(
+        title = title,
+        imageVector = CompoundIcons.Settings(),
+        onClick = onClick,
+    )
+}
+
+@Composable
 private fun NotificationItem(
     isDefaultMode: Boolean,
     openRoomNotificationSettings: () -> Unit,
@@ -867,11 +915,17 @@ private fun ProfileItem(
 
 @Composable
 private fun MembersItem(
+    momentRoomType: MomentRoomDetailsType,
     memberCount: Long,
     openRoomMemberList: () -> Unit,
 ) {
+    val title = when (momentRoomType) {
+        MomentRoomDetailsType.Group -> stringResource(R.string.screen_moment_room_profile_members_title_android)
+        MomentRoomDetailsType.Channel -> stringResource(R.string.screen_moment_room_profile_subscribers_title_android)
+        MomentRoomDetailsType.Unknown -> stringResource(CommonStrings.common_people)
+    }
     MomentRoomDetailsRow(
-        title = stringResource(CommonStrings.common_people),
+        title = title,
         imageVector = CompoundIcons.User(),
         trailingText = memberCount.toString(),
         onClick = openRoomMemberList,
@@ -921,10 +975,23 @@ private fun PollsItem(
 @Composable
 private fun MediaGalleryItem(
     onClick: () -> Unit,
+    showDivider: Boolean = false,
 ) {
     MomentRoomDetailsRow(
         title = stringResource(R.string.screen_room_details_media_gallery_title),
         imageVector = CompoundIcons.Image(),
+        onClick = onClick,
+        showDivider = showDivider,
+    )
+}
+
+@Composable
+private fun PublicLinkItem(
+    onClick: () -> Unit,
+) {
+    MomentRoomDetailsRow(
+        title = stringResource(R.string.screen_moment_room_profile_public_link_title_android),
+        imageVector = CompoundIcons.Link(),
         onClick = onClick,
         showDivider = false,
     )
@@ -932,6 +999,7 @@ private fun MediaGalleryItem(
 
 @Composable
 private fun OtherActionsSection(
+    momentRoomType: MomentRoomDetailsType,
     canReportRoom: Boolean,
     onReportRoomClick: () -> Unit,
     onLeaveRoomClick: () -> Unit,
@@ -945,8 +1013,13 @@ private fun OtherActionsSection(
                 isDestructive = true,
             )
         }
+        val leaveTitle = when (momentRoomType) {
+            MomentRoomDetailsType.Group -> stringResource(R.string.screen_moment_room_profile_leave_group_android)
+            MomentRoomDetailsType.Channel -> stringResource(R.string.screen_moment_room_profile_leave_channel_android)
+            MomentRoomDetailsType.Unknown -> stringResource(CommonStrings.action_leave_room)
+        }
         MomentRoomDetailsRow(
-            title = stringResource(CommonStrings.action_leave_room),
+            title = leaveTitle,
             imageVector = CompoundIcons.Leave(),
             onClick = onLeaveRoomClick,
             isDestructive = true,

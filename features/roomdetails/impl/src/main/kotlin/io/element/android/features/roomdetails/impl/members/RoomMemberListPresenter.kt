@@ -15,15 +15,19 @@ import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import dev.zacsweers.metro.Inject
+import io.element.android.features.roomdetails.impl.MomentRoomDetailsType
+import io.element.android.features.roomdetails.impl.MomentRoomDetailsTypeResolver
 import io.element.android.features.roommembermoderation.api.RoomMemberModerationEvents.ShowActionsForUser
 import io.element.android.features.roommembermoderation.api.RoomMemberModerationState
 import io.element.android.libraries.architecture.AsyncData
 import io.element.android.libraries.architecture.Presenter
 import io.element.android.libraries.architecture.map
 import io.element.android.libraries.core.coroutine.CoroutineDispatchers
+import io.element.android.libraries.matrix.api.MatrixClient
 import io.element.android.libraries.matrix.api.room.JoinedRoom
 import io.element.android.libraries.matrix.api.room.RoomMembersState
 import io.element.android.libraries.matrix.api.room.RoomMembershipState
@@ -36,6 +40,7 @@ import kotlinx.coroutines.withContext
 
 @Inject
 class RoomMemberListPresenter(
+    private val client: MatrixClient,
     private val room: JoinedRoom,
     private val coroutineDispatchers: CoroutineDispatchers,
     private val roomMembersModerationPresenter: Presenter<RoomMemberModerationState>,
@@ -49,6 +54,13 @@ class RoomMemberListPresenter(
         val isDirectRoom = remember { room.info().isDirect }
         val canInvite by room.permissionsAsState(false) { perms -> perms.canOwnUserInvite() && !isDirectRoom }
         val roomModerationState = roomMembersModerationPresenter.present()
+        val momentRoomType by produceState(MomentRoomDetailsType.Unknown, room.roomId, isDirectRoom) {
+            value = if (isDirectRoom) {
+                MomentRoomDetailsType.Unknown
+            } else {
+                MomentRoomDetailsTypeResolver.fetch(client, room.roomId)
+            }
+        }
 
         var selectedSection by remember { mutableStateOf(SelectedSection.MEMBERS) }
         var roomMembers: AsyncData<RoomMembers> by remember { mutableStateOf(AsyncData.Loading()) }
@@ -119,6 +131,7 @@ class RoomMemberListPresenter(
             filteredRoomMembers = filteredRoomMembers,
             searchQuery = searchQuery,
             canInvite = canInvite,
+            momentRoomType = momentRoomType,
             moderationState = roomModerationState,
             selectedSection = selectedSection,
             eventSink = ::handleEvent,
