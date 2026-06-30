@@ -6,6 +6,9 @@
  * Please see LICENSE files in the repository root for full details.
  */
 
+import org.gradle.api.credentials.HttpHeaderCredentials
+import org.gradle.authentication.http.HttpHeaderAuthentication
+
 pluginManagement {
     repositories {
         includeBuild("plugins")
@@ -29,6 +32,32 @@ dependencyResolutionManagement {
         mavenCentral()
         maven {
             url = uri("https://repo1.maven.org/maven2/")
+        }
+        maven {
+            name = "MomentMatrixRustComponents"
+            url = uri("https://gitlab.com/api/v4/projects/82336531/packages/maven")
+            content {
+                includeModule("org.matrix.rustcomponents", "sdk-android")
+            }
+            val gitLabPrivateToken = providers.gradleProperty("gitLabPrivateToken")
+                .orElse(providers.environmentVariable("GITLAB_TOKEN"))
+                .orElse(providers.environmentVariable("GL_TOKEN"))
+            val gitLabJobToken = providers.gradleProperty("gitLabJobToken")
+                .orElse(providers.environmentVariable("CI_JOB_TOKEN"))
+            val gitLabTokenHeader = when {
+                gitLabPrivateToken.isPresent -> "Private-Token" to gitLabPrivateToken.get()
+                gitLabJobToken.isPresent -> "Job-Token" to gitLabJobToken.get()
+                else -> null
+            }
+            if (gitLabTokenHeader != null) {
+                credentials(HttpHeaderCredentials::class) {
+                    name = gitLabTokenHeader.first
+                    value = gitLabTokenHeader.second
+                }
+                authentication {
+                    create<HttpHeaderAuthentication>("header")
+                }
+            }
         }
         flatDir {
             dirs("libraries/matrix/libs")
