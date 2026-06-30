@@ -9,6 +9,7 @@
 package io.element.android.libraries.matrix.impl
 
 import dev.zacsweers.metro.Inject
+import io.element.android.appconfig.MatrixAppApiAliasesConfig
 import io.element.android.appconfig.MatrixE2EEConfig
 import io.element.android.libraries.core.coroutine.CoroutineDispatchers
 import io.element.android.libraries.core.data.ByteUnit
@@ -150,6 +151,7 @@ class RustMatrixClientFactory(
             }
             .setSessionDelegate(sessionDelegate)
             .userAgent(userAgentProvider.provide())
+            .appApiAliasesEnabledCompat(MatrixAppApiAliasesConfig.ENABLED)
             .addRootCertificates(userCertificatesProvider.provides())
             .autoEnableBackups(false)
             .autoEnableCrossSigning(false)
