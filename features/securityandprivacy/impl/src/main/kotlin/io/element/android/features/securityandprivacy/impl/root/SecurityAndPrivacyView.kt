@@ -250,8 +250,8 @@ private fun MomentSecurityCard(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(28.dp),
         color = ElementTheme.colors.bgCanvasDefault,
-        shadowElevation = 8.dp,
-        border = BorderStroke(1.dp, ElementTheme.colors.borderInteractiveSecondary.copy(alpha = 0.55f)),
+        shadowElevation = 0.dp,
+        border = BorderStroke(1.dp, ElementTheme.colors.borderDisabled),
     ) {
         Column(content = content)
     }
