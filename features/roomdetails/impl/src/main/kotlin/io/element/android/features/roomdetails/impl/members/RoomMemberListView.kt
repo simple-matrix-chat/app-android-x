@@ -25,14 +25,12 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
@@ -267,12 +265,27 @@ private fun LazyListScope.roomMemberListSectionItems(
     members: ImmutableList<RoomMemberListMember>?,
     onMemberSelected: (RoomMember) -> Unit,
 ) {
-    items(members.orEmpty()) { matrixUser ->
-        RoomMemberListItem(
-            modifier = Modifier.fillMaxWidth(),
-            roomMemberListMember = matrixUser,
-            onClick = { onMemberSelected(matrixUser.roomMember) }
-        )
+    val sectionMembers = members.orEmpty()
+    item {
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 32.dp),
+            shape = RoundedCornerShape(24.dp),
+            color = ElementTheme.colors.bgCanvasDefault,
+            border = BorderStroke(1.dp, ElementTheme.colors.borderDisabled),
+        ) {
+            Column {
+                sectionMembers.forEachIndexed { index, matrixUser ->
+                    RoomMemberListItem(
+                        modifier = Modifier.fillMaxWidth(),
+                        roomMemberListMember = matrixUser,
+                        showDivider = index != sectionMembers.lastIndex,
+                        onClick = { onMemberSelected(matrixUser.roomMember) }
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -379,6 +392,7 @@ private fun RoomMemberListItem(
     roomMemberListMember: RoomMemberListMember,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    showDivider: Boolean = false,
 ) {
     val member = roomMemberListMember.roomMember
     val isBanned = member.membership == RoomMembershipState.BAN
@@ -393,20 +407,11 @@ private fun RoomMemberListItem(
         else -> null
     }
 
-    Surface(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(bottom = 8.dp),
-        shape = RoundedCornerShape(24.dp),
-        color = ElementTheme.colors.bgCanvasDefault,
-        shadowElevation = 4.dp,
-        border = BorderStroke(1.dp, ElementTheme.colors.borderInteractiveSecondary.copy(alpha = 0.45f)),
-    ) {
+    Column(modifier = modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .heightIn(min = 72.dp)
-                .clip(RoundedCornerShape(24.dp))
                 .clickable(onClick = onClick)
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -452,11 +457,14 @@ private fun RoomMemberListItem(
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            Icon(
-                modifier = Modifier.size(18.dp),
-                imageVector = CompoundIcons.ChevronRight(),
-                contentDescription = null,
-                tint = ElementTheme.colors.iconSecondary,
+        }
+        if (showDivider) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 72.dp)
+                    .height(1.dp)
+                    .background(ElementTheme.colors.borderDisabled),
             )
         }
     }
