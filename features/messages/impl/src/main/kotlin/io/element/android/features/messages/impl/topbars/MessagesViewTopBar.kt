@@ -38,6 +38,7 @@ import androidx.compose.ui.unit.sp
 import io.element.android.compound.theme.ElementTheme
 import io.element.android.compound.tokens.generated.CompoundIcons
 import io.element.android.features.messages.impl.MessagesMenuActions
+import io.element.android.features.messages.impl.R
 import io.element.android.features.roomcall.api.RoomCallState
 import io.element.android.features.roomcall.api.aStandByCallState
 import io.element.android.features.roomcall.api.anOngoingCallState
@@ -61,6 +62,7 @@ internal fun MessagesViewTopBar(
     roomName: String?,
     onRoomDetailsClick: () -> Unit,
     onBackClick: () -> Unit,
+    onAIBriefingClick: () -> Unit,
     modifier: Modifier = Modifier,
     menuActions: @Composable RowScope.() -> Unit,
 ) {
@@ -107,6 +109,16 @@ internal fun MessagesViewTopBar(
                 horizontalArrangement = Arrangement.spacedBy(MomentRoomHeaderActionSpacing),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
+                IconButton(
+                    modifier = Modifier.size(MomentRoomHeaderActionSize),
+                    onClick = onAIBriefingClick,
+                ) {
+                    Icon(
+                        resourceId = R.drawable.ic_moment_sparkles,
+                        contentDescription = stringResource(R.string.screen_room_ai_briefing_title),
+                        tint = ElementTheme.colors.iconPrimary,
+                    )
+                }
                 menuActions()
                 IconButton(
                     modifier = Modifier.size(MomentRoomHeaderActionSize),
@@ -159,6 +171,7 @@ internal fun MessagesViewTopBarPreview() = ElementPreview {
         roomName = roomName,
         onRoomDetailsClick = {},
         onBackClick = {},
+        onAIBriefingClick = {},
         menuActions = {
             MessagesMenuActions(
                 roomCallState = roomCallState,

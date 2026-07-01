@@ -17,6 +17,8 @@ import io.element.android.features.messages.impl.actionlist.ActionListEvent
 import io.element.android.features.messages.impl.actionlist.ActionListState
 import io.element.android.features.messages.impl.actionlist.anActionListState
 import io.element.android.features.messages.impl.actionlist.model.TimelineItemAction
+import io.element.android.features.messages.impl.ai.FakeMomentAIService
+import io.element.android.features.messages.impl.ai.MomentAIService
 import io.element.android.features.messages.impl.fixtures.aMessageEvent
 import io.element.android.features.messages.impl.link.aLinkState
 import io.element.android.features.messages.impl.messagecomposer.MessageComposerEvent
@@ -1479,6 +1481,7 @@ class MessagesPresenterTest {
         addRecentEmoji: AddRecentEmoji = AddRecentEmoji { _ -> lambdaError() },
         markAsFullyRead: MarkAsFullyRead = FakeMarkAsFullyRead(),
         liveLocationShareManager: FakeActiveLiveLocationShareManager = FakeActiveLiveLocationShareManager(),
+        momentAIService: MomentAIService = FakeMomentAIService(),
     ): MessagesPresenter {
         return MessagesPresenter(
             navigator = navigator,
@@ -1508,6 +1511,7 @@ class MessagesPresenterTest {
             addRecentEmoji = addRecentEmoji,
             markAsFullyRead = markAsFullyRead,
             liveLocationShareManager = liveLocationShareManager,
+            momentAIService = momentAIService,
             sessionCoroutineScope = backgroundScope,
         )
     }

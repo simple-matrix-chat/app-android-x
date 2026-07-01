@@ -78,6 +78,7 @@ import io.element.android.features.messages.api.timeline.voicemessages.composer.
 import io.element.android.features.messages.impl.actionlist.ActionListEvent
 import io.element.android.features.messages.impl.actionlist.ActionListView
 import io.element.android.features.messages.impl.actionlist.model.TimelineItemAction
+import io.element.android.features.messages.impl.ai.MomentAIBriefingBottomSheet
 import io.element.android.features.messages.impl.link.LinkEvent
 import io.element.android.features.messages.impl.link.LinkView
 import io.element.android.features.messages.impl.messagecomposer.AttachmentsBottomSheet
@@ -260,6 +261,11 @@ fun MessagesView(
                             roomName = state.roomName,
                             onBackClick = { hidingKeyboard { onBackClick() } },
                             onRoomDetailsClick = { hidingKeyboard { onRoomDetailsClick() } },
+                            onAIBriefingClick = {
+                                hidingKeyboard {
+                                    state.eventSink(MessagesEvent.OpenAIBriefing)
+                                }
+                            },
                             menuActions = {
                                 MessagesMenuActions(
                                     displayThreads = state.timelineState.timelineMode !is Timeline.Mode.Thread && state.threads.hasThreads,
@@ -435,6 +441,11 @@ fun MessagesView(
     ReadReceiptBottomSheet(
         state = state.readReceiptBottomSheetState,
         onUserDataClick = onUserDataClick,
+    )
+    MomentAIBriefingBottomSheet(
+        state = state.aiBriefingState,
+        onDismiss = { state.eventSink(MessagesEvent.DismissAIBriefing) },
+        onRetry = { state.eventSink(MessagesEvent.RetryAIBriefing) },
     )
     ReinviteDialog(state = state)
     LinkView(

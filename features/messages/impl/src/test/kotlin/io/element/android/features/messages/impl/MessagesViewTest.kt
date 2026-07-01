@@ -151,17 +151,32 @@ class MessagesViewTest {
             abs(titleCenter - headerCenter) < 1f,
         )
 
+        val aiBounds = onNodeWithContentDescription(activity!!.getString(R.string.screen_room_ai_briefing_title)).getUnclippedBoundsInRoot()
         val searchBounds = onNodeWithContentDescription(activity!!.getString(CommonStrings.action_search)).getUnclippedBoundsInRoot()
         val callBounds = onNodeWithContentDescription(activity!!.getString(UiStringsR.string.action_call)).getUnclippedBoundsInRoot()
         val settingsBounds = onNodeWithContentDescription(activity!!.getString(UiStringsR.string.common_settings)).getUnclippedBoundsInRoot()
+        val aiToSearchGap = searchBounds.left.value - aiBounds.right.value
         val searchToCallGap = callBounds.left.value - searchBounds.right.value
         val callToSettingsGap = settingsBounds.left.value - callBounds.right.value
 
         assertTrue(
             "Expected Moment room header actions to use iOS-like spacing.",
-            abs(searchToCallGap - MomentRoomHeaderActionSpacing.value) < 1f &&
+            abs(aiToSearchGap - MomentRoomHeaderActionSpacing.value) < 1f &&
+                abs(searchToCallGap - MomentRoomHeaderActionSpacing.value) < 1f &&
                 abs(callToSettingsGap - MomentRoomHeaderActionSpacing.value) < 1f,
         )
+    }
+
+    @Test
+    fun `clicking on AI briefing emits expected event`() = runAndroidComposeUiTest<ComponentActivity> {
+        val eventsRecorder = EventsRecorder<MessagesEvent>()
+        setMessagesView(
+            state = aMessagesState(eventSink = eventsRecorder),
+        )
+
+        onNodeWithContentDescription(activity!!.getString(R.string.screen_room_ai_briefing_title)).performClick()
+
+        eventsRecorder.assertSingle(MessagesEvent.OpenAIBriefing)
     }
 
     @Test

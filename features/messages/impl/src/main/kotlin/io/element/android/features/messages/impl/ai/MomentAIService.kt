@@ -18,6 +18,7 @@ import io.element.android.libraries.matrix.api.MatrixClient
 import io.element.android.libraries.network.useragent.UserAgentProvider
 import io.element.android.libraries.sessionstorage.api.SessionStore
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
@@ -29,7 +30,15 @@ import okhttp3.RequestBody.Companion.toRequestBody
 interface MomentAIService {
     suspend fun transformText(text: String, mode: String): Result<String>
     suspend fun quickRewrite(text: String): Result<String>
+    suspend fun getRoomBriefing(roomId: String): Result<MomentAIRoomBriefing>
 }
+
+data class MomentAIRoomBriefing(
+    val summary: String,
+    val decisions: List<String>,
+    val actionItems: List<String>,
+    val alert: String?,
+)
 
 @ContributesBinding(RoomScope::class)
 class DefaultMomentAIService @Inject constructor(
@@ -73,6 +82,21 @@ class DefaultMomentAIService @Inject constructor(
         }
     }
 
+    override suspend fun getRoomBriefing(roomId: String): Result<MomentAIRoomBriefing> = withContext(coroutineDispatchers.io) {
+        runCatchingExceptions {
+            val response = postJson<MomentAIBriefingRequest, MomentAIBriefingResponse>(
+                path = "/api/ai/assistant/briefing",
+                body = MomentAIBriefingRequest(
+                    conversation = MomentAIBriefingConversation(
+                        kind = "room",
+                        sourceRoomId = roomId,
+                    ),
+                ),
+            )
+            response.toRoomBriefing()
+        }
+    }
+
     private suspend inline fun <reified RequestBody : Any, reified ResponseBody : Any> postJson(
         path: String,
         body: RequestBody,
@@ -108,6 +132,28 @@ class DefaultMomentAIService @Inject constructor(
                 networkInterceptors().clear()
             }
             .build()
+    }
+
+    private fun MomentAIBriefingResponse.toRoomBriefing(): MomentAIRoomBriefing {
+        structured?.let { structured ->
+            return MomentAIRoomBriefing(
+                summary = structured.summary.trim().ifEmpty { throw IllegalStateException("Empty AI response") },
+                decisions = structured.decisions.orEmpty().mapNotNull { it.trimmedOrNull() },
+                actionItems = structured.actionItems.orEmpty().mapNotNull { it.trimmedOrNull() },
+                alert = structured.alert.trimmedOrNull(),
+            )
+        }
+
+        return MomentAIRoomBriefing(
+            summary = briefing.orEmpty().trim().ifEmpty { throw IllegalStateException("Empty AI response") },
+            decisions = emptyList(),
+            actionItems = emptyList(),
+            alert = null,
+        )
+    }
+
+    private fun String?.trimmedOrNull(): String? {
+        return this?.trim()?.takeIf { it.isNotEmpty() }
     }
 
     private companion object {
@@ -151,4 +197,31 @@ private data class MomentAIChatMessage(
 @Serializable
 private data class MomentAIChatRunResponse(
     val reply: String,
+)
+
+@Serializable
+private data class MomentAIBriefingRequest(
+    val conversation: MomentAIBriefingConversation,
+)
+
+@Serializable
+private data class MomentAIBriefingConversation(
+    val kind: String,
+    @SerialName("source_room_id")
+    val sourceRoomId: String,
+)
+
+@Serializable
+private data class MomentAIBriefingResponse(
+    val briefing: String? = null,
+    val structured: MomentAIBriefingStructured? = null,
+)
+
+@Serializable
+private data class MomentAIBriefingStructured(
+    val summary: String,
+    val decisions: List<String>? = null,
+    @SerialName("action_items")
+    val actionItems: List<String>? = null,
+    val alert: String? = null,
 )

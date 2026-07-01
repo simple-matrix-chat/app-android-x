@@ -13,6 +13,14 @@
     <string name="screen_room_attachment_contact_picker_error_title">Could not load contacts</string>
     <string name="screen_room_attachment_contact_picker_error_message">Check contact access and try again.</string>
     <string name="screen_room_ai_disclaimer">AI can make mistakes. Check the text before sending.</string>
+    <string name="screen_room_ai_briefing_alert">Alert</string>
+    <string name="screen_room_ai_briefing_decisions">Decisions</string>
+    <string name="screen_room_ai_briefing_error">Could not load briefing</string>
+    <string name="screen_room_ai_briefing_loading">Generating briefing...</string>
+    <string name="screen_room_ai_briefing_retry">Retry</string>
+    <string name="screen_room_ai_briefing_summary">Summary</string>
+    <string name="screen_room_ai_briefing_tasks">Tasks</string>
+    <string name="screen_room_ai_briefing_title">AI briefing</string>
     <string name="screen_room_ai_error_could_not_generate">Could not generate</string>
     <string name="screen_room_ai_error_enter_text_first">Enter text first</string>
     <string name="screen_room_ai_fix">Fix</string>

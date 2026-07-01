@@ -35,6 +35,7 @@ import io.element.android.features.messages.api.timeline.HtmlConverterProvider
 import io.element.android.features.messages.impl.MessagesState.Threads
 import io.element.android.features.messages.impl.actionlist.ActionListState
 import io.element.android.features.messages.impl.actionlist.model.TimelineItemAction
+import io.element.android.features.messages.impl.ai.MomentAIService
 import io.element.android.features.messages.impl.link.LinkState
 import io.element.android.features.messages.impl.messagecomposer.MessageComposerEvent
 import io.element.android.features.messages.impl.messagecomposer.MessageComposerState
@@ -131,6 +132,7 @@ class MessagesPresenter(
     private val addRecentEmoji: AddRecentEmoji,
     private val markAsFullyRead: MarkAsFullyRead,
     private val liveLocationShareManager: ActiveLiveLocationShareManager,
+    private val momentAIService: MomentAIService,
     @SessionCoroutineScope private val sessionCoroutineScope: CoroutineScope,
 ) : Presenter<MessagesState> {
     @AssistedFactory
@@ -186,6 +188,7 @@ class MessagesPresenter(
         var currentRoomMessageSearchQuery by remember { mutableStateOf("") }
         var nextRoomMessageSearchBatch by remember { mutableStateOf<String?>(null) }
         var roomMessageSearchGeneration by remember { mutableIntStateOf(0) }
+        var aiBriefingState by remember { mutableStateOf(MomentAIBriefingState.Default) }
 
         val userEventPermissions by room.permissionsAsState(UserEventPermissions.DEFAULT) { perms ->
             perms.userEventPermissions()
@@ -324,6 +327,30 @@ class MessagesPresenter(
             }
         }
 
+        fun requestAIBriefing() {
+            aiBriefingState = MomentAIBriefingState.Default.copy(
+                isVisible = true,
+                isLoading = true,
+            )
+            localCoroutineScope.launch {
+                momentAIService.getRoomBriefing(room.roomId.value)
+                    .onSuccess { briefing ->
+                        aiBriefingState = aiBriefingState.copy(
+                            isLoading = false,
+                            briefing = briefing,
+                            errorMessageResId = null,
+                        )
+                    }
+                    .onFailure {
+                        aiBriefingState = aiBriefingState.copy(
+                            isLoading = false,
+                            briefing = null,
+                            errorMessageResId = R.string.screen_room_ai_briefing_error,
+                        )
+                    }
+            }
+        }
+
         fun handleRoomMessageSearchEvent(event: RoomMessageSearchEvent) {
             when (event) {
                 RoomMessageSearchEvent.ClearQuery -> roomMessageSearchQuery.clearText()
@@ -397,6 +424,11 @@ class MessagesPresenter(
                         markingAsReadAndExiting.set(false)
                     }
                 }
+                MessagesEvent.OpenAIBriefing -> requestAIBriefing()
+                MessagesEvent.DismissAIBriefing -> {
+                    aiBriefingState = MomentAIBriefingState.Default
+                }
+                MessagesEvent.RetryAIBriefing -> requestAIBriefing()
             }
         }
 
@@ -432,6 +464,7 @@ class MessagesPresenter(
                 hasSearchError = hasRoomMessageSearchError,
                 eventSink = ::handleRoomMessageSearchEvent,
             ),
+            aiBriefingState = aiBriefingState,
             roomMemberModerationState = roomMemberModerationState,
             successorRoom = roomInfo.successorRoom,
             threads = Threads(

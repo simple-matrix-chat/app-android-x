@@ -21,6 +21,9 @@ sealed interface MessagesEvent {
     data object StopLiveLocationShare : MessagesEvent
     data object ShowLiveLocationShare : MessagesEvent
     data object MarkAsFullyReadAndExit : MessagesEvent
+    data object OpenAIBriefing : MessagesEvent
+    data object DismissAIBriefing : MessagesEvent
+    data object RetryAIBriefing : MessagesEvent
 }
 
 enum class InviteDialogAction {

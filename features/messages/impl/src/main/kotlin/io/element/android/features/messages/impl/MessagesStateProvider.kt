@@ -124,6 +124,7 @@ fun aMessagesState(
     roomCallState: RoomCallState = aStandByCallState(),
     pinnedMessagesBannerState: PinnedMessagesBannerState = aLoadedPinnedMessagesBannerState(),
     roomMessageSearchState: RoomMessageSearchState = aRoomMessageSearchState(),
+    aiBriefingState: MomentAIBriefingState = MomentAIBriefingState.Default,
     roomMemberModerationState: RoomMemberModerationState = aRoomMemberModerationState(),
     successorRoom: SuccessorRoom? = null,
     threads: MessagesState.Threads = MessagesState.Threads(
@@ -155,6 +156,7 @@ fun aMessagesState(
     appName = "Element",
     pinnedMessagesBannerState = pinnedMessagesBannerState,
     roomMessageSearchState = roomMessageSearchState,
+    aiBriefingState = aiBriefingState,
     roomMemberModerationState = roomMemberModerationState,
     successorRoom = successorRoom,
     threads = threads,

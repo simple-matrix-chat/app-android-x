@@ -8,8 +8,10 @@
 
 package io.element.android.features.messages.impl
 
+import androidx.annotation.StringRes
 import io.element.android.features.messages.api.timeline.voicemessages.composer.VoiceMessageComposerState
 import io.element.android.features.messages.impl.actionlist.ActionListState
+import io.element.android.features.messages.impl.ai.MomentAIRoomBriefing
 import io.element.android.features.messages.impl.link.LinkState
 import io.element.android.features.messages.impl.messagecomposer.MessageComposerState
 import io.element.android.features.messages.impl.pinned.banner.PinnedMessagesBannerState
@@ -51,6 +53,7 @@ data class MessagesState(
     val appName: String,
     val pinnedMessagesBannerState: PinnedMessagesBannerState,
     val roomMessageSearchState: RoomMessageSearchState,
+    val aiBriefingState: MomentAIBriefingState,
     val roomMemberModerationState: RoomMemberModerationState,
     val successorRoom: SuccessorRoom?,
     val threads: Threads,
@@ -63,4 +66,20 @@ data class MessagesState(
         val hasThreads: Boolean,
         val hasUnreadThreads: Boolean,
     )
+}
+
+data class MomentAIBriefingState(
+    val isVisible: Boolean,
+    val isLoading: Boolean,
+    val briefing: MomentAIRoomBriefing?,
+    @StringRes val errorMessageResId: Int?,
+) {
+    companion object {
+        val Default = MomentAIBriefingState(
+            isVisible = false,
+            isLoading = false,
+            briefing = null,
+            errorMessageResId = null,
+        )
+    }
 }
