@@ -14,15 +14,21 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import dev.zacsweers.metro.Inject
+import io.element.android.features.ai.api.MomentAIDailyBriefingManager
+import io.element.android.features.ai.api.MomentAIDailyBriefingResult
+import io.element.android.features.home.impl.ai.MomentAIDailyBriefingEvent
+import io.element.android.features.home.impl.ai.MomentAIDailyBriefingState
 import io.element.android.features.home.impl.roomlist.RoomListState
 import io.element.android.features.home.impl.spaces.HomeSpacesState
 import io.element.android.features.logout.api.direct.DirectLogoutState
 import io.element.android.features.rageshake.api.RageshakeFeatureAvailability
+import io.element.android.libraries.architecture.AsyncData
 import io.element.android.libraries.architecture.Presenter
 import io.element.android.libraries.designsystem.utils.snackbar.SnackbarDispatcher
 import io.element.android.libraries.designsystem.utils.snackbar.collectSnackbarMessageAsState
@@ -45,6 +51,7 @@ class HomePresenter(
     private val logoutPresenter: Presenter<DirectLogoutState>,
     private val rageshakeFeatureAvailability: RageshakeFeatureAvailability,
     private val sessionStore: SessionStore,
+    private val dailyBriefingManager: MomentAIDailyBriefingManager,
 ) : Presenter<HomeState> {
     private val currentUserWithNeighborsBuilder = CurrentUserWithNeighborsBuilder()
 
@@ -63,6 +70,8 @@ class HomePresenter(
         val canReportBug by remember { rageshakeFeatureAvailability.isAvailable() }.collectAsState(false)
         val roomListState = roomListPresenter.present()
         val homeSpacesState = homeSpacesPresenter.present()
+        var isDailyBriefingVisible by rememberSaveable { mutableStateOf(false) }
+        val dailyBriefingActionState = remember { mutableStateOf<AsyncData<MomentAIDailyBriefingResult>>(AsyncData.Uninitialized) }
         var currentHomeNavigationBarItemOrdinal by rememberSaveable { mutableIntStateOf(HomeNavigationBarItem.Chats.ordinal) }
         val currentHomeNavigationBarItem by remember {
             derivedStateOf {
@@ -76,6 +85,36 @@ class HomePresenter(
         // Avatar indicator
         val showAvatarIndicator by indicatorService.showRoomListTopBarIndicator()
         val directLogoutState = logoutPresenter.present()
+
+        fun generateDailyBriefing(force: Boolean) {
+            if (dailyBriefingActionState.value.isLoading()) return
+            coroutineState.launch {
+                val previousResult = dailyBriefingActionState.value.dataOrNull()
+                dailyBriefingActionState.value = AsyncData.Loading(previousResult)
+                dailyBriefingManager.generateAndPost(force).fold(
+                    onSuccess = { result ->
+                        dailyBriefingActionState.value = AsyncData.Success(result)
+                    },
+                    onFailure = { failure ->
+                        dailyBriefingActionState.value = AsyncData.Failure(failure, previousResult)
+                    },
+                )
+            }
+        }
+
+        fun handleDailyBriefingEvent(event: MomentAIDailyBriefingEvent) {
+            when (event) {
+                MomentAIDailyBriefingEvent.Show -> {
+                    isDailyBriefingVisible = true
+                }
+                MomentAIDailyBriefingEvent.Dismiss -> {
+                    isDailyBriefingVisible = false
+                }
+                is MomentAIDailyBriefingEvent.Generate -> {
+                    generateDailyBriefing(event.force)
+                }
+            }
+        }
 
         fun handleEvent(event: HomeEvent) {
             when (event) {
@@ -99,6 +138,11 @@ class HomePresenter(
             snackbarMessage = snackbarMessage,
             canReportBug = canReportBug,
             directLogoutState = directLogoutState,
+            dailyBriefingState = MomentAIDailyBriefingState(
+                isVisible = isDailyBriefingVisible,
+                action = dailyBriefingActionState.value,
+                eventSink = ::handleDailyBriefingEvent,
+            ),
             eventSink = ::handleEvent,
         )
     }

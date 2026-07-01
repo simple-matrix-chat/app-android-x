@@ -93,6 +93,7 @@ fun HomeTopBar(
     onToggleSearch: () -> Unit,
     onStartChatClick: () -> Unit,
     onOpenContactsClick: () -> Unit,
+    onAIDailyBriefingClick: () -> Unit,
     onOpenSettings: () -> Unit,
     onAccountSwitch: (SessionId) -> Unit,
     scrollBehavior: TopAppBarScrollBehavior,
@@ -107,6 +108,7 @@ fun HomeTopBar(
                 onToggleSearch = onToggleSearch,
                 onStartChatClick = onStartChatClick,
                 onOpenContactsClick = onOpenContactsClick,
+                onAIDailyBriefingClick = onAIDailyBriefingClick,
                 spaceFiltersState = spaceFiltersState,
             )
         } else {
@@ -161,6 +163,7 @@ private fun MomentHomeTopBar(
     onToggleSearch: () -> Unit,
     onStartChatClick: () -> Unit,
     onOpenContactsClick: () -> Unit,
+    onAIDailyBriefingClick: () -> Unit,
     spaceFiltersState: SpaceFiltersState,
     modifier: Modifier = Modifier,
 ) {
@@ -176,6 +179,11 @@ private fun MomentHomeTopBar(
         MomentSearchPill(
             onClick = onToggleSearch,
             modifier = Modifier.weight(1f),
+        )
+        MomentHomeActionButton(
+            resourceId = R.drawable.ic_moment_sparkles,
+            contentDescription = stringResource(R.string.screen_home_ai_daily_briefing_title),
+            onClick = onAIDailyBriefingClick,
         )
         MomentHomeActionButton(
             imageVector = CompoundIcons.Compose(),
@@ -217,6 +225,30 @@ private fun MomentSearchPill(
             style = ElementTheme.typography.fontBodyMdRegular,
             color = ElementTheme.colors.textSecondary,
             maxLines = 1,
+        )
+    }
+}
+
+@Composable
+private fun MomentHomeActionButton(
+    resourceId: Int,
+    contentDescription: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    IconButton(
+        modifier = modifier
+            .size(48.dp)
+            .clip(momentHomeControlShape)
+            .background(ElementTheme.colors.bgSubtleSecondary),
+        onClick = onClick,
+        colors = IconButtonDefaults.iconButtonColors(
+            contentColor = ElementTheme.colors.iconPrimary,
+        ),
+    ) {
+        Icon(
+            resourceId = resourceId,
+            contentDescription = contentDescription,
         )
     }
 }
@@ -380,6 +412,7 @@ internal fun HomeTopBarPreview() = ElementPreview {
         onToggleSearch = {},
         onStartChatClick = {},
         onOpenContactsClick = {},
+        onAIDailyBriefingClick = {},
         displayFilters = true,
         filtersState = aRoomListFiltersState(),
         spaceFiltersState = anUnselectedSpaceFiltersState(),
@@ -401,6 +434,7 @@ internal fun HomeTopBarSpaceFiltersSelectedPreview() = ElementPreview {
         onToggleSearch = {},
         onStartChatClick = {},
         onOpenContactsClick = {},
+        onAIDailyBriefingClick = {},
         displayFilters = true,
         filtersState = aRoomListFiltersState(),
         spaceFiltersState = aSelectedSpaceFiltersState(),
@@ -422,6 +456,7 @@ internal fun HomeTopBarSpacesPreview() = ElementPreview {
         onToggleSearch = {},
         onStartChatClick = {},
         onOpenContactsClick = {},
+        onAIDailyBriefingClick = {},
         displayFilters = false,
         filtersState = aRoomListFiltersState(),
         spaceFiltersState = anUnselectedSpaceFiltersState(),
@@ -443,6 +478,7 @@ internal fun HomeTopBarWithIndicatorPreview() = ElementPreview {
         onToggleSearch = {},
         onStartChatClick = {},
         onOpenContactsClick = {},
+        onAIDailyBriefingClick = {},
         displayFilters = true,
         filtersState = aRoomListFiltersState(),
         spaceFiltersState = anUnselectedSpaceFiltersState(),
@@ -464,6 +500,7 @@ internal fun HomeTopBarMultiAccountPreview() = ElementPreview {
         onToggleSearch = {},
         onStartChatClick = {},
         onOpenContactsClick = {},
+        onAIDailyBriefingClick = {},
         displayFilters = true,
         filtersState = aRoomListFiltersState(),
         spaceFiltersState = anUnselectedSpaceFiltersState(),

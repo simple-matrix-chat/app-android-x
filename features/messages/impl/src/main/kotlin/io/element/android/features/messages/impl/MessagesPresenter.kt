@@ -29,13 +29,19 @@ import dev.zacsweers.metro.AssistedFactory
 import dev.zacsweers.metro.AssistedInject
 import im.vector.app.features.analytics.plan.PinUnpinAction
 import io.element.android.appconfig.MessageComposerConfig
+import io.element.android.features.ai.api.MomentAIDailyBriefingManager
+import io.element.android.features.ai.api.MomentAIDailyBriefingResult
 import io.element.android.features.location.api.live.ActiveLiveLocationShareManager
 import io.element.android.features.location.api.live.isCurrentlySharing
 import io.element.android.features.messages.api.timeline.HtmlConverterProvider
 import io.element.android.features.messages.impl.MessagesState.Threads
 import io.element.android.features.messages.impl.actionlist.ActionListState
 import io.element.android.features.messages.impl.actionlist.model.TimelineItemAction
+import io.element.android.features.messages.impl.ai.MomentAIDailyBriefingComposerState
+import io.element.android.features.messages.impl.ai.MomentAIFactCheckUiState
+import io.element.android.features.messages.impl.ai.MomentAIMessageActionState
 import io.element.android.features.messages.impl.ai.MomentAIService
+import io.element.android.features.messages.impl.ai.MomentAISummaryUiState
 import io.element.android.features.messages.impl.link.LinkState
 import io.element.android.features.messages.impl.messagecomposer.MessageComposerEvent
 import io.element.android.features.messages.impl.messagecomposer.MessageComposerState
@@ -77,6 +83,7 @@ import io.element.android.libraries.di.annotations.SessionCoroutineScope
 import io.element.android.libraries.featureflag.api.FeatureFlagService
 import io.element.android.libraries.featureflag.api.FeatureFlags
 import io.element.android.libraries.matrix.api.MatrixClient
+import io.element.android.libraries.matrix.api.core.EventId
 import io.element.android.libraries.matrix.api.core.toThreadId
 import io.element.android.libraries.matrix.api.permalink.PermalinkParser
 import io.element.android.libraries.matrix.api.room.JoinedRoom
@@ -94,6 +101,7 @@ import io.element.android.libraries.ui.strings.CommonStrings
 import io.element.android.services.analytics.api.AnalyticsService
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.persistentMapOf
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.collectLatest
@@ -133,6 +141,7 @@ class MessagesPresenter(
     private val markAsFullyRead: MarkAsFullyRead,
     private val liveLocationShareManager: ActiveLiveLocationShareManager,
     private val momentAIService: MomentAIService,
+    private val dailyBriefingManager: MomentAIDailyBriefingManager,
     @SessionCoroutineScope private val sessionCoroutineScope: CoroutineScope,
 ) : Presenter<MessagesState> {
     @AssistedFactory
@@ -189,6 +198,10 @@ class MessagesPresenter(
         var nextRoomMessageSearchBatch by remember { mutableStateOf<String?>(null) }
         var roomMessageSearchGeneration by remember { mutableIntStateOf(0) }
         var aiBriefingState by remember { mutableStateOf(MomentAIBriefingState.Default) }
+        var isDailyBriefingRoom by remember { mutableStateOf(false) }
+        var dailyBriefingActionState by remember { mutableStateOf<AsyncData<MomentAIDailyBriefingResult>>(AsyncData.Uninitialized) }
+        var aiMessageActionStates by remember { mutableStateOf(persistentMapOf<EventId, MomentAIMessageActionState>()) }
+        var aiFactCheckRequests by remember { mutableStateOf(persistentMapOf<EventId, String>()) }
 
         val userEventPermissions by room.permissionsAsState(UserEventPermissions.DEFAULT) { perms ->
             perms.userEventPermissions()
@@ -210,6 +223,13 @@ class MessagesPresenter(
             withContext(dispatchers.io) {
                 room.setUnreadFlag(isUnread = false)
             }
+        }
+
+        LaunchedEffect(room.roomId) {
+            dailyBriefingManager.isBriefingRoom(room.roomId.value).fold(
+                onSuccess = { isDailyBriefingRoom = it },
+                onFailure = { isDailyBriefingRoom = false },
+            )
         }
 
         val inviteProgress = remember { mutableStateOf<AsyncData<Unit>>(AsyncData.Uninitialized) }
@@ -347,7 +367,23 @@ class MessagesPresenter(
                             briefing = null,
                             errorMessageResId = R.string.screen_room_ai_briefing_error,
                         )
+                }
+            }
+        }
+
+        fun generateDailyBriefing() {
+            if (dailyBriefingActionState.isLoading()) return
+            localCoroutineScope.launch {
+                val previousResult = dailyBriefingActionState.dataOrNull()
+                dailyBriefingActionState = AsyncData.Loading(previousResult)
+                dailyBriefingManager.generateAndPost(force = true).fold(
+                    onSuccess = { result ->
+                        dailyBriefingActionState = AsyncData.Success(result)
+                    },
+                    onFailure = { failure ->
+                        dailyBriefingActionState = AsyncData.Failure(failure, previousResult)
                     }
+                )
             }
         }
 
@@ -371,6 +407,80 @@ class MessagesPresenter(
             }
         }
 
+        fun updateAIMessageActionState(
+            eventId: EventId,
+            transform: (MomentAIMessageActionState) -> MomentAIMessageActionState,
+        ) {
+            val nextState = transform(aiMessageActionStates[eventId] ?: MomentAIMessageActionState.Empty)
+            aiMessageActionStates = if (nextState.isVisible) {
+                aiMessageActionStates.put(eventId, nextState)
+            } else {
+                aiMessageActionStates.remove(eventId)
+            }
+        }
+
+        suspend fun requestAIFactCheck(eventId: EventId, statement: String) {
+            updateAIMessageActionState(eventId) { state ->
+                state.copy(factCheck = MomentAIFactCheckUiState.Loading)
+            }
+            momentAIService.factCheck(
+                statement = statement,
+                roomId = room.roomId.value,
+                eventId = eventId.value,
+            ).fold(
+                onSuccess = { result ->
+                    updateAIMessageActionState(eventId) { state ->
+                        state.copy(factCheck = MomentAIFactCheckUiState.Success(result))
+                    }
+                },
+                onFailure = {
+                    updateAIMessageActionState(eventId) { state ->
+                        state.copy(factCheck = MomentAIFactCheckUiState.Error())
+                    }
+                }
+            )
+        }
+
+        suspend fun requestAIFactCheck(event: TimelineItem.Event) {
+            val eventId = event.eventId ?: return
+            val statement = event.aiActionText() ?: return
+            aiFactCheckRequests = aiFactCheckRequests.put(eventId, statement)
+            requestAIFactCheck(eventId, statement)
+        }
+
+        suspend fun requestAISummary(event: TimelineItem.Event) {
+            val eventId = event.eventId ?: return
+            val text = event.aiActionText() ?: return
+            updateAIMessageActionState(eventId) { state ->
+                state.copy(summary = MomentAISummaryUiState.Loading)
+            }
+            momentAIService.summarize(text).fold(
+                onSuccess = { summary ->
+                    updateAIMessageActionState(eventId) { state ->
+                        state.copy(summary = MomentAISummaryUiState.Success(summary))
+                    }
+                },
+                onFailure = {
+                    updateAIMessageActionState(eventId) { state ->
+                        state.copy(summary = MomentAISummaryUiState.Error())
+                    }
+                }
+            )
+        }
+
+        fun dismissAIFactCheck(eventId: EventId) {
+            aiFactCheckRequests = aiFactCheckRequests.remove(eventId)
+            updateAIMessageActionState(eventId) { state ->
+                state.copy(factCheck = MomentAIFactCheckUiState.Hidden)
+            }
+        }
+
+        fun dismissAISummary(eventId: EventId) {
+            updateAIMessageActionState(eventId) { state ->
+                state.copy(summary = MomentAISummaryUiState.Hidden)
+            }
+        }
+
         fun handleEvent(event: MessagesEvent) {
             when (event) {
                 is MessagesEvent.HandleAction -> {
@@ -381,6 +491,8 @@ class MessagesPresenter(
                         enableTextFormatting = composerState.showTextFormatting,
                         timelineState = timelineState,
                         timelineProtectionState = timelineProtectionState,
+                        requestAIFactCheck = ::requestAIFactCheck,
+                        requestAISummary = ::requestAISummary,
                     )
                 }
                 is MessagesEvent.ToggleReaction -> {
@@ -429,6 +541,18 @@ class MessagesPresenter(
                     aiBriefingState = MomentAIBriefingState.Default
                 }
                 MessagesEvent.RetryAIBriefing -> requestAIBriefing()
+                MessagesEvent.GenerateDailyAIBriefing -> generateDailyBriefing()
+                MessagesEvent.DismissDailyAIBriefingStatus -> {
+                    dailyBriefingActionState = AsyncData.Uninitialized
+                }
+                is MessagesEvent.RetryAIFactCheck -> {
+                    localCoroutineScope.launch {
+                        val statement = aiFactCheckRequests[event.eventId] ?: return@launch
+                        requestAIFactCheck(event.eventId, statement)
+                    }
+                }
+                is MessagesEvent.DismissAIFactCheck -> dismissAIFactCheck(event.eventId)
+                is MessagesEvent.DismissAISummary -> dismissAISummary(event.eventId)
             }
         }
 
@@ -465,6 +589,11 @@ class MessagesPresenter(
                 eventSink = ::handleRoomMessageSearchEvent,
             ),
             aiBriefingState = aiBriefingState,
+            dailyBriefingComposerState = MomentAIDailyBriefingComposerState(
+                isVisible = isDailyBriefingRoom,
+                action = dailyBriefingActionState,
+            ),
+            aiMessageActionStates = aiMessageActionStates,
             roomMemberModerationState = roomMemberModerationState,
             successorRoom = roomInfo.successorRoom,
             threads = Threads(
@@ -499,6 +628,8 @@ class MessagesPresenter(
         timelineProtectionState: TimelineProtectionState,
         enableTextFormatting: Boolean,
         timelineState: TimelineState,
+        requestAIFactCheck: suspend (TimelineItem.Event) -> Unit,
+        requestAISummary: suspend (TimelineItem.Event) -> Unit,
     ) = launch {
         when (action) {
             TimelineItemAction.CopyText -> handleCopyContents(targetEvent)
@@ -530,6 +661,8 @@ class MessagesPresenter(
             TimelineItemAction.EndPoll -> handleEndPollAction(targetEvent, timelineState)
             TimelineItemAction.Pin -> handlePinAction(targetEvent)
             TimelineItemAction.Unpin -> handleUnpinAction(targetEvent)
+            TimelineItemAction.AIFactCheck -> requestAIFactCheck(targetEvent)
+            TimelineItemAction.AISummarize -> requestAISummary(targetEvent)
             TimelineItemAction.ViewInTimeline -> Unit
         }
     }
@@ -744,5 +877,13 @@ class MessagesPresenter(
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
             snackbarDispatcher.post(SnackbarMessage(CommonStrings.common_copied_to_clipboard))
         }
+    }
+
+    private fun TimelineItem.Event.aiActionText(): String? {
+        val textContent = content as? TimelineItemTextBasedContent ?: return null
+        return textContent.plainText
+            .ifBlank { textContent.body }
+            .trim()
+            .takeIf { it.isNotEmpty() }
     }
 }

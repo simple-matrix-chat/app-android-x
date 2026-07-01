@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="screen_home_ai_daily_briefing_title">Брифинг дня</string>
+    <string name="screen_home_ai_daily_briefing_description">Создайте приватную сводку недавней активности и отправьте ее в комнату брифинга.</string>
+    <string name="screen_home_ai_daily_briefing_generate">Сгенерировать брифинг</string>
+    <string name="screen_home_ai_daily_briefing_generating">Генерируем брифинг...</string>
+    <string name="screen_home_ai_daily_briefing_empty">За выбранный период новых важных событий не найдено.</string>
+    <string name="screen_home_ai_daily_briefing_error">Не удалось сгенерировать брифинг. Попробуйте еще раз.</string>
+    <string name="screen_home_ai_daily_briefing_open_last">Открыть последний брифинг</string>
+    <string name="screen_home_ai_daily_briefing_posted">Брифинг опубликован в Брифинг дня.</string>
+    <string name="screen_home_ai_daily_briefing_rooms_count">Чатов в сводке: %1$d</string>
+</resources>

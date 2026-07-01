@@ -12,13 +12,22 @@ package io.element.android.features.messages.impl
 
 import com.google.common.truth.Truth.assertThat
 import im.vector.app.features.analytics.plan.PinUnpinAction
+import io.element.android.features.ai.api.MomentAIDailyBriefingManager
+import io.element.android.features.ai.api.MomentAIDailyBriefingResult
+import io.element.android.features.ai.api.MomentAIDailyDigest
+import io.element.android.features.ai.api.MomentAIDailyDigestRoom
+import io.element.android.features.ai.api.MomentAIDigestSkipped
+import io.element.android.features.ai.api.MomentAIDigestWindow
 import io.element.android.features.location.test.FakeActiveLiveLocationShareManager
 import io.element.android.features.messages.impl.actionlist.ActionListEvent
 import io.element.android.features.messages.impl.actionlist.ActionListState
 import io.element.android.features.messages.impl.actionlist.anActionListState
 import io.element.android.features.messages.impl.actionlist.model.TimelineItemAction
 import io.element.android.features.messages.impl.ai.FakeMomentAIService
+import io.element.android.features.messages.impl.ai.MomentAIFactCheckResult
+import io.element.android.features.messages.impl.ai.MomentAIFactCheckUiState
 import io.element.android.features.messages.impl.ai.MomentAIService
+import io.element.android.features.messages.impl.ai.MomentAISummaryUiState
 import io.element.android.features.messages.impl.fixtures.aMessageEvent
 import io.element.android.features.messages.impl.link.aLinkState
 import io.element.android.features.messages.impl.messagecomposer.MessageComposerEvent
@@ -452,6 +461,126 @@ class MessagesPresenterTest {
             initialState.eventSink(MessagesEvent.HandleAction(TimelineItemAction.CopyText, event))
             skipItems(2)
             assertThat(clipboardHelper.clipboardContents).isEqualTo((event.content as TimelineItemTextContent).body)
+        }
+    }
+
+    @Test
+    fun `present - handle action ai fact check stores result`() = runTest {
+        val result = MomentAIFactCheckResult(
+            verdict = "supported",
+            confidence = 0.91,
+            rationale = "The statement is supported.",
+            claims = emptyList(),
+            sources = emptyList(),
+            knowledgeCutoffWarning = false,
+            model = "test",
+        )
+        val requests = mutableListOf<Triple<String, String?, String?>>()
+        val momentAIService = FakeMomentAIService(
+            factCheckResult = { statement, roomId, eventId ->
+                requests.add(Triple(statement, roomId, eventId))
+                Result.success(result)
+            }
+        )
+        val event = aMessageEvent(
+            isMine = false,
+            content = aTimelineItemTextContent(body = "Mars is red"),
+        )
+        val presenter = createMessagesPresenter(momentAIService = momentAIService)
+
+        presenter.testWithLifecycleOwner {
+            val initialState = awaitItem()
+            initialState.eventSink(MessagesEvent.HandleAction(TimelineItemAction.AIFactCheck, event))
+
+            val successState = consumeItemsUntilPredicate { state ->
+                state.aiMessageActionStates[AN_EVENT_ID]?.factCheck is MomentAIFactCheckUiState.Success
+            }.last()
+            val factCheckState = successState.aiMessageActionStates[AN_EVENT_ID]?.factCheck as MomentAIFactCheckUiState.Success
+            assertThat(requests).containsExactly(Triple("Mars is red", A_ROOM_ID.value, AN_EVENT_ID.value))
+            assertThat(factCheckState.result).isEqualTo(result)
+
+            successState.eventSink(MessagesEvent.DismissAIFactCheck(AN_EVENT_ID))
+            val dismissedState = consumeItemsUntilPredicate { state -> !state.aiMessageActionStates.containsKey(AN_EVENT_ID) }.last()
+            assertThat(dismissedState.aiMessageActionStates).doesNotContainKey(AN_EVENT_ID)
+        }
+    }
+
+    @Test
+    fun `present - handle action ai fact check can retry after failure`() = runTest {
+        val result = MomentAIFactCheckResult(
+            verdict = "unverifiable",
+            confidence = 0.0,
+            rationale = "Could not verify this statement.",
+            claims = emptyList(),
+            sources = emptyList(),
+            knowledgeCutoffWarning = false,
+            model = "test",
+        )
+        var requestCount = 0
+        val momentAIService = FakeMomentAIService(
+            factCheckResult = { _, _, _ ->
+                requestCount++
+                if (requestCount == 1) {
+                    Result.failure(IllegalStateException("No AI result"))
+                } else {
+                    Result.success(result)
+                }
+            }
+        )
+        val event = aMessageEvent(
+            isMine = false,
+            content = aTimelineItemTextContent(body = "The Moon is cheese"),
+        )
+        val presenter = createMessagesPresenter(momentAIService = momentAIService)
+
+        presenter.testWithLifecycleOwner {
+            val initialState = awaitItem()
+            initialState.eventSink(MessagesEvent.HandleAction(TimelineItemAction.AIFactCheck, event))
+
+            val errorState = consumeItemsUntilPredicate { state ->
+                state.aiMessageActionStates[AN_EVENT_ID]?.factCheck is MomentAIFactCheckUiState.Error
+            }.last()
+            errorState.eventSink(MessagesEvent.RetryAIFactCheck(AN_EVENT_ID))
+
+            val successState = consumeItemsUntilPredicate { state ->
+                state.aiMessageActionStates[AN_EVENT_ID]?.factCheck is MomentAIFactCheckUiState.Success
+            }.last()
+            val factCheckState = successState.aiMessageActionStates[AN_EVENT_ID]?.factCheck as MomentAIFactCheckUiState.Success
+            assertThat(requestCount).isEqualTo(2)
+            assertThat(factCheckState.result).isEqualTo(result)
+        }
+    }
+
+    @Test
+    fun `present - handle action ai summarize stores result`() = runTest {
+        val requests = mutableListOf<String>()
+        val momentAIService = FakeMomentAIService(
+            summarizeResult = { text ->
+                requests.add(text)
+                Result.success("Short summary")
+            }
+        )
+        val longMessage = "Long message. ".repeat(20)
+        val event = aMessageEvent(
+            isMine = false,
+            content = aTimelineItemTextContent(body = longMessage),
+        )
+        val presenter = createMessagesPresenter(momentAIService = momentAIService)
+
+        presenter.testWithLifecycleOwner {
+            val initialState = awaitItem()
+            initialState.eventSink(MessagesEvent.HandleAction(TimelineItemAction.AISummarize, event))
+
+            val successState = consumeItemsUntilPredicate { state ->
+                state.aiMessageActionStates[AN_EVENT_ID]?.summary is MomentAISummaryUiState.Success
+            }.last()
+            val summaryState = successState.aiMessageActionStates[AN_EVENT_ID]?.summary as MomentAISummaryUiState.Success
+            assertThat(requests).containsExactly(longMessage.trim())
+            assertThat(summaryState.summary).isEqualTo("Short summary")
+
+            successState.eventSink(MessagesEvent.DismissAISummary(AN_EVENT_ID))
+            val dismissedState = consumeItemsUntilPredicate { state -> !state.aiMessageActionStates.containsKey(AN_EVENT_ID) }.last()
+            assertThat(dismissedState.aiMessageActionStates).doesNotContainKey(AN_EVENT_ID)
         }
     }
 
@@ -1482,6 +1611,7 @@ class MessagesPresenterTest {
         markAsFullyRead: MarkAsFullyRead = FakeMarkAsFullyRead(),
         liveLocationShareManager: FakeActiveLiveLocationShareManager = FakeActiveLiveLocationShareManager(),
         momentAIService: MomentAIService = FakeMomentAIService(),
+        dailyBriefingManager: MomentAIDailyBriefingManager = FakeMomentAIDailyBriefingManager(),
     ): MessagesPresenter {
         return MessagesPresenter(
             navigator = navigator,
@@ -1512,9 +1642,58 @@ class MessagesPresenterTest {
             markAsFullyRead = markAsFullyRead,
             liveLocationShareManager = liveLocationShareManager,
             momentAIService = momentAIService,
+            dailyBriefingManager = dailyBriefingManager,
             sessionCoroutineScope = backgroundScope,
         )
     }
+}
+
+private class FakeMomentAIDailyBriefingManager(
+    private val generateAndPostResult: Result<MomentAIDailyBriefingResult> = Result.success(aMomentAIDailyBriefingResult()),
+    private val isBriefingRoomResult: Result<Boolean> = Result.success(false),
+) : MomentAIDailyBriefingManager {
+    override suspend fun generateAndPost(force: Boolean): Result<MomentAIDailyBriefingResult> {
+        return generateAndPostResult
+    }
+
+    override suspend fun isBriefingRoom(roomId: String): Result<Boolean> {
+        return isBriefingRoomResult
+    }
+}
+
+private fun aMomentAIDailyBriefingResult(): MomentAIDailyBriefingResult {
+    return MomentAIDailyBriefingResult(
+        digest = MomentAIDailyDigest(
+            generatedAt = "2026-07-01T10:00:00Z",
+            window = MomentAIDigestWindow(
+                from = "2026-06-30T22:00:00+03:00",
+                to = "2026-07-01T10:00:00+03:00",
+            ),
+            metaSummary = "Daily summary",
+            rooms = listOf(
+                MomentAIDailyDigestRoom(
+                    roomId = "!room:server",
+                    title = "Room",
+                    kind = "group",
+                    messageCount = 1,
+                    summary = "Summary",
+                    highlights = emptyList(),
+                    youMentioned = false,
+                    alert = null,
+                )
+            ),
+            skipped = MomentAIDigestSkipped(
+                encrypted = 0,
+                noActivity = 0,
+                filteredOut = 0,
+            ),
+            model = "fake",
+            partial = false,
+        ),
+        roomId = "!briefing:server",
+        eventId = "\$event",
+        posted = true,
+    )
 }
 
 private fun aMatrixMessageSearchResult(

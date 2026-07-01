@@ -9,6 +9,12 @@
 package io.element.android.features.home.impl
 
 import com.google.common.truth.Truth.assertThat
+import io.element.android.features.ai.api.MomentAIDailyBriefingManager
+import io.element.android.features.ai.api.MomentAIDailyBriefingResult
+import io.element.android.features.ai.api.MomentAIDailyDigest
+import io.element.android.features.ai.api.MomentAIDailyDigestRoom
+import io.element.android.features.ai.api.MomentAIDigestSkipped
+import io.element.android.features.ai.api.MomentAIDigestWindow
 import io.element.android.features.home.impl.roomlist.aRoomListState
 import io.element.android.features.home.impl.spaces.HomeSpacesState
 import io.element.android.features.home.impl.spaces.aHomeSpacesState
@@ -155,6 +161,7 @@ internal fun createHomePresenter(
     indicatorService: IndicatorService = FakeIndicatorService(),
     homeSpacesPresenter: Presenter<HomeSpacesState> = Presenter { aHomeSpacesState() },
     sessionStore: SessionStore = InMemorySessionStore(),
+    dailyBriefingManager: MomentAIDailyBriefingManager = FakeMomentAIDailyBriefingManager(),
 ) = HomePresenter(
     client = client,
     syncService = syncService,
@@ -165,4 +172,52 @@ internal fun createHomePresenter(
     logoutPresenter = { aDirectLogoutState() },
     rageshakeFeatureAvailability = rageshakeFeatureAvailability,
     sessionStore = sessionStore,
+    dailyBriefingManager = dailyBriefingManager,
 )
+
+private class FakeMomentAIDailyBriefingManager(
+    private val generateAndPostResult: Result<MomentAIDailyBriefingResult> = Result.success(aMomentAIDailyBriefingResult()),
+) : MomentAIDailyBriefingManager {
+    override suspend fun generateAndPost(force: Boolean): Result<MomentAIDailyBriefingResult> {
+        return generateAndPostResult
+    }
+
+    override suspend fun isBriefingRoom(roomId: String): Result<Boolean> {
+        return Result.success(false)
+    }
+}
+
+private fun aMomentAIDailyBriefingResult(): MomentAIDailyBriefingResult {
+    return MomentAIDailyBriefingResult(
+        digest = MomentAIDailyDigest(
+            generatedAt = "2026-07-01T10:00:00Z",
+            window = MomentAIDigestWindow(
+                from = "2026-06-30T22:00:00+03:00",
+                to = "2026-07-01T10:00:00+03:00",
+            ),
+            metaSummary = "Daily summary",
+            rooms = listOf(
+                MomentAIDailyDigestRoom(
+                    roomId = "!room:server",
+                    title = "Room",
+                    kind = "group",
+                    messageCount = 1,
+                    summary = "Summary",
+                    highlights = emptyList(),
+                    youMentioned = false,
+                    alert = null,
+                )
+            ),
+            skipped = MomentAIDigestSkipped(
+                encrypted = 0,
+                noActivity = 0,
+                filteredOut = 0,
+            ),
+            model = "fake",
+            partial = false,
+        ),
+        roomId = "!briefing:server",
+        eventId = "\$event",
+        posted = true,
+    )
+}

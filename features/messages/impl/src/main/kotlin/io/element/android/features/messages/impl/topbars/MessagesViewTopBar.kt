@@ -55,7 +55,8 @@ import io.element.android.libraries.ui.strings.CommonStrings
 
 internal val MomentRoomHeaderActionSize = 32.dp
 internal val MomentRoomHeaderActionSpacing = 12.dp
-internal val MomentRoomHeaderTitleHorizontalPadding = 128.dp
+internal val MomentRoomHeaderTitleStartPadding = 44.dp
+internal val MomentRoomHeaderTitleEndPadding = 184.dp
 
 @Composable
 internal fun MessagesViewTopBar(
@@ -96,7 +97,10 @@ internal fun MessagesViewTopBar(
             modifier = Modifier
                 .align(Alignment.Center)
                 .fillMaxWidth()
-                .padding(horizontal = MomentRoomHeaderTitleHorizontalPadding)
+                .padding(
+                    start = MomentRoomHeaderTitleStartPadding,
+                    end = MomentRoomHeaderTitleEndPadding,
+                )
                 .semantics {
                     heading()
                 }

@@ -68,6 +68,7 @@ fun RoomListContentView(
     onCreateRoomClick: () -> Unit,
     contentPadding: PaddingValues,
     modifier: Modifier = Modifier,
+    headerContent: (@Composable () -> Unit)? = null,
 ) {
     when (contentState) {
         is RoomListContentState.Skeleton -> {
@@ -95,6 +96,7 @@ fun RoomListContentView(
                 onRoomClick = onRoomClick,
                 lazyListState = lazyListState,
                 contentPadding = contentPadding,
+                headerContent = headerContent,
             )
         }
     }
@@ -154,6 +156,7 @@ private fun RoomsView(
     contentPadding: PaddingValues,
     lazyListState: LazyListState,
     modifier: Modifier = Modifier,
+    headerContent: (@Composable () -> Unit)? = null,
 ) {
     val isSpaceFilterSelected = spaceFiltersState is SpaceFiltersState.Selected
     if (state.summaries.isEmpty()) {
@@ -171,6 +174,7 @@ private fun RoomsView(
             contentPadding = contentPadding,
             lazyListState = lazyListState,
             modifier = modifier.fillMaxSize(),
+            headerContent = headerContent,
         )
     }
 }
@@ -184,6 +188,7 @@ private fun RoomsViewList(
     contentPadding: PaddingValues,
     lazyListState: LazyListState,
     modifier: Modifier = Modifier,
+    headerContent: (@Composable () -> Unit)? = null,
 ) {
     OnVisibleRangeChangeEffect(lazyListState) { visibleRange ->
         eventSink(RoomListEvent.UpdateVisibleRange(visibleRange))
@@ -193,6 +198,12 @@ private fun RoomsViewList(
         modifier = modifier,
         contentPadding = contentPadding,
     ) {
+        headerContent?.let { content ->
+            item {
+                content()
+            }
+        }
+
         if (state.fullScreenIntentPermissionsState.shouldDisplayBanner) {
             item {
                 FullScreenIntentPermissionBanner(state = state.fullScreenIntentPermissionsState)

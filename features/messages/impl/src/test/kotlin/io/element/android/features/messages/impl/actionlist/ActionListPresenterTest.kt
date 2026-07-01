@@ -177,6 +177,7 @@ class ActionListPresenterTest {
                         TimelineItemAction.Forward,
                         TimelineItemAction.CopyLink,
                         TimelineItemAction.Pin,
+                        TimelineItemAction.AIFactCheck,
                         TimelineItemAction.CopyText,
                         TimelineItemAction.ViewSource,
                         TimelineItemAction.ReportContent,
@@ -186,6 +187,64 @@ class ActionListPresenterTest {
             )
             initialState.eventSink.invoke(ActionListEvent.Clear)
             assertThat(awaitItem().target).isEqualTo(ActionListState.Target.None)
+        }
+    }
+
+    @Test
+    fun `present - compute for short others message does not include ai actions`() = runTest {
+        val presenter = createActionListPresenter(isDeveloperModeEnabled = true)
+        presenter.test {
+            val initialState = awaitItem()
+            val messageEvent = aMessageEvent(
+                isMine = false,
+                isEditable = false,
+                content = TimelineItemTextContent(body = "hi", htmlDocument = null, isEdited = false, formattedBody = "hi")
+            )
+            initialState.eventSink.invoke(
+                ActionListEvent.ComputeForMessage(
+                    event = messageEvent,
+                    userEventPermissions = aUserEventPermissions(
+                        canRedactOwn = false,
+                        canRedactOther = false,
+                        canSendMessage = true,
+                        canSendReaction = true,
+                        canPinUnpin = true,
+                    )
+                )
+            )
+            val successState = awaitItem()
+            val actions = (successState.target as ActionListState.Target.Success).actions
+            assertThat(actions).doesNotContain(TimelineItemAction.AIFactCheck)
+            assertThat(actions).doesNotContain(TimelineItemAction.AISummarize)
+        }
+    }
+
+    @Test
+    fun `present - compute for long others message includes all ai actions`() = runTest {
+        val presenter = createActionListPresenter(isDeveloperModeEnabled = true)
+        presenter.test {
+            val initialState = awaitItem()
+            val longMessage = "A long message. ".repeat(16)
+            val messageEvent = aMessageEvent(
+                isMine = false,
+                isEditable = false,
+                content = TimelineItemTextContent(body = longMessage, htmlDocument = null, isEdited = false, formattedBody = longMessage)
+            )
+            initialState.eventSink.invoke(
+                ActionListEvent.ComputeForMessage(
+                    event = messageEvent,
+                    userEventPermissions = aUserEventPermissions(
+                        canRedactOwn = false,
+                        canRedactOther = false,
+                        canSendMessage = true,
+                        canSendReaction = true,
+                        canPinUnpin = true,
+                    )
+                )
+            )
+            val successState = awaitItem()
+            val actions = (successState.target as ActionListState.Target.Success).actions
+            assertThat(actions).containsAtLeast(TimelineItemAction.AIFactCheck, TimelineItemAction.AISummarize).inOrder()
         }
     }
 
@@ -224,6 +283,7 @@ class ActionListPresenterTest {
                         TimelineItemAction.Forward,
                         TimelineItemAction.CopyLink,
                         TimelineItemAction.Pin,
+                        TimelineItemAction.AIFactCheck,
                         TimelineItemAction.CopyText,
                         TimelineItemAction.ViewSource,
                         TimelineItemAction.ReportContent,
@@ -269,6 +329,7 @@ class ActionListPresenterTest {
                         TimelineItemAction.Forward,
                         TimelineItemAction.CopyLink,
                         TimelineItemAction.Pin,
+                        TimelineItemAction.AIFactCheck,
                         TimelineItemAction.CopyText,
                         TimelineItemAction.ViewSource,
                         TimelineItemAction.ReportContent,
@@ -315,6 +376,7 @@ class ActionListPresenterTest {
                         TimelineItemAction.Forward,
                         TimelineItemAction.CopyLink,
                         TimelineItemAction.Pin,
+                        TimelineItemAction.AIFactCheck,
                         TimelineItemAction.CopyText,
                         TimelineItemAction.ViewSource,
                         TimelineItemAction.ReportContent,
@@ -362,6 +424,7 @@ class ActionListPresenterTest {
                         TimelineItemAction.Forward,
                         TimelineItemAction.CopyLink,
                         TimelineItemAction.Pin,
+                        TimelineItemAction.AIFactCheck,
                         TimelineItemAction.CopyText,
                         TimelineItemAction.ViewSource,
                         TimelineItemAction.ReportContent,
@@ -409,6 +472,7 @@ class ActionListPresenterTest {
                         TimelineItemAction.Edit,
                         TimelineItemAction.CopyLink,
                         TimelineItemAction.Pin,
+                        TimelineItemAction.AIFactCheck,
                         TimelineItemAction.CopyText,
                         TimelineItemAction.ViewSource,
                         TimelineItemAction.Redact,
@@ -456,6 +520,7 @@ class ActionListPresenterTest {
                         TimelineItemAction.Edit,
                         TimelineItemAction.CopyLink,
                         TimelineItemAction.Pin,
+                        TimelineItemAction.AIFactCheck,
                         TimelineItemAction.CopyText,
                         TimelineItemAction.ViewSource,
                         TimelineItemAction.Redact,
@@ -502,6 +567,7 @@ class ActionListPresenterTest {
                         TimelineItemAction.Edit,
                         TimelineItemAction.CopyLink,
                         TimelineItemAction.Pin,
+                        TimelineItemAction.AIFactCheck,
                         TimelineItemAction.CopyText,
                         TimelineItemAction.ViewSource,
                     ),
@@ -544,6 +610,7 @@ class ActionListPresenterTest {
                     actions = persistentListOf(
                         TimelineItemAction.Forward,
                         TimelineItemAction.CopyLink,
+                        TimelineItemAction.AIFactCheck,
                         TimelineItemAction.CopyText,
                         TimelineItemAction.ViewSource,
                     ),
@@ -797,6 +864,7 @@ class ActionListPresenterTest {
                         TimelineItemAction.Edit,
                         TimelineItemAction.CopyLink,
                         TimelineItemAction.Pin,
+                        TimelineItemAction.AIFactCheck,
                         TimelineItemAction.CopyText,
                         TimelineItemAction.Redact,
                     ),
@@ -841,6 +909,7 @@ class ActionListPresenterTest {
                         TimelineItemAction.Forward,
                         TimelineItemAction.Edit,
                         TimelineItemAction.CopyLink,
+                        TimelineItemAction.AIFactCheck,
                         TimelineItemAction.CopyText,
                         TimelineItemAction.ViewSource,
                         TimelineItemAction.Redact,
@@ -893,6 +962,7 @@ class ActionListPresenterTest {
                         TimelineItemAction.Edit,
                         TimelineItemAction.CopyLink,
                         TimelineItemAction.Unpin,
+                        TimelineItemAction.AIFactCheck,
                         TimelineItemAction.CopyText,
                         TimelineItemAction.ViewSource,
                         TimelineItemAction.Redact,

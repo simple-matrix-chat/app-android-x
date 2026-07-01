@@ -11,6 +11,8 @@ package io.element.android.features.messages.impl
 import androidx.annotation.StringRes
 import io.element.android.features.messages.api.timeline.voicemessages.composer.VoiceMessageComposerState
 import io.element.android.features.messages.impl.actionlist.ActionListState
+import io.element.android.features.messages.impl.ai.MomentAIDailyBriefingComposerState
+import io.element.android.features.messages.impl.ai.MomentAIMessageActionState
 import io.element.android.features.messages.impl.ai.MomentAIRoomBriefing
 import io.element.android.features.messages.impl.link.LinkState
 import io.element.android.features.messages.impl.messagecomposer.MessageComposerState
@@ -26,9 +28,11 @@ import io.element.android.features.roommembermoderation.api.RoomMemberModeration
 import io.element.android.libraries.architecture.AsyncData
 import io.element.android.libraries.designsystem.components.avatar.AvatarData
 import io.element.android.libraries.designsystem.utils.snackbar.SnackbarMessage
+import io.element.android.libraries.matrix.api.core.EventId
 import io.element.android.libraries.matrix.api.core.RoomId
 import io.element.android.libraries.matrix.api.room.tombstone.SuccessorRoom
 import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.ImmutableMap
 
 data class MessagesState(
     val roomId: RoomId,
@@ -54,6 +58,8 @@ data class MessagesState(
     val pinnedMessagesBannerState: PinnedMessagesBannerState,
     val roomMessageSearchState: RoomMessageSearchState,
     val aiBriefingState: MomentAIBriefingState,
+    val dailyBriefingComposerState: MomentAIDailyBriefingComposerState,
+    val aiMessageActionStates: ImmutableMap<EventId, MomentAIMessageActionState>,
     val roomMemberModerationState: RoomMemberModerationState,
     val successorRoom: SuccessorRoom?,
     val threads: Threads,

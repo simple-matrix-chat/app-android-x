@@ -15,6 +15,8 @@ import io.element.android.features.messages.api.timeline.voicemessages.composer.
 import io.element.android.features.messages.api.timeline.voicemessages.composer.aVoiceMessagePreviewState
 import io.element.android.features.messages.impl.actionlist.ActionListState
 import io.element.android.features.messages.impl.actionlist.anActionListState
+import io.element.android.features.messages.impl.ai.MomentAIDailyBriefingComposerState
+import io.element.android.features.messages.impl.ai.MomentAIMessageActionState
 import io.element.android.features.messages.impl.link.LinkState
 import io.element.android.features.messages.impl.link.aLinkState
 import io.element.android.features.messages.impl.messagecomposer.MessageComposerState
@@ -54,7 +56,9 @@ import io.element.android.libraries.matrix.api.timeline.Timeline
 import io.element.android.libraries.textcomposer.model.MessageComposerMode
 import io.element.android.libraries.textcomposer.model.aTextEditorStateRich
 import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.ImmutableMap
 import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.persistentMapOf
 import kotlinx.collections.immutable.persistentSetOf
 
 open class MessagesStateProvider : PreviewParameterProvider<MessagesState> {
@@ -86,6 +90,13 @@ open class MessagesStateProvider : PreviewParameterProvider<MessagesState> {
                     isSearchActive = true,
                     query = "message",
                     results = persistentListOf(aRoomMessageSearchResult()),
+                ),
+            ),
+            aMessagesState(
+                roomName = "Брифинг дня",
+                dailyBriefingComposerState = MomentAIDailyBriefingComposerState(
+                    isVisible = true,
+                    action = AsyncData.Uninitialized,
                 ),
             ),
             aMessagesState(isCurrentlySharingLiveLocationInRoom = true),
@@ -125,6 +136,11 @@ fun aMessagesState(
     pinnedMessagesBannerState: PinnedMessagesBannerState = aLoadedPinnedMessagesBannerState(),
     roomMessageSearchState: RoomMessageSearchState = aRoomMessageSearchState(),
     aiBriefingState: MomentAIBriefingState = MomentAIBriefingState.Default,
+    dailyBriefingComposerState: MomentAIDailyBriefingComposerState = MomentAIDailyBriefingComposerState(
+        isVisible = false,
+        action = AsyncData.Uninitialized,
+    ),
+    aiMessageActionStates: ImmutableMap<EventId, MomentAIMessageActionState> = persistentMapOf(),
     roomMemberModerationState: RoomMemberModerationState = aRoomMemberModerationState(),
     successorRoom: SuccessorRoom? = null,
     threads: MessagesState.Threads = MessagesState.Threads(
@@ -157,6 +173,8 @@ fun aMessagesState(
     pinnedMessagesBannerState = pinnedMessagesBannerState,
     roomMessageSearchState = roomMessageSearchState,
     aiBriefingState = aiBriefingState,
+    dailyBriefingComposerState = dailyBriefingComposerState,
+    aiMessageActionStates = aiMessageActionStates,
     roomMemberModerationState = roomMemberModerationState,
     successorRoom = successorRoom,
     threads = threads,

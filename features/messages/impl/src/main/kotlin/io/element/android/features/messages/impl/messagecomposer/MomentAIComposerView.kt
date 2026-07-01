@@ -23,6 +23,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -51,6 +55,8 @@ internal fun MomentAIComposerPanel(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    var activeDrillDown by rememberSaveable { mutableStateOf<MomentAIDrillDown?>(null) }
+
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -74,7 +80,10 @@ internal fun MomentAIComposerPanel(
                 )
             } else {
                 MomentAIModesRow(
+                    activeDrillDown = activeDrillDown,
                     onSelectMode = onSelectMode,
+                    onOpenDrillDown = { activeDrillDown = it },
+                    onCloseDrillDown = { activeDrillDown = null },
                     modifier = Modifier.weight(1f),
                 )
             }
@@ -129,34 +138,86 @@ internal fun MomentAIComposerPanel(
 
 @Composable
 private fun MomentAIModesRow(
+    activeDrillDown: MomentAIDrillDown?,
     onSelectMode: (String) -> Unit,
+    onOpenDrillDown: (MomentAIDrillDown) -> Unit,
+    onCloseDrillDown: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val modes = listOf(
-        MomentAIMode("fix_grammar", stringResource(R.string.screen_room_ai_fix)),
-        MomentAIMode("shorter", stringResource(R.string.screen_room_ai_shorter)),
-        MomentAIMode("longer", stringResource(R.string.screen_room_ai_longer)),
-        MomentAIMode("formal", stringResource(R.string.screen_room_ai_formal)),
-        MomentAIMode("friendly", stringResource(R.string.screen_room_ai_friendly)),
-        MomentAIMode("translate_en", stringResource(R.string.screen_room_ai_translate_english)),
-        MomentAIMode("translate_ru", stringResource(R.string.screen_room_ai_translate_russian)),
+    val mainModes = listOf(
+        MomentAIMode("fix", stringResource(R.string.screen_room_ai_fix), mode = "fix_grammar"),
+        MomentAIMode("shorter", stringResource(R.string.screen_room_ai_shorter), mode = "shorter"),
+        MomentAIMode("longer", stringResource(R.string.screen_room_ai_longer), mode = "longer"),
+        MomentAIMode("style", stringResource(R.string.screen_room_ai_style), drillDown = MomentAIDrillDown.Style),
+        MomentAIMode("translate", stringResource(R.string.screen_room_ai_translate), drillDown = MomentAIDrillDown.Translate),
     )
+    val styleModes = listOf(
+        MomentAIMode("formal", stringResource(R.string.screen_room_ai_formal), mode = "formal"),
+        MomentAIMode("corporate", stringResource(R.string.screen_room_ai_corporate), mode = "corporate"),
+        MomentAIMode("friendly", stringResource(R.string.screen_room_ai_friendly), mode = "friendly"),
+        MomentAIMode("old_russian", stringResource(R.string.screen_room_ai_old_russian), mode = "old_russian"),
+    )
+    val translateModes = listOf(
+        MomentAIMode("translate_en", stringResource(R.string.screen_room_ai_translate_english), mode = "translate_en"),
+        MomentAIMode("translate_ru", stringResource(R.string.screen_room_ai_translate_russian), mode = "translate_ru"),
+        MomentAIMode("translate_kk", stringResource(R.string.screen_room_ai_translate_kazakh), mode = "translate_kk"),
+        MomentAIMode("translate_uz", stringResource(R.string.screen_room_ai_translate_uzbek), mode = "translate_uz"),
+        MomentAIMode("translate_be", stringResource(R.string.screen_room_ai_translate_belarusian), mode = "translate_be"),
+        MomentAIMode("translate_ky", stringResource(R.string.screen_room_ai_translate_kyrgyz), mode = "translate_ky"),
+        MomentAIMode("translate_tg", stringResource(R.string.screen_room_ai_translate_tajik), mode = "translate_tg"),
+        MomentAIMode("translate_hy", stringResource(R.string.screen_room_ai_translate_armenian), mode = "translate_hy"),
+        MomentAIMode("translate_ka", stringResource(R.string.screen_room_ai_translate_georgian), mode = "translate_ka"),
+        MomentAIMode("translate_tr", stringResource(R.string.screen_room_ai_translate_turkish), mode = "translate_tr"),
+    )
+
     Row(
         modifier = modifier.horizontalScroll(rememberScrollState()),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        modes.forEach { mode ->
-            Text(
-                text = mode.label,
-                style = ElementTheme.typography.fontBodySmMedium,
-                color = ElementTheme.colors.textPrimary,
+        if (activeDrillDown != null) {
+            IconButton(onClick = onCloseDrillDown) {
+                Icon(
+                    imageVector = CompoundIcons.ChevronLeft(),
+                    contentDescription = stringResource(CommonStrings.action_back),
+                    tint = ElementTheme.colors.iconSecondary,
+                )
+            }
+        }
+        val visibleModes = when (activeDrillDown) {
+            MomentAIDrillDown.Style -> styleModes
+            MomentAIDrillDown.Translate -> translateModes
+            null -> mainModes
+        }
+        visibleModes.forEach { mode ->
+            Row(
                 modifier = Modifier
                     .clip(CircleShape)
                     .background(ElementTheme.colors.bgSubtleSecondary)
-                    .clickable { onSelectMode(mode.id) }
+                    .clickable {
+                        when {
+                            mode.drillDown != null -> onOpenDrillDown(mode.drillDown)
+                            mode.mode != null -> onSelectMode(mode.mode)
+                        }
+                    }
                     .padding(horizontal = 14.dp, vertical = 8.dp),
-            )
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = mode.label,
+                    style = ElementTheme.typography.fontBodySmMedium,
+                    color = ElementTheme.colors.textPrimary,
+                )
+                if (mode.drillDown != null) {
+                    Icon(
+                        imageVector = CompoundIcons.ChevronRight(),
+                        contentDescription = null,
+                        modifier = Modifier.size(14.dp),
+                        tint = ElementTheme.colors.iconSecondary,
+                    )
+                }
+            }
         }
     }
 }
@@ -239,4 +300,11 @@ internal fun MomentAIWandButton(
 private data class MomentAIMode(
     val id: String,
     val label: String,
+    val mode: String? = null,
+    val drillDown: MomentAIDrillDown? = null,
 )
+
+private enum class MomentAIDrillDown {
+    Style,
+    Translate,
+}

@@ -30,8 +30,12 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -44,6 +48,9 @@ import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.materials.ExperimentalHazeMaterialsApi
 import dev.chrisbanes.haze.materials.HazeMaterials
 import dev.chrisbanes.haze.rememberHazeState
+import io.element.android.features.home.impl.ai.MomentAIDailyBriefingEvent
+import io.element.android.features.home.impl.ai.MomentAIDailyBriefingSheet
+import io.element.android.features.home.impl.ai.MomentAIDailyBriefingTeaser
 import io.element.android.features.home.impl.components.HomeTopBar
 import io.element.android.features.home.impl.components.RoomListContentView
 import io.element.android.features.home.impl.components.RoomListMenuAction
@@ -134,6 +141,7 @@ fun HomeView(
                 .fillMaxSize()
         )
         acceptDeclineInviteView()
+        MomentAIDailyBriefingSheet(state = homeState.dailyBriefingState)
     }
 }
 
@@ -171,6 +179,7 @@ private fun HomeScaffold(
     val hazeState = rememberHazeState()
     val roomsLazyListState = rememberLazyListState()
     val spacesLazyListState = rememberLazyListState()
+    var showDailyBriefingTeaser by rememberSaveable { mutableStateOf(true) }
 
     Scaffold(
         modifier = modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
@@ -183,6 +192,7 @@ private fun HomeScaffold(
                 onToggleSearch = { roomListState.eventSink(RoomListEvent.ToggleSearchResults) },
                 onStartChatClick = onStartChatClick,
                 onOpenContactsClick = onOpenContactsClick,
+                onAIDailyBriefingClick = { state.dailyBriefingState.eventSink(MomentAIDailyBriefingEvent.Show) },
                 onOpenSettings = onOpenSettings,
                 onAccountSwitch = {
                     state.eventSink(HomeEvent.SwitchToAccount(it))
@@ -228,6 +238,20 @@ private fun HomeScaffold(
                             onRoomClick = ::onRoomSummaryClick,
                             onCreateRoomClick = onStartChatClick,
                             contentPadding = contentPadding,
+                            headerContent = if (showDailyBriefingTeaser) {
+                                {
+                                    MomentAIDailyBriefingTeaser(
+                                        onClick = {
+                                            state.dailyBriefingState.eventSink(MomentAIDailyBriefingEvent.Show)
+                                        },
+                                        onAutoDismiss = {
+                                            showDailyBriefingTeaser = false
+                                        },
+                                    )
+                                }
+                            } else {
+                                null
+                            },
                             modifier = Modifier
                                 .padding(
                                     PaddingValues(

@@ -34,6 +34,7 @@ import io.element.android.features.messages.impl.timeline.model.event.TimelineIt
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemRedactedContent
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemRtcNotificationContent
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemStateContent
+import io.element.android.features.messages.impl.timeline.model.event.TimelineItemTextBasedContent
 import io.element.android.features.messages.impl.timeline.model.event.canBeCopied
 import io.element.android.features.messages.impl.timeline.model.event.canBeForwarded
 import io.element.android.features.messages.impl.timeline.model.event.canReact
@@ -223,6 +224,16 @@ class DefaultActionListPresenter(
                     add(TimelineItemAction.Pin)
                 }
             }
+            val textContent = timelineItem.content as? TimelineItemTextBasedContent
+            if (timelineItem.isRemote && textContent != null) {
+                val text = textContent.plainText.ifBlank { textContent.body }.trim()
+                if (text.length >= AI_FACT_CHECK_MIN_LENGTH) {
+                    add(TimelineItemAction.AIFactCheck)
+                }
+                if (text.length >= AI_SUMMARIZE_MIN_LENGTH) {
+                    add(TimelineItemAction.AISummarize)
+                }
+            }
             if (timelineItem.content.canBeCopied()) {
                 add(TimelineItemAction.CopyText)
             } else if ((timelineItem.content as? TimelineItemEventContentWithAttachment)?.caption.isNullOrBlank().not()) {
@@ -263,3 +274,6 @@ private fun Iterable<TimelineItemAction>.postFilter(content: TimelineItemEventCo
         }
     }
 }
+
+private const val AI_FACT_CHECK_MIN_LENGTH = 3
+private const val AI_SUMMARIZE_MIN_LENGTH = 200

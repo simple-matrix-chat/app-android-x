@@ -79,6 +79,7 @@ import io.element.android.features.messages.impl.actionlist.ActionListEvent
 import io.element.android.features.messages.impl.actionlist.ActionListView
 import io.element.android.features.messages.impl.actionlist.model.TimelineItemAction
 import io.element.android.features.messages.impl.ai.MomentAIBriefingBottomSheet
+import io.element.android.features.messages.impl.ai.MomentAIDailyBriefingComposerHint
 import io.element.android.features.messages.impl.link.LinkEvent
 import io.element.android.features.messages.impl.link.LinkView
 import io.element.android.features.messages.impl.messagecomposer.AttachmentsBottomSheet
@@ -814,6 +815,10 @@ private fun MessagesViewContent(
                 onReactionLongClick = onReactionLongClick,
                 onMoreReactionsClick = onMoreReactionsClick,
                 onReadReceiptClick = onReadReceiptClick,
+                aiMessageActionStates = state.aiMessageActionStates,
+                onRetryAIFactCheck = { eventId -> state.eventSink(MessagesEvent.RetryAIFactCheck(eventId)) },
+                onDismissAIFactCheck = { eventId -> state.eventSink(MessagesEvent.DismissAIFactCheck(eventId)) },
+                onDismissAISummary = { eventId -> state.eventSink(MessagesEvent.DismissAISummary(eventId)) },
                 forceJumpToBottomVisibility = forceJumpToBottomVisibility,
                 nestedScrollConnection = scrollBehavior.nestedScrollConnection,
                 floatingDateTopOffset = pinnedBannerHeightDp,
@@ -861,6 +866,14 @@ private fun MessagesViewComposerBottomSheetContents(
     when {
         state.successorRoom != null -> {
             SuccessorRoomBanner(roomSuccessor = state.successorRoom, onRoomSuccessorClick = onRoomSuccessorClick)
+        }
+        state.dailyBriefingComposerState.isVisible -> {
+            MomentAIDailyBriefingComposerHint(
+                state = state.dailyBriefingComposerState,
+                onGenerateClick = {
+                    state.eventSink(MessagesEvent.GenerateDailyAIBriefing)
+                },
+            )
         }
         state.userEventPermissions.canSendMessage -> {
             Column(modifier = Modifier.fillMaxWidth()) {

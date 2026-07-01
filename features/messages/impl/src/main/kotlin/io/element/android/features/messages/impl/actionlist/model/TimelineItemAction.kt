@@ -10,6 +10,7 @@ package io.element.android.features.messages.impl.actionlist.model
 
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
+import io.element.android.features.messages.impl.R
 import io.element.android.libraries.designsystem.icons.CompoundDrawables
 import io.element.android.libraries.ui.strings.CommonStrings
 
@@ -36,4 +37,6 @@ enum class TimelineItemAction(
     EndPoll(CommonStrings.action_end_poll, CompoundDrawables.ic_compound_polls_end),
     Pin(CommonStrings.action_pin, CompoundDrawables.ic_compound_pin),
     Unpin(CommonStrings.action_unpin, CompoundDrawables.ic_compound_unpin),
+    AIFactCheck(R.string.screen_room_ai_menu_fact_check, CompoundDrawables.ic_compound_shield),
+    AISummarize(R.string.screen_room_ai_menu_summarize, CompoundDrawables.ic_compound_quote),
 }

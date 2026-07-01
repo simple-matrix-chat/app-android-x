@@ -11,6 +11,7 @@ package io.element.android.features.messages.impl.timeline.factories.event
 import dev.zacsweers.metro.Assisted
 import dev.zacsweers.metro.AssistedFactory
 import dev.zacsweers.metro.AssistedInject
+import io.element.android.features.messages.impl.ai.MomentAIBriefingPayloadParser
 import io.element.android.features.messages.impl.timeline.factories.TimelineItemsFactoryConfig
 import io.element.android.features.messages.impl.timeline.groups.canBeDisplayedInBubbleBlock
 import io.element.android.features.messages.impl.timeline.model.AggregatedReaction
@@ -21,6 +22,9 @@ import io.element.android.features.messages.impl.timeline.model.TimelineItemGrou
 import io.element.android.features.messages.impl.timeline.model.TimelineItemReactions
 import io.element.android.features.messages.impl.timeline.model.TimelineItemReadReceipts
 import io.element.android.features.messages.impl.timeline.model.TimelineItemThreadInfo
+import io.element.android.features.messages.impl.timeline.model.event.TimelineItemBriefingContent
+import io.element.android.features.messages.impl.timeline.model.event.TimelineItemEventContent
+import io.element.android.features.messages.impl.timeline.model.event.TimelineItemTextContent
 import io.element.android.features.messages.impl.utils.messagesummary.MessageSummaryFormatter
 import io.element.android.libraries.core.bool.orTrue
 import io.element.android.libraries.dateformatter.api.DateFormatter
@@ -32,6 +36,7 @@ import io.element.android.libraries.matrix.api.permalink.PermalinkParser
 import io.element.android.libraries.matrix.api.room.RoomMember
 import io.element.android.libraries.matrix.api.timeline.MatrixTimelineItem
 import io.element.android.libraries.matrix.api.timeline.item.EventThreadInfo
+import io.element.android.libraries.matrix.api.timeline.item.event.TimelineItemDebugInfoProvider
 import io.element.android.libraries.matrix.api.timeline.item.event.getAvatarUrl
 import io.element.android.libraries.matrix.api.timeline.item.event.getDisambiguatedDisplayName
 import io.element.android.libraries.matrix.ui.messages.reply.map
@@ -99,6 +104,8 @@ class TimelineItemEventFactory(
             }
             null -> null
         }
+        val content = contentFactory.create(currentTimelineItem.event)
+            .withBriefingPayload(currentTimelineItem.event.timelineItemDebugInfoProvider)
 
         return TimelineItem.Event(
             id = currentTimelineItem.uniqueId,
@@ -107,7 +114,7 @@ class TimelineItemEventFactory(
             senderId = currentSender,
             senderProfile = senderProfile,
             senderAvatar = senderAvatarData,
-            content = contentFactory.create(currentTimelineItem.event),
+            content = content,
             isMine = currentTimelineItem.event.isOwn,
             isEditable = currentTimelineItem.event.isEditable,
             canBeRepliedTo = currentTimelineItem.event.canBeRepliedTo,
@@ -127,6 +134,24 @@ class TimelineItemEventFactory(
             forwarder = currentTimelineItem.event.forwarder,
             forwarderProfile = currentTimelineItem.event.forwarderProfile,
         )
+    }
+
+    private fun TimelineItemEventContent.withBriefingPayload(
+        timelineItemDebugInfoProvider: TimelineItemDebugInfoProvider,
+    ): TimelineItemEventContent {
+        val textContent = this as? TimelineItemTextContent ?: return this
+        if (!textContent.body.looksLikeBriefingFallback()) return this
+        val payload = MomentAIBriefingPayloadParser.parse(timelineItemDebugInfoProvider().originalJson) ?: return this
+        return TimelineItemBriefingContent(
+            body = textContent.body,
+            formattedBody = textContent.formattedBody,
+            isEdited = textContent.isEdited,
+            payload = payload,
+        )
+    }
+
+    private fun String.looksLikeBriefingFallback(): Boolean {
+        return contains("Брифинг") || contains("briefing", ignoreCase = true)
     }
 
     fun update(

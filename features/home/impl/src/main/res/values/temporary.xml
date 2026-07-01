@@ -48,4 +48,13 @@
     <string name="screen_moment_home_empty_channels_message">When you join or create channels, they will appear here.</string>
     <string name="screen_moment_home_empty_archived_title">No archived chats</string>
     <string name="screen_moment_home_empty_archived_message">Archive a chat to move it out of your main list.</string>
+    <string name="screen_home_ai_daily_briefing_title">Daily briefing</string>
+    <string name="screen_home_ai_daily_briefing_description">Generate a private summary of recent activity and post it to your briefing room.</string>
+    <string name="screen_home_ai_daily_briefing_generate">Generate briefing now</string>
+    <string name="screen_home_ai_daily_briefing_generating">Generating daily briefing…</string>
+    <string name="screen_home_ai_daily_briefing_empty">No new highlights were found for this briefing window.</string>
+    <string name="screen_home_ai_daily_briefing_error">Could not generate the briefing. Try again.</string>
+    <string name="screen_home_ai_daily_briefing_open_last">Open last briefing</string>
+    <string name="screen_home_ai_daily_briefing_posted">Briefing posted to Брифинг дня.</string>
+    <string name="screen_home_ai_daily_briefing_rooms_count">%1$d chats included</string>
 </resources>

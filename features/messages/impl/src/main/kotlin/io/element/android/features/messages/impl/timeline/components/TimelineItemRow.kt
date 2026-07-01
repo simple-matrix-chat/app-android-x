@@ -26,6 +26,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import io.element.android.compound.theme.ElementTheme
+import io.element.android.features.messages.impl.ai.MomentAIMessageActionState
 import io.element.android.features.messages.impl.timeline.TimelineEvent
 import io.element.android.features.messages.impl.timeline.TimelineRoomInfo
 import io.element.android.features.messages.impl.timeline.components.event.TimelineItemEventContentView
@@ -49,6 +50,8 @@ import io.element.android.libraries.matrix.api.user.MatrixUser
 import io.element.android.libraries.ui.strings.CommonStrings
 import io.element.android.libraries.ui.utils.a11y.isTalkbackActive
 import io.element.android.wysiwyg.link.Link
+import kotlinx.collections.immutable.ImmutableMap
+import kotlinx.collections.immutable.persistentMapOf
 import kotlin.time.DurationUnit
 
 @Composable
@@ -72,6 +75,10 @@ internal fun TimelineItemRow(
     onMoreReactionsClick: (TimelineItem.Event) -> Unit,
     onReadReceiptClick: (TimelineItem.Event) -> Unit,
     onSwipeToReply: (TimelineItem.Event) -> Unit,
+    aiMessageActionStates: ImmutableMap<EventId, MomentAIMessageActionState> = persistentMapOf(),
+    onRetryAIFactCheck: (EventId) -> Unit = {},
+    onDismissAIFactCheck: (EventId) -> Unit = {},
+    onDismissAISummary: (EventId) -> Unit = {},
     eventSink: (TimelineEvent.TimelineItemEvent) -> Unit,
     modifier: Modifier = Modifier,
     eventContentView: @Composable (TimelineItem.Event, Modifier, (ContentAvoidingLayoutData) -> Unit) -> Unit =
@@ -176,6 +183,10 @@ internal fun TimelineItemRow(
                             onMoreReactionsClick = onMoreReactionsClick,
                             onReadReceiptClick = onReadReceiptClick,
                             onSwipeToReply = { onSwipeToReply(timelineItem) },
+                            aiMessageActionState = timelineItem.eventId?.let(aiMessageActionStates::get),
+                            onRetryAIFactCheck = onRetryAIFactCheck,
+                            onDismissAIFactCheck = onDismissAIFactCheck,
+                            onDismissAISummary = onDismissAISummary,
                             eventSink = eventSink,
                             eventContentView = { contentModifier, onContentLayoutChange ->
                                 eventContentView(timelineItem, contentModifier, onContentLayoutChange)
@@ -204,6 +215,10 @@ internal fun TimelineItemRow(
                     onReactionLongClick = onReactionLongClick,
                     onMoreReactionsClick = onMoreReactionsClick,
                     onReadReceiptClick = onReadReceiptClick,
+                    aiMessageActionStates = aiMessageActionStates,
+                    onRetryAIFactCheck = onRetryAIFactCheck,
+                    onDismissAIFactCheck = onDismissAIFactCheck,
+                    onDismissAISummary = onDismissAISummary,
                     eventSink = eventSink,
                 )
             }

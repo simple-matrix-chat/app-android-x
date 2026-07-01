@@ -15,6 +15,7 @@ import io.element.android.features.messages.impl.timeline.components.layout.Cont
 import io.element.android.features.messages.impl.timeline.di.LocalTimelineItemPresenterFactories
 import io.element.android.features.messages.impl.timeline.di.rememberPresenter
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemAudioContent
+import io.element.android.features.messages.impl.timeline.model.event.TimelineItemBriefingContent
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemEventContent
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemFileContent
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemImageContent
@@ -53,6 +54,10 @@ fun TimelineItemEventContentView(
             content = content,
             onContentLayoutChange = onContentLayoutChange,
             modifier = modifier
+        )
+        is TimelineItemBriefingContent -> TimelineItemBriefingView(
+            content = content,
+            modifier = modifier,
         )
         is TimelineItemTextBasedContent -> TimelineItemTextView(
             content = content,

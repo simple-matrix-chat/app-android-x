@@ -16,6 +16,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
 import io.element.android.features.messages.impl.R
+import io.element.android.features.messages.impl.ai.MomentAIMessageActionState
 import io.element.android.features.messages.impl.timeline.TimelineEvent
 import io.element.android.features.messages.impl.timeline.TimelineRoomInfo
 import io.element.android.features.messages.impl.timeline.aGroupedEvents
@@ -34,6 +35,8 @@ import io.element.android.libraries.matrix.api.timeline.Timeline
 import io.element.android.libraries.matrix.api.user.MatrixUser
 import io.element.android.libraries.ui.utils.a11y.isTalkbackActive
 import io.element.android.wysiwyg.link.Link
+import kotlinx.collections.immutable.ImmutableMap
+import kotlinx.collections.immutable.persistentMapOf
 
 @Composable
 fun TimelineItemGroupedEventsRow(
@@ -55,6 +58,10 @@ fun TimelineItemGroupedEventsRow(
     onReactionLongClick: (key: String, TimelineItem.Event) -> Unit,
     onMoreReactionsClick: (TimelineItem.Event) -> Unit,
     onReadReceiptClick: (TimelineItem.Event) -> Unit,
+    aiMessageActionStates: ImmutableMap<EventId, MomentAIMessageActionState> = persistentMapOf(),
+    onRetryAIFactCheck: (EventId) -> Unit = {},
+    onDismissAIFactCheck: (EventId) -> Unit = {},
+    onDismissAISummary: (EventId) -> Unit = {},
     eventSink: (TimelineEvent.TimelineItemEvent) -> Unit,
     modifier: Modifier = Modifier,
     eventContentView: @Composable (TimelineItem.Event, Modifier, (ContentAvoidingLayoutData) -> Unit) -> Unit =
@@ -100,6 +107,10 @@ fun TimelineItemGroupedEventsRow(
         onReactionLongClick = onReactionLongClick,
         onMoreReactionsClick = onMoreReactionsClick,
         onReadReceiptClick = onReadReceiptClick,
+        aiMessageActionStates = aiMessageActionStates,
+        onRetryAIFactCheck = onRetryAIFactCheck,
+        onDismissAIFactCheck = onDismissAIFactCheck,
+        onDismissAISummary = onDismissAISummary,
         eventSink = eventSink,
         modifier = modifier,
         eventContentView = eventContentView,
@@ -128,6 +139,10 @@ private fun TimelineItemGroupedEventsRowContent(
     onReactionLongClick: (key: String, TimelineItem.Event) -> Unit,
     onMoreReactionsClick: (TimelineItem.Event) -> Unit,
     onReadReceiptClick: (TimelineItem.Event) -> Unit,
+    aiMessageActionStates: ImmutableMap<EventId, MomentAIMessageActionState> = persistentMapOf(),
+    onRetryAIFactCheck: (EventId) -> Unit = {},
+    onDismissAIFactCheck: (EventId) -> Unit = {},
+    onDismissAISummary: (EventId) -> Unit = {},
     eventSink: (TimelineEvent.TimelineItemEvent) -> Unit,
     modifier: Modifier = Modifier,
     eventContentView: @Composable (TimelineItem.Event, Modifier, (ContentAvoidingLayoutData) -> Unit) -> Unit =
@@ -186,6 +201,10 @@ private fun TimelineItemGroupedEventsRowContent(
                         onMoreReactionsClick = onMoreReactionsClick,
                         onReadReceiptClick = onReadReceiptClick,
                         onSwipeToReply = {},
+                        aiMessageActionStates = aiMessageActionStates,
+                        onRetryAIFactCheck = onRetryAIFactCheck,
+                        onDismissAIFactCheck = onDismissAIFactCheck,
+                        onDismissAISummary = onDismissAISummary,
                         eventSink = eventSink,
                         eventContentView = eventContentView,
                     )

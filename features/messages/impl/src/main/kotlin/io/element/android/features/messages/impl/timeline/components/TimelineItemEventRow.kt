@@ -57,6 +57,8 @@ import androidx.constraintlayout.compose.ConstrainScope
 import androidx.constraintlayout.compose.ConstraintLayout
 import io.element.android.compound.theme.ElementTheme
 import io.element.android.compound.tokens.generated.CompoundIcons
+import io.element.android.features.messages.impl.ai.MomentAIMessageActionCards
+import io.element.android.features.messages.impl.ai.MomentAIMessageActionState
 import io.element.android.features.messages.impl.timeline.TimelineEvent
 import io.element.android.features.messages.impl.timeline.TimelineRoomInfo
 import io.element.android.features.messages.impl.timeline.aTimelineItemEvent
@@ -153,6 +155,10 @@ fun TimelineItemEventRow(
     onMoreReactionsClick: (eventId: TimelineItem.Event) -> Unit,
     onReadReceiptClick: (event: TimelineItem.Event) -> Unit,
     onSwipeToReply: () -> Unit,
+    aiMessageActionState: MomentAIMessageActionState? = null,
+    onRetryAIFactCheck: (EventId) -> Unit = {},
+    onDismissAIFactCheck: (EventId) -> Unit = {},
+    onDismissAISummary: (EventId) -> Unit = {},
     eventSink: (TimelineEvent.TimelineItemEvent) -> Unit,
     modifier: Modifier = Modifier,
     eventContentView: @Composable (Modifier, (ContentAvoidingLayoutData) -> Unit) -> Unit = { contentModifier, onContentLayoutChange ->
@@ -266,6 +272,29 @@ fun TimelineItemEventRow(
                 eventSink = eventSink,
                 eventContentView = eventContentView,
             )
+        }
+
+        if (aiMessageActionState?.isVisible == true) {
+            val eventId = event.eventId
+            if (eventId != null) {
+                MomentAIMessageActionCards(
+                    state = aiMessageActionState,
+                    onRetryFactCheck = { onRetryAIFactCheck(eventId) },
+                    onDismissFactCheck = { onDismissAIFactCheck(eventId) },
+                    onDismissSummary = { onDismissAISummary(eventId) },
+                    modifier = Modifier
+                        .then(
+                            if (event.isMine) {
+                                Modifier.align(Alignment.End).padding(end = 8.dp)
+                            } else {
+                                val startPadding = if (timelineRoomInfo.isDm) 8.dp else 8.dp + BUBBLE_INCOMING_OFFSET
+                                Modifier.align(Alignment.Start).padding(start = startPadding)
+                            }
+                        )
+                        .fillMaxWidth(MessageEventBubbleDefaults.BUBBLE_WIDTH_RATIO)
+                        .padding(top = 4.dp),
+                )
+            }
         }
 
         if (displayThreadSummaries && timelineMode !is Timeline.Mode.Thread && event.threadInfo is TimelineItemThreadInfo.ThreadRoot) {

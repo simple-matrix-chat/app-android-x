@@ -10,6 +10,7 @@ package io.element.android.features.messages.impl
 
 import io.element.android.features.messages.impl.actionlist.model.TimelineItemAction
 import io.element.android.features.messages.impl.timeline.model.TimelineItem
+import io.element.android.libraries.matrix.api.core.EventId
 import io.element.android.libraries.matrix.api.timeline.item.event.EventOrTransactionId
 import io.element.android.libraries.matrix.api.user.MatrixUser
 
@@ -24,6 +25,11 @@ sealed interface MessagesEvent {
     data object OpenAIBriefing : MessagesEvent
     data object DismissAIBriefing : MessagesEvent
     data object RetryAIBriefing : MessagesEvent
+    data object GenerateDailyAIBriefing : MessagesEvent
+    data object DismissDailyAIBriefingStatus : MessagesEvent
+    data class RetryAIFactCheck(val eventId: EventId) : MessagesEvent
+    data class DismissAIFactCheck(val eventId: EventId) : MessagesEvent
+    data class DismissAISummary(val eventId: EventId) : MessagesEvent
 }
 
 enum class InviteDialogAction {
