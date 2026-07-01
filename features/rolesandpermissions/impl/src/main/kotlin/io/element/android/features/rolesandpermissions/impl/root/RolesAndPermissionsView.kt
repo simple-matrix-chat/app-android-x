@@ -255,7 +255,7 @@ private fun MomentRolesCard(
         shape = RoundedCornerShape(28.dp),
         color = ElementTheme.colors.bgCanvasDefault,
         border = BorderStroke(1.dp, ElementTheme.colors.borderDisabled),
-        shadowElevation = 3.dp,
+        shadowElevation = 0.dp,
     ) {
         Column(content = content)
     }
@@ -340,7 +340,7 @@ private fun MomentRolesRow(
 private fun MomentRolesDivider() {
     HorizontalDivider(
         modifier = Modifier.padding(start = 68.dp),
-        color = ElementTheme.colors.borderInteractiveSecondary.copy(alpha = 0.22f),
+        color = ElementTheme.colors.borderDisabled,
     )
 }
 

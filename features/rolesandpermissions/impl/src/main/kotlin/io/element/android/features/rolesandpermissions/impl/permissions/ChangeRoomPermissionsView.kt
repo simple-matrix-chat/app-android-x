@@ -192,7 +192,7 @@ private fun PermissionSection(
             shape = RoundedCornerShape(28.dp),
             color = ElementTheme.colors.bgCanvasDefault,
             border = BorderStroke(1.dp, ElementTheme.colors.borderDisabled),
-            shadowElevation = 3.dp,
+            shadowElevation = 0.dp,
         ) {
             Column {
                 items.forEachIndexed { index, permissionType ->
@@ -213,7 +213,7 @@ private fun PermissionSection(
                     if (index < items.lastIndex) {
                         HorizontalDivider(
                             modifier = Modifier.padding(start = 16.dp),
-                            color = ElementTheme.colors.borderInteractiveSecondary.copy(alpha = 0.22f),
+                            color = ElementTheme.colors.borderDisabled,
                         )
                     }
                 }
