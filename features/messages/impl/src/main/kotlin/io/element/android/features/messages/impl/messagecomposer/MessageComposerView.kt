@@ -11,6 +11,7 @@ package io.element.android.features.messages.impl.messagecomposer
 import android.net.Uri
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
@@ -95,29 +96,49 @@ internal fun MessageComposerView(
         voiceMessageState.eventSink(VoiceMessageComposerEvent.PlayerEvent(event))
     }
 
-    TextComposer(
-        modifier = modifier,
-        state = state.textEditorState,
-        voiceMessageState = voiceMessageState.voiceMessageState,
-        onRequestFocus = ::onRequestFocus,
-        onSendMessage = ::sendMessage,
-        composerMode = state.mode,
-        showTextFormatting = state.showTextFormatting,
-        onResetComposerMode = ::onCloseSpecialMode,
-        onAddAttachment = ::onAddAttachment,
-        onDismissTextFormatting = ::onDismissTextFormatting,
-        onVoiceRecorderEvent = onVoiceRecorderEvent,
-        onVoicePlayerEvent = onVoicePlayerEvent,
-        onSendVoiceMessage = onSendVoiceMessage,
-        onDeleteVoiceMessage = onDeleteVoiceMessage,
-        onReceiveSuggestion = ::onSuggestionReceived,
-        resolveMentionDisplay = state.resolveMentionDisplay,
-        resolveAtRoomMentionDisplay = state.resolveAtRoomMentionDisplay,
-        onError = ::onError,
-        onTyping = ::onTyping,
-        onSelectRichContent = ::sendUri,
-        usesMomentStyle = true,
-    )
+    Column(modifier = modifier) {
+        if (state.aiComposerState.isVisible) {
+            MomentAIComposerPanel(
+                state = state.aiComposerState,
+                onSelectMode = { mode -> state.eventSink(MessageComposerEvent.SelectAITransformMode(mode)) },
+                onReplace = { result -> state.eventSink(MessageComposerEvent.ReplaceWithAIResult(result)) },
+                onSend = { result -> state.eventSink(MessageComposerEvent.SendAIResult(result)) },
+                onDismiss = { state.eventSink(MessageComposerEvent.DismissAIComposer) },
+            )
+        }
+
+        TextComposer(
+            modifier = Modifier.fillMaxWidth(),
+            state = state.textEditorState,
+            voiceMessageState = voiceMessageState.voiceMessageState,
+            onRequestFocus = ::onRequestFocus,
+            onSendMessage = ::sendMessage,
+            composerMode = state.mode,
+            showTextFormatting = state.showTextFormatting,
+            onResetComposerMode = ::onCloseSpecialMode,
+            onAddAttachment = ::onAddAttachment,
+            onDismissTextFormatting = ::onDismissTextFormatting,
+            onVoiceRecorderEvent = onVoiceRecorderEvent,
+            onVoicePlayerEvent = onVoicePlayerEvent,
+            onSendVoiceMessage = onSendVoiceMessage,
+            onDeleteVoiceMessage = onDeleteVoiceMessage,
+            onReceiveSuggestion = ::onSuggestionReceived,
+            resolveMentionDisplay = state.resolveMentionDisplay,
+            resolveAtRoomMentionDisplay = state.resolveAtRoomMentionDisplay,
+            onError = ::onError,
+            onTyping = ::onTyping,
+            onSelectRichContent = ::sendUri,
+            usesMomentStyle = true,
+            momentExtraAction = {
+                MomentAIWandButton(
+                    isActive = state.aiComposerState.isVisible,
+                    isLoading = state.aiComposerState.isLoading,
+                    onClick = { state.eventSink(MessageComposerEvent.ToggleAIComposer) },
+                    onLongClick = { state.eventSink(MessageComposerEvent.QuickAIRewrite) },
+                )
+            },
+        )
+    }
 
     AsyncActionView(
         async = state.slashCommandAction,

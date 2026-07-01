@@ -20,6 +20,7 @@ import androidx.compose.runtime.setValue
 import dev.zacsweers.metro.Assisted
 import dev.zacsweers.metro.AssistedFactory
 import dev.zacsweers.metro.AssistedInject
+import io.element.android.appconfig.AuthenticationConfig
 import io.element.android.appconfig.OnBoardingConfig
 import io.element.android.features.enterprise.api.EnterpriseService
 import io.element.android.features.enterprise.api.canConnectToAnyHomeserver
@@ -85,6 +86,11 @@ class OnBoardingPresenter(
             // Else use the account provider passed in the params if any and if allowed
             forcedAccountProvider ?: linkAccountProvider
         }
+        val usesMomentWbIdAuthentication = remember(defaultAccountProvider, canConnectToAnyHomeserver) {
+            !canConnectToAnyHomeserver &&
+                defaultAccountProvider?.trimEnd('/') == AuthenticationConfig.DEFAULT_HOMESERVER_URL.trimEnd('/') &&
+                AuthenticationConfig.WBID_CLIENT_ID.isNotBlank()
+        }
         val canReportBug by remember { rageshakeFeatureAvailability.isAvailable() }.collectAsState(false)
         var showReportBug by rememberSaveable { mutableStateOf(false) }
         val onBoardingLogoResId = remember {
@@ -129,6 +135,7 @@ class OnBoardingPresenter(
             mustChooseAccountProvider = mustChooseAccountProvider,
             canCreateAccount = defaultAccountProvider == null && canConnectToAnyHomeserver && OnBoardingConfig.CAN_CREATE_ACCOUNT,
             canReportBug = canReportBug && showReportBug,
+            usesMomentWbIdAuthentication = usesMomentWbIdAuthentication,
             loginMode = loginMode,
             version = buildMeta.versionName,
             onBoardingLogoResId = onBoardingLogoResId,

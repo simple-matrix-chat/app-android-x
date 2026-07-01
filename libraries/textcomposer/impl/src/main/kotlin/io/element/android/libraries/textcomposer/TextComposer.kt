@@ -131,6 +131,7 @@ fun TextComposer(
     modifier: Modifier = Modifier,
     showTextFormatting: Boolean = false,
     usesMomentStyle: Boolean = false,
+    momentExtraAction: (@Composable () -> Unit)? = null,
 ) {
     val markdown = when (state) {
         is TextEditorState.Markdown -> state.state.text.value()
@@ -419,6 +420,7 @@ fun TextComposer(
             onVoiceRecorderEvent = onVoiceRecorderEvent,
             onResetComposerMode = onResetComposerMode,
             usesMomentStyle = usesMomentStyle,
+            momentExtraAction = momentExtraAction,
         )
     }
 
@@ -470,6 +472,7 @@ private fun StandardLayout(
     onResetComposerMode: () -> Unit,
     modifier: Modifier = Modifier,
     usesMomentStyle: Boolean,
+    momentExtraAction: (@Composable () -> Unit)?,
 ) {
     Column(modifier = modifier) {
         if (usesMomentStyle && composerMode == MessageComposerMode.Normal && voiceMessageState is VoiceMessageState.Idle) {
@@ -477,6 +480,7 @@ private fun StandardLayout(
                 textInput = textInput,
                 endButtonParams = endButtonParams,
                 onAddAttachment = onAddAttachment,
+                extraAction = momentExtraAction,
             )
         } else if (usesMomentStyle && voiceMessageState !is VoiceMessageState.Idle) {
             MomentVoiceLayout(
@@ -566,6 +570,7 @@ private fun MomentInlineLayout(
     textInput: @Composable () -> Unit,
     endButtonParams: EndButtonParams,
     onAddAttachment: () -> Unit,
+    extraAction: (@Composable () -> Unit)?,
 ) {
     Row(
         modifier = Modifier
@@ -587,6 +592,8 @@ private fun MomentInlineLayout(
                 )
             }
         }
+
+        extraAction?.invoke()
 
         Box(
             modifier = Modifier.weight(1f),

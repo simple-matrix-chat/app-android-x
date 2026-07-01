@@ -21,6 +21,7 @@ data class OnBoardingState(
     val mustChooseAccountProvider: Boolean,
     val canCreateAccount: Boolean,
     val canReportBug: Boolean,
+    val usesMomentWbIdAuthentication: Boolean,
     val version: String,
     @DrawableRes
     val onBoardingLogoResId: Int?,

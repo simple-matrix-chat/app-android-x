@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="screen_onboarding_continue_with_wbid_android">Continue with WB.ID</string>
+    <string name="screen_onboarding_sign_in_to_continue_android">Sign in to continue</string>
+</resources>

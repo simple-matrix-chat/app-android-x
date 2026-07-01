@@ -47,6 +47,12 @@ sealed interface MessageComposerEvent {
     data class TypingNotice(val isTyping: Boolean) : MessageComposerEvent
     data class SuggestionReceived(val suggestion: Suggestion?) : MessageComposerEvent
     data class InsertSuggestion(val resolvedSuggestion: ResolvedSuggestion) : MessageComposerEvent
+    data object ToggleAIComposer : MessageComposerEvent
+    data object QuickAIRewrite : MessageComposerEvent
+    data class SelectAITransformMode(val mode: String) : MessageComposerEvent
+    data class ReplaceWithAIResult(val result: String) : MessageComposerEvent
+    data class SendAIResult(val result: String) : MessageComposerEvent
+    data object DismissAIComposer : MessageComposerEvent
     data object SaveDraft : MessageComposerEvent
     data object ClearSlashError : MessageComposerEvent
 }

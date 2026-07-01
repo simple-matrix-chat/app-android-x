@@ -30,6 +30,11 @@ open class OnBoardingStateProvider : PreviewParameterProvider<OnBoardingState> {
                 showBackButton = true,
                 showDeveloperSettings = true,
             ),
+            anOnBoardingState(
+                productionApplicationName = "Moment",
+                defaultAccountProvider = "https://unmoment.app",
+                usesMomentWbIdAuthentication = true,
+            ),
         )
 }
 
@@ -42,6 +47,7 @@ fun anOnBoardingState(
     mustChooseAccountProvider: Boolean = false,
     canCreateAccount: Boolean = false,
     canReportBug: Boolean = false,
+    usesMomentWbIdAuthentication: Boolean = false,
     version: String = "1.0.0",
     @DrawableRes
     customLogoResId: Int? = null,
@@ -56,6 +62,7 @@ fun anOnBoardingState(
     mustChooseAccountProvider = mustChooseAccountProvider,
     canCreateAccount = canCreateAccount,
     canReportBug = canReportBug,
+    usesMomentWbIdAuthentication = usesMomentWbIdAuthentication,
     version = version,
     loginMode = loginMode,
     onBoardingLogoResId = customLogoResId,

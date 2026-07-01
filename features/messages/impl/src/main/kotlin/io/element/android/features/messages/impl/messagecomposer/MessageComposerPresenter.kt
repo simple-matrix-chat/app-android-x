@@ -39,6 +39,8 @@ import im.vector.app.features.analytics.plan.Composer
 import im.vector.app.features.analytics.plan.Interaction
 import io.element.android.features.location.api.LocationService
 import io.element.android.features.messages.impl.MessagesNavigator
+import io.element.android.features.messages.impl.R
+import io.element.android.features.messages.impl.ai.MomentAIService
 import io.element.android.features.messages.impl.attachments.Attachment
 import io.element.android.features.messages.impl.attachments.Attachment.Media
 import io.element.android.features.messages.impl.attachments.preview.error.sendAttachmentError
@@ -155,6 +157,7 @@ class MessageComposerPresenter(
     private val emojibaseProvider: EmojibaseProvider,
     private val getRecentEmojis: GetRecentEmojis,
     private val addRecentEmoji: AddRecentEmoji,
+    private val momentAIService: MomentAIService,
 ) : Presenter<MessageComposerState> {
     @AssistedFactory
     interface Factory {
@@ -236,6 +239,7 @@ class MessageComposerPresenter(
         var contactAttachmentsLoading: Boolean by remember { mutableStateOf(false) }
         var contactAttachmentsError: Boolean by remember { mutableStateOf(false) }
         var recentEmojis: ImmutableList<String> by remember { mutableStateOf(persistentListOf()) }
+        var aiComposerState by remember { mutableStateOf(MomentAIComposerState.Default) }
 
         val sendTypingNotifications by remember {
             sessionPreferencesStore.isSendTypingNotificationsEnabled()
@@ -316,6 +320,76 @@ class MessageComposerPresenter(
             )
             if (draft != null) {
                 applyDraft(draft, markdownTextEditorState, richTextEditorState)
+            }
+        }
+
+        fun currentComposerMarkdown(): String {
+            return currentComposerMessage(markdownTextEditorState, richTextEditorState, withMentions = false).markdown
+        }
+
+        fun showAITextRequiredError(quickMode: Boolean = false) {
+            aiComposerState = MomentAIComposerState(
+                isVisible = true,
+                quickMode = quickMode,
+                isLoading = false,
+                result = null,
+                errorMessageResId = R.string.screen_room_ai_error_enter_text_first,
+            )
+        }
+
+        fun requestAITransform(mode: String) {
+            val text = currentComposerMarkdown().trim()
+            if (text.isEmpty()) {
+                showAITextRequiredError()
+                return
+            }
+            localCoroutineScope.launch {
+                aiComposerState = MomentAIComposerState(
+                    isVisible = true,
+                    quickMode = false,
+                    isLoading = true,
+                    result = null,
+                    errorMessageResId = null,
+                )
+                momentAIService.transformText(text = text, mode = mode)
+                    .onSuccess { result ->
+                        aiComposerState = aiComposerState.copy(isLoading = false, result = result, errorMessageResId = null)
+                    }
+                    .onFailure {
+                        aiComposerState = aiComposerState.copy(
+                            isLoading = false,
+                            result = null,
+                            errorMessageResId = R.string.screen_room_ai_error_could_not_generate,
+                        )
+                    }
+            }
+        }
+
+        fun requestAIQuickRewrite() {
+            val text = currentComposerMarkdown().trim()
+            if (text.isEmpty()) {
+                showAITextRequiredError(quickMode = true)
+                return
+            }
+            localCoroutineScope.launch {
+                aiComposerState = MomentAIComposerState(
+                    isVisible = true,
+                    quickMode = true,
+                    isLoading = true,
+                    result = null,
+                    errorMessageResId = null,
+                )
+                momentAIService.quickRewrite(text)
+                    .onSuccess { result ->
+                        aiComposerState = aiComposerState.copy(isLoading = false, result = result, errorMessageResId = null)
+                    }
+                    .onFailure {
+                        aiComposerState = aiComposerState.copy(
+                            isLoading = false,
+                            result = null,
+                            errorMessageResId = R.string.screen_room_ai_error_could_not_generate,
+                        )
+                    }
             }
         }
 
@@ -507,6 +581,37 @@ class MessageComposerPresenter(
                         }
                     }
                 }
+                MessageComposerEvent.ToggleAIComposer -> {
+                    if (aiComposerState.isVisible) {
+                        aiComposerState = MomentAIComposerState.Default
+                    } else if (currentComposerMarkdown().isBlank()) {
+                        showAITextRequiredError()
+                    } else {
+                        aiComposerState = MomentAIComposerState.Default.copy(isVisible = true)
+                    }
+                }
+                MessageComposerEvent.QuickAIRewrite -> {
+                    requestAIQuickRewrite()
+                }
+                is MessageComposerEvent.SelectAITransformMode -> {
+                    requestAITransform(event.mode)
+                }
+                is MessageComposerEvent.ReplaceWithAIResult -> localCoroutineScope.launch {
+                    setPlainText(event.result, markdownTextEditorState, richTextEditorState, requestFocus = true)
+                    aiComposerState = MomentAIComposerState.Default
+                }
+                is MessageComposerEvent.SendAIResult -> localCoroutineScope.launch {
+                    setPlainText(event.result, markdownTextEditorState, richTextEditorState)
+                    aiComposerState = MomentAIComposerState.Default
+                    sessionCoroutineScope.sendMessage(
+                        markdownTextEditorState = markdownTextEditorState,
+                        richTextEditorState = richTextEditorState,
+                        slashCommandAction = slashCommandAction,
+                    )
+                }
+                MessageComposerEvent.DismissAIComposer -> {
+                    aiComposerState = MomentAIComposerState.Default
+                }
                 MessageComposerEvent.SaveDraft -> {
                     val draft = createDraftFromState(markdownTextEditorState, richTextEditorState)
                     sessionCoroutineScope.updateDraft(draft, isVolatile = false)
@@ -558,6 +663,7 @@ class MessageComposerPresenter(
             resolveMentionDisplay = resolveMentionDisplay,
             resolveAtRoomMentionDisplay = resolveAtRoomMentionDisplay,
             slashCommandAction = slashCommandAction.value,
+            aiComposerState = aiComposerState,
             eventSink = ::handleEvent,
         )
     }
@@ -1070,6 +1176,29 @@ class MessageComposerPresenter(
     ) {
         if (showTextFormatting) {
             richTextEditorState.setHtml(content)
+            if (requestFocus) {
+                richTextEditorState.requestFocus()
+            }
+        } else {
+            if (content.isEmpty()) {
+                markdownTextEditorState.selection = IntRange.EMPTY
+            }
+            val pillifiedContent = pillificationHelper.pillify(content, false)
+            markdownTextEditorState.text.update(pillifiedContent, true)
+            if (requestFocus) {
+                markdownTextEditorState.requestFocusAction()
+            }
+        }
+    }
+
+    private suspend fun setPlainText(
+        content: String,
+        markdownTextEditorState: MarkdownTextEditorState,
+        richTextEditorState: RichTextEditorState,
+        requestFocus: Boolean = false,
+    ) {
+        if (showTextFormatting) {
+            richTextEditorState.setMarkdown(content)
             if (requestFocus) {
                 richTextEditorState.requestFocus()
             }

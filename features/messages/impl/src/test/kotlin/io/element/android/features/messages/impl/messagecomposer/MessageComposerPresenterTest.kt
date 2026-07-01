@@ -24,6 +24,7 @@ import io.element.android.features.location.api.LocationService
 import io.element.android.features.location.test.FakeLocationService
 import io.element.android.features.messages.impl.FakeMessagesNavigator
 import io.element.android.features.messages.impl.MessagesNavigator
+import io.element.android.features.messages.impl.ai.FakeMomentAIService
 import io.element.android.features.messages.impl.attachments.Attachment
 import io.element.android.features.messages.impl.draft.ComposerDraftService
 import io.element.android.features.messages.impl.draft.FakeComposerDraftService
@@ -1822,6 +1823,7 @@ class MessageComposerPresenterTest {
         emojibaseProvider = FakeEmojibaseProvider(),
         getRecentEmojis = getRecentEmojis,
         addRecentEmoji = addRecentEmoji,
+        momentAIService = FakeMomentAIService(),
     ).apply {
         isTesting = true
         showTextFormatting = isRichTextEditorEnabled

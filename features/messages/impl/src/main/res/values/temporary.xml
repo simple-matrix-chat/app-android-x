@@ -12,4 +12,17 @@
     <string name="screen_room_attachment_contact_picker_empty_message">There are no contacts on this device.</string>
     <string name="screen_room_attachment_contact_picker_error_title">Could not load contacts</string>
     <string name="screen_room_attachment_contact_picker_error_message">Check contact access and try again.</string>
+    <string name="screen_room_ai_disclaimer">AI can make mistakes. Check the text before sending.</string>
+    <string name="screen_room_ai_error_could_not_generate">Could not generate</string>
+    <string name="screen_room_ai_error_enter_text_first">Enter text first</string>
+    <string name="screen_room_ai_fix">Fix</string>
+    <string name="screen_room_ai_formal">Formal</string>
+    <string name="screen_room_ai_friendly">Friendly</string>
+    <string name="screen_room_ai_generating">Generating...</string>
+    <string name="screen_room_ai_longer">Longer</string>
+    <string name="screen_room_ai_replace">Replace</string>
+    <string name="screen_room_ai_send">Send</string>
+    <string name="screen_room_ai_shorter">Shorter</string>
+    <string name="screen_room_ai_translate_english">English</string>
+    <string name="screen_room_ai_translate_russian">Russian</string>
 </resources>

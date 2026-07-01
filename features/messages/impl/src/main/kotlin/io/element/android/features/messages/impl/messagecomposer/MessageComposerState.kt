@@ -8,6 +8,7 @@
 
 package io.element.android.features.messages.impl.messagecomposer
 
+import androidx.annotation.StringRes
 import androidx.compose.runtime.Stable
 import io.element.android.emojibasebindings.EmojibaseStore
 import io.element.android.libraries.architecture.AsyncAction
@@ -31,8 +32,28 @@ data class MessageComposerState(
     val resolveMentionDisplay: (String, String) -> TextDisplay,
     val resolveAtRoomMentionDisplay: () -> TextDisplay,
     val slashCommandAction: AsyncAction<Unit>,
+    val aiComposerState: MomentAIComposerState,
     val eventSink: (MessageComposerEvent) -> Unit,
 )
+
+@Stable
+data class MomentAIComposerState(
+    val isVisible: Boolean,
+    val quickMode: Boolean,
+    val isLoading: Boolean,
+    val result: String?,
+    @StringRes val errorMessageResId: Int?,
+) {
+    companion object {
+        val Default = MomentAIComposerState(
+            isVisible = false,
+            quickMode = false,
+            isLoading = false,
+            result = null,
+            errorMessageResId = null,
+        )
+    }
+}
 
 @Stable
 data class ComposerEmojiPickerState(

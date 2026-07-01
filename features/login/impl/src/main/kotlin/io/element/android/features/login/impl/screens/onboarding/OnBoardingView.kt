@@ -9,7 +9,9 @@
 package io.element.android.features.login.impl.screens.onboarding
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -17,6 +19,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -101,6 +104,12 @@ fun OnBoardingView(
             buttons = buttons,
             onBackClick = onBackClick,
         )
+    } else if (state.usesMomentWbIdAuthentication) {
+        MomentWbIdOnBoardingScaffold(
+            modifier = modifier,
+            state = state,
+            loginView = loginView,
+        )
     } else {
         AddFirstAccountScaffold(
             modifier = modifier,
@@ -111,6 +120,77 @@ fun OnBoardingView(
             onDeveloperSettingsClick = onDeveloperSettingsClick,
         )
     }
+}
+
+@Composable
+private fun MomentWbIdOnBoardingScaffold(
+    state: OnBoardingState,
+    loginView: @Composable () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .background(ElementTheme.colors.bgCanvasDefault),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .systemBarsPadding()
+                .padding(horizontal = 32.dp),
+            horizontalAlignment = CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+        ) {
+            MomentWbIdOnBoardingContent(state)
+            Spacer(modifier = Modifier.height(40.dp))
+            MomentWbIdOnBoardingButton(state)
+        }
+        loginView()
+    }
+}
+
+@Composable
+private fun MomentWbIdOnBoardingContent(state: OnBoardingState) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalAlignment = CenterHorizontally,
+    ) {
+        Text(
+            text = state.productionApplicationName,
+            color = ElementTheme.colors.textPrimary,
+            style = ElementTheme.typography.fontHeadingXlBold,
+            textAlign = TextAlign.Center,
+        )
+        Spacer(modifier = Modifier.height(12.dp))
+        Text(
+            text = stringResource(id = R.string.screen_onboarding_sign_in_to_continue_android),
+            color = ElementTheme.colors.textSecondary,
+            style = ElementTheme.typography.fontBodyLgRegular,
+            textAlign = TextAlign.Center,
+        )
+    }
+}
+
+@Composable
+private fun MomentWbIdOnBoardingButton(state: OnBoardingState) {
+    val isLoading by remember(state.loginMode) {
+        derivedStateOf {
+            state.loginMode is AsyncData.Loading
+        }
+    }
+    val defaultAccountProvider = state.defaultAccountProvider
+
+    Button(
+        text = stringResource(id = R.string.screen_onboarding_continue_with_wbid_android),
+        showProgress = isLoading,
+        onClick = {
+            if (defaultAccountProvider != null) {
+                state.eventSink(OnBoardingEvents.OnSignIn(defaultAccountProvider))
+            }
+        },
+        enabled = defaultAccountProvider != null && (state.submitEnabled || isLoading),
+        modifier = Modifier.fillMaxWidth(),
+    )
 }
 
 @Composable
