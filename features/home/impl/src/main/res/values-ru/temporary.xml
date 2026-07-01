@@ -1,5 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="screen_roomlist_filter_all">Все</string>
+    <string name="screen_roomlist_filter_direct">Личные</string>
+    <string name="screen_roomlist_filter_groups">Группы</string>
+    <string name="screen_roomlist_filter_channels">Каналы</string>
+    <string name="screen_roomlist_filter_archived">Архив</string>
+    <string name="screen_home_tab_profile">Профиль</string>
     <string name="screen_home_ai_daily_briefing_title">Брифинг дня</string>
     <string name="screen_home_ai_daily_briefing_description">Создайте приватную сводку недавней активности и отправьте ее в комнату брифинга.</string>
     <string name="screen_home_ai_daily_briefing_generate">Сгенерировать брифинг</string>
