@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="screen_moment_room_profile_settings_title_group_android">Настройки группы</string>
+    <string name="screen_moment_room_profile_settings_title_channel_android">Настройки канала</string>
+    <string name="screen_moment_room_profile_settings_subtitle_group_android">Управляйте названием, описанием, доступом и правами группы.</string>
+    <string name="screen_moment_room_profile_settings_subtitle_channel_android">Управляйте названием, описанием, доступом и правами канала.</string>
+    <string name="screen_moment_room_profile_notifications_subtitle_group_android">Настройте уведомления группы.</string>
+    <string name="screen_moment_room_profile_notifications_subtitle_channel_android">Настройте уведомления канала.</string>
+    <string name="screen_moment_room_profile_media_title_android">Медиа</string>
+    <string name="screen_moment_room_profile_media_subtitle_group_android">Фото, видео и файлы, которыми делились в этой группе.</string>
+    <string name="screen_moment_room_profile_media_subtitle_channel_android">Фото, видео и файлы, которыми делились в этом канале.</string>
+    <string name="screen_moment_room_profile_members_title_android">Участники</string>
+    <string name="screen_moment_room_profile_members_subtitle_android">Просматривайте и управляйте участниками группы.</string>
+    <string name="screen_moment_room_profile_subscribers_title_android">Подписчики</string>
+    <string name="screen_moment_room_profile_subscribers_subtitle_android">Смотрите людей, подписанных на этот канал.</string>
+    <string name="screen_moment_room_profile_public_link_title_android">Публичная ссылка</string>
+    <string name="screen_moment_room_profile_public_link_subtitle_group_android">Поделитесь ссылкой, по которой люди смогут вступить в группу.</string>
+    <string name="screen_moment_room_profile_public_link_subtitle_channel_android">Поделитесь ссылкой, по которой люди смогут подписаться на канал.</string>
+    <string name="screen_moment_room_profile_section_details_android">Детали</string>
+    <string name="screen_moment_room_profile_section_calls_android">Звонки</string>
+    <string name="screen_moment_room_profile_section_people_android">Люди</string>
+    <string name="screen_moment_room_profile_section_safety_android">Безопасность</string>
+    <string name="screen_moment_room_profile_leave_group_android">Покинуть группу</string>
+    <string name="screen_moment_room_profile_leave_channel_android">Покинуть канал</string>
+</resources>

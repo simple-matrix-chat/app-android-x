@@ -123,6 +123,7 @@ fun RoomDetailsView(
     leaveRoomView: @Composable () -> Unit,
 ) {
     val snackbarHostState = rememberSnackbarHostState(snackbarMessage = state.snackbarMessage)
+    val isMomentRoom = state.isMomentRoom
     Scaffold(
         modifier = modifier,
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -132,15 +133,15 @@ fun RoomDetailsView(
                 .padding(padding)
                 .verticalScroll(rememberScrollState())
                 .consumeWindowInsets(padding)
-                .padding(horizontal = 20.dp)
+                .padding(horizontal = if (isMomentRoom) 16.dp else 20.dp)
                 .padding(top = 8.dp, bottom = 32.dp),
-            verticalArrangement = Arrangement.spacedBy(24.dp),
+            verticalArrangement = Arrangement.spacedBy(if (isMomentRoom) 18.dp else 24.dp),
         ) {
             leaveRoomView()
             RoomDetailsTopBar(
                 goBack = goBack,
-                showEdit = state.canEdit && !state.isMomentRoom,
-                showTitle = !state.isMomentRoom,
+                showEdit = state.canEdit && !isMomentRoom,
+                showTitle = !isMomentRoom,
                 onActionClick = onActionClick
             )
 
@@ -155,6 +156,7 @@ fun RoomDetailsView(
                         roomTopic = state.roomTopic,
                         roomBadges = state.roomBadges,
                         isTombstoned = state.isTombstoned,
+                        isMomentRoom = isMomentRoom,
                         openAvatarPreview = { avatarUrl ->
                             openAvatarPreview(state.roomName, avatarUrl)
                         },
@@ -179,7 +181,11 @@ fun RoomDetailsView(
                     )
                 }
             }
-            if (!state.isMomentRoom || state.roomCallState.hasPermissionToJoin()) {
+            if (isMomentRoom && state.roomCallState.hasPermissionToJoin()) {
+                MomentRoomCallSection(
+                    onCall = onJoinCallClick,
+                )
+            } else if (!isMomentRoom) {
                 MainActionsSection(
                     state = state,
                     onShareRoom = onShareRoom,
@@ -195,8 +201,8 @@ fun RoomDetailsView(
                 )
             }
 
-            MomentRoomDetailsCard {
-                if (state.isMomentRoom) {
+            if (isMomentRoom) {
+                MomentRoomDetailsSection(title = stringResource(R.string.screen_moment_room_profile_section_details_android)) {
                     RoomSettingsItem(
                         momentRoomType = state.momentRoomType,
                         onClick = { onActionClick(RoomDetailsAction.Edit) },
@@ -204,22 +210,31 @@ fun RoomDetailsView(
                     if (state.roomNotificationSettings != null) {
                         NotificationItem(
                             isDefaultMode = state.roomNotificationSettings.isDefault,
+                            momentRoomType = state.momentRoomType,
+                            isMomentRoom = true,
                             openRoomNotificationSettings = openRoomNotificationSettings
                         )
                     }
                     MediaGalleryItem(
                         onClick = openMediaGallery,
+                        momentRoomType = state.momentRoomType,
+                        isMomentRoom = true,
                         showDivider = state.isPublic,
                     )
                     if (state.isPublic) {
                         PublicLinkItem(
                             onClick = onShareRoom,
+                            momentRoomType = state.momentRoomType,
                         )
                     }
-                } else {
+                }
+            } else {
+                MomentRoomDetailsCard {
                     if (state.roomNotificationSettings != null) {
                         NotificationItem(
                             isDefaultMode = state.roomNotificationSettings.isDefault,
+                            momentRoomType = state.momentRoomType,
+                            isMomentRoom = false,
                             openRoomNotificationSettings = openRoomNotificationSettings
                         )
                     }
@@ -244,7 +259,7 @@ fun RoomDetailsView(
             }
 
             if (state.roomMemberDetailsState != null || state.roomType is RoomDetailsType.Room) {
-                MomentRoomDetailsCard {
+                val peopleContent: @Composable ColumnScope.() -> Unit = {
                     state.roomMemberDetailsState?.let { dmMemberDetails ->
                         ProfileItem(
                             onClick = { onProfileClick(dmMemberDetails.userId) }
@@ -254,6 +269,8 @@ fun RoomDetailsView(
                         MembersItem(
                             momentRoomType = state.momentRoomType,
                             memberCount = state.memberCount,
+                            isMomentRoom = isMomentRoom,
+                            showDivider = state.canShowKnockRequests,
                             openRoomMemberList = openRoomMemberList,
                         )
                         if (state.canShowKnockRequests) {
@@ -278,6 +295,14 @@ fun RoomDetailsView(
                         }
                     }
                 }
+                if (isMomentRoom) {
+                    MomentRoomDetailsSection(
+                        title = stringResource(R.string.screen_moment_room_profile_section_people_android),
+                        content = peopleContent
+                    )
+                } else {
+                    MomentRoomDetailsCard(content = peopleContent)
+                }
             }
 
             if (state.roomType is RoomDetailsType.Dm && state.roomMemberDetailsState != null) {
@@ -296,7 +321,7 @@ fun RoomDetailsView(
                 )
             }
 
-            if (state.showDebugInfo) {
+            if (state.showDebugInfo && !isMomentRoom) {
                 DebugInfoSection(
                     roomId = state.roomId,
                     roomVersion = state.roomVersion,
@@ -467,6 +492,20 @@ private fun MainActionsSection(
 }
 
 @Composable
+private fun MomentRoomCallSection(
+    onCall: (callIntent: CallIntent) -> Unit,
+) {
+    MomentRoomDetailsSection(title = stringResource(R.string.screen_moment_room_profile_section_calls_android)) {
+        MomentRoomDetailsRow(
+            title = stringResource(CommonStrings.common_video),
+            imageVector = CompoundIcons.VideoCall(),
+            onClick = { onCall(CallIntent.VIDEO) },
+            showDivider = false,
+        )
+    }
+}
+
+@Composable
 private fun MomentRoomShortcutButton(
     title: String,
     imageVector: ImageVector,
@@ -516,9 +555,30 @@ private fun RoomHeaderSection(
     roomTopic: RoomTopicState,
     roomBadges: ImmutableList<RoomBadge>,
     isTombstoned: Boolean,
+    isMomentRoom: Boolean,
     openAvatarPreview: (url: String) -> Unit,
     onSubtitleClick: (String) -> Unit,
 ) {
+    if (isMomentRoom) {
+        RoomHeaderContent(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 12.dp),
+            avatarUrl = avatarUrl,
+            roomId = roomId,
+            roomName = roomName,
+            roomAlias = roomAlias,
+            heroes = heroes,
+            roomTopic = roomTopic,
+            roomBadges = roomBadges,
+            isTombstoned = isTombstoned,
+            isMomentRoom = true,
+            openAvatarPreview = openAvatarPreview,
+            onSubtitleClick = onSubtitleClick,
+        )
+        return
+    }
+
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(28.dp),
@@ -526,42 +586,74 @@ private fun RoomHeaderSection(
         shadowElevation = 8.dp,
         border = BorderStroke(1.dp, ElementTheme.colors.borderInteractiveSecondary.copy(alpha = 0.55f)),
     ) {
-        Column(
+        RoomHeaderContent(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 24.dp, vertical = 28.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Avatar(
-                avatarData = AvatarData(roomId.value, roomName, avatarUrl, AvatarSize.RoomDetailsHeader),
-                avatarType = AvatarType.Room(
-                    heroes = heroes.map { user ->
-                        user.getAvatarData(size = AvatarSize.RoomDetailsHeader)
-                    }.toImmutableList(),
-                    isTombstoned = isTombstoned,
-                ),
-                contentDescription = stringResource(CommonStrings.a11y_room_avatar),
-                modifier = Modifier
-                    .clip(CircleShape)
-                    .clickable(
-                        enabled = avatarUrl != null,
-                        onClickLabel = stringResource(CommonStrings.action_view),
-                    ) {
-                        openAvatarPreview(avatarUrl!!)
-                    }
-                    .testTag(TestTags.roomDetailAvatar)
-            )
-            TitleAndSubtitle(
-                title = roomName,
-                subtitle = roomAlias?.value,
-                roomTopic = roomTopic,
-                onSubtitleClick = onSubtitleClick,
-            )
-            BadgeList(
-                roomBadge = roomBadges,
-                modifier = Modifier.padding(top = 12.dp),
-            )
-        }
+            avatarUrl = avatarUrl,
+            roomId = roomId,
+            roomName = roomName,
+            roomAlias = roomAlias,
+            heroes = heroes,
+            roomTopic = roomTopic,
+            roomBadges = roomBadges,
+            isTombstoned = isTombstoned,
+            isMomentRoom = false,
+            openAvatarPreview = openAvatarPreview,
+            onSubtitleClick = onSubtitleClick,
+        )
+    }
+}
+
+@Composable
+private fun RoomHeaderContent(
+    avatarUrl: String?,
+    roomId: RoomId,
+    roomName: String,
+    roomAlias: RoomAlias?,
+    heroes: ImmutableList<MatrixUser>,
+    roomTopic: RoomTopicState,
+    roomBadges: ImmutableList<RoomBadge>,
+    isTombstoned: Boolean,
+    isMomentRoom: Boolean,
+    openAvatarPreview: (url: String) -> Unit,
+    onSubtitleClick: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Avatar(
+            avatarData = AvatarData(roomId.value, roomName, avatarUrl, AvatarSize.RoomDetailsHeader),
+            avatarType = AvatarType.Room(
+                heroes = heroes.map { user ->
+                    user.getAvatarData(size = AvatarSize.RoomDetailsHeader)
+                }.toImmutableList(),
+                isTombstoned = isTombstoned,
+            ),
+            contentDescription = stringResource(CommonStrings.a11y_room_avatar),
+            modifier = Modifier
+                .clip(CircleShape)
+                .clickable(
+                    enabled = avatarUrl != null,
+                    onClickLabel = stringResource(CommonStrings.action_view),
+                ) {
+                    openAvatarPreview(avatarUrl!!)
+                }
+                .testTag(TestTags.roomDetailAvatar)
+        )
+        TitleAndSubtitle(
+            title = roomName,
+            subtitle = roomAlias?.value,
+            roomTopic = roomTopic,
+            isMomentRoom = isMomentRoom,
+            onSubtitleClick = onSubtitleClick,
+        )
+        BadgeList(
+            roomBadge = roomBadges,
+            modifier = Modifier.padding(top = 12.dp),
+        )
     }
 }
 
@@ -627,13 +719,14 @@ private fun TitleAndSubtitle(
     title: String,
     subtitle: String?,
     roomTopic: RoomTopicState,
+    isMomentRoom: Boolean = false,
     onSubtitleClick: (String) -> Unit,
 ) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(if (isMomentRoom) 12.dp else 16.dp))
         Text(
             text = title,
-            style = ElementTheme.typography.fontHeadingLgBold,
+            style = if (isMomentRoom) ElementTheme.typography.fontHeadingMdBold else ElementTheme.typography.fontHeadingLgBold,
             color = ElementTheme.colors.textPrimary,
             textAlign = TextAlign.Center,
         )
@@ -687,6 +780,26 @@ private fun RoomBadge.toMatrixBadgeData(): MatrixBadgeAtom.MatrixBadgeData {
                 type = MatrixBadgeAtom.Type.Info,
             )
         }
+    }
+}
+
+@Composable
+private fun MomentRoomDetailsSection(
+    title: String,
+    modifier: Modifier = Modifier,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        Text(
+            modifier = Modifier.padding(horizontal = 4.dp),
+            text = title,
+            style = ElementTheme.typography.fontBodySmMedium,
+            color = ElementTheme.colors.textSecondary,
+        )
+        Column(content = content)
     }
 }
 
@@ -852,12 +965,19 @@ private fun RoomSettingsItem(
     momentRoomType: MomentRoomDetailsType,
     onClick: () -> Unit,
 ) {
-    val title = when (momentRoomType) {
-        MomentRoomDetailsType.Channel -> stringResource(R.string.screen_moment_room_profile_settings_title_channel_android)
-        else -> stringResource(R.string.screen_moment_room_profile_settings_title_group_android)
+    val (title, subtitle) = when (momentRoomType) {
+        MomentRoomDetailsType.Channel -> (
+            stringResource(R.string.screen_moment_room_profile_settings_title_channel_android)
+                to stringResource(R.string.screen_moment_room_profile_settings_subtitle_channel_android)
+            )
+        else -> (
+            stringResource(R.string.screen_moment_room_profile_settings_title_group_android)
+                to stringResource(R.string.screen_moment_room_profile_settings_subtitle_group_android)
+            )
     }
     MomentRoomDetailsRow(
         title = title,
+        subtitle = subtitle,
         imageVector = CompoundIcons.Settings(),
         onClick = onClick,
     )
@@ -866,17 +986,24 @@ private fun RoomSettingsItem(
 @Composable
 private fun NotificationItem(
     isDefaultMode: Boolean,
+    momentRoomType: MomentRoomDetailsType,
+    isMomentRoom: Boolean,
     openRoomNotificationSettings: () -> Unit,
 ) {
-    val subtitle = if (isDefaultMode) {
+    val notificationMode = if (isDefaultMode) {
         stringResource(R.string.screen_room_details_notification_mode_default)
     } else {
         stringResource(R.string.screen_room_details_notification_mode_custom)
     }
+    val momentSubtitle = when (momentRoomType) {
+        MomentRoomDetailsType.Channel -> stringResource(R.string.screen_moment_room_profile_notifications_subtitle_channel_android)
+        else -> stringResource(R.string.screen_moment_room_profile_notifications_subtitle_group_android)
+    }
     MomentRoomDetailsRow(
         title = stringResource(R.string.screen_room_details_notification_title),
-        subtitle = subtitle,
+        subtitle = if (isMomentRoom) momentSubtitle else notificationMode,
         imageVector = CompoundIcons.Notifications(),
+        trailingText = if (isMomentRoom) notificationMode else null,
         onClick = openRoomNotificationSettings,
     )
 }
@@ -919,18 +1046,28 @@ private fun ProfileItem(
 private fun MembersItem(
     momentRoomType: MomentRoomDetailsType,
     memberCount: Long,
+    isMomentRoom: Boolean = false,
+    showDivider: Boolean = true,
     openRoomMemberList: () -> Unit,
 ) {
-    val title = when (momentRoomType) {
-        MomentRoomDetailsType.Group -> stringResource(R.string.screen_moment_room_profile_members_title_android)
-        MomentRoomDetailsType.Channel -> stringResource(R.string.screen_moment_room_profile_subscribers_title_android)
-        MomentRoomDetailsType.Unknown -> stringResource(CommonStrings.common_people)
+    val (title, subtitle) = when (momentRoomType) {
+        MomentRoomDetailsType.Group -> (
+            stringResource(R.string.screen_moment_room_profile_members_title_android)
+                to stringResource(R.string.screen_moment_room_profile_members_subtitle_android)
+            )
+        MomentRoomDetailsType.Channel -> (
+            stringResource(R.string.screen_moment_room_profile_subscribers_title_android)
+                to stringResource(R.string.screen_moment_room_profile_subscribers_subtitle_android)
+            )
+        MomentRoomDetailsType.Unknown -> stringResource(CommonStrings.common_people) to null
     }
     MomentRoomDetailsRow(
         title = title,
+        subtitle = subtitle.takeIf { isMomentRoom },
         imageVector = CompoundIcons.User(),
         trailingText = memberCount.toString(),
         onClick = openRoomMemberList,
+        showDivider = showDivider,
     )
 }
 
@@ -977,10 +1114,23 @@ private fun PollsItem(
 @Composable
 private fun MediaGalleryItem(
     onClick: () -> Unit,
+    momentRoomType: MomentRoomDetailsType = MomentRoomDetailsType.Unknown,
+    isMomentRoom: Boolean = false,
     showDivider: Boolean = false,
 ) {
+    val title = if (isMomentRoom) {
+        stringResource(R.string.screen_moment_room_profile_media_title_android)
+    } else {
+        stringResource(R.string.screen_room_details_media_gallery_title)
+    }
+    val subtitle = when (momentRoomType) {
+        MomentRoomDetailsType.Channel -> stringResource(R.string.screen_moment_room_profile_media_subtitle_channel_android)
+        MomentRoomDetailsType.Group -> stringResource(R.string.screen_moment_room_profile_media_subtitle_group_android)
+        MomentRoomDetailsType.Unknown -> null
+    }
     MomentRoomDetailsRow(
-        title = stringResource(R.string.screen_room_details_media_gallery_title),
+        title = title,
+        subtitle = subtitle.takeIf { isMomentRoom },
         imageVector = CompoundIcons.Image(),
         onClick = onClick,
         showDivider = showDivider,
@@ -990,9 +1140,15 @@ private fun MediaGalleryItem(
 @Composable
 private fun PublicLinkItem(
     onClick: () -> Unit,
+    momentRoomType: MomentRoomDetailsType,
 ) {
+    val subtitle = when (momentRoomType) {
+        MomentRoomDetailsType.Channel -> stringResource(R.string.screen_moment_room_profile_public_link_subtitle_channel_android)
+        else -> stringResource(R.string.screen_moment_room_profile_public_link_subtitle_group_android)
+    }
     MomentRoomDetailsRow(
         title = stringResource(R.string.screen_moment_room_profile_public_link_title_android),
+        subtitle = subtitle,
         imageVector = CompoundIcons.Link(),
         onClick = onClick,
         showDivider = false,
@@ -1007,7 +1163,7 @@ private fun OtherActionsSection(
     onReportRoomClick: () -> Unit,
     onLeaveRoomClick: () -> Unit,
 ) {
-    MomentRoomDetailsCard {
+    val content: @Composable ColumnScope.() -> Unit = {
         if (canReportRoom) {
             MomentRoomDetailsRow(
                 title = stringResource(CommonStrings.action_report_room),
@@ -1028,6 +1184,14 @@ private fun OtherActionsSection(
             onClick = onLeaveRoomClick,
             isDestructive = true,
             showDivider = false,
+        )
+    }
+    if (momentRoomType == MomentRoomDetailsType.Unknown) {
+        MomentRoomDetailsCard(content = content)
+    } else {
+        MomentRoomDetailsSection(
+            title = stringResource(R.string.screen_moment_room_profile_section_safety_android),
+            content = content
         )
     }
 }

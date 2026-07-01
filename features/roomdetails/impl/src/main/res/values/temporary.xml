@@ -2,9 +2,24 @@
 <resources>
     <string name="screen_moment_room_profile_settings_title_group_android">Group settings</string>
     <string name="screen_moment_room_profile_settings_title_channel_android">Channel settings</string>
+    <string name="screen_moment_room_profile_settings_subtitle_group_android">Manage the group name, description, access, and permissions.</string>
+    <string name="screen_moment_room_profile_settings_subtitle_channel_android">Manage the channel name, description, access, and permissions.</string>
+    <string name="screen_moment_room_profile_notifications_subtitle_group_android">Configure group notifications.</string>
+    <string name="screen_moment_room_profile_notifications_subtitle_channel_android">Configure channel notifications.</string>
+    <string name="screen_moment_room_profile_media_title_android">Media</string>
+    <string name="screen_moment_room_profile_media_subtitle_group_android">Photos, videos, and files shared in this group.</string>
+    <string name="screen_moment_room_profile_media_subtitle_channel_android">Photos, videos, and files shared in this channel.</string>
     <string name="screen_moment_room_profile_members_title_android">Members</string>
+    <string name="screen_moment_room_profile_members_subtitle_android">View and manage people in this group.</string>
     <string name="screen_moment_room_profile_subscribers_title_android">Subscribers</string>
+    <string name="screen_moment_room_profile_subscribers_subtitle_android">View people subscribed to this channel.</string>
     <string name="screen_moment_room_profile_public_link_title_android">Public link</string>
+    <string name="screen_moment_room_profile_public_link_subtitle_group_android">Share a link people can use to join this group.</string>
+    <string name="screen_moment_room_profile_public_link_subtitle_channel_android">Share a link people can use to subscribe to this channel.</string>
+    <string name="screen_moment_room_profile_section_details_android">Details</string>
+    <string name="screen_moment_room_profile_section_calls_android">Calls</string>
+    <string name="screen_moment_room_profile_section_people_android">People</string>
+    <string name="screen_moment_room_profile_section_safety_android">Safety</string>
     <string name="screen_moment_room_profile_leave_group_android">Leave group</string>
     <string name="screen_moment_room_profile_leave_channel_android">Leave channel</string>
 </resources>
