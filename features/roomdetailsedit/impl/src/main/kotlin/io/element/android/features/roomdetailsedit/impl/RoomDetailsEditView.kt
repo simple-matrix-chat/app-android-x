@@ -28,6 +28,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
@@ -35,6 +36,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
@@ -64,7 +66,6 @@ import io.element.android.libraries.designsystem.theme.components.Scaffold
 import io.element.android.libraries.designsystem.theme.components.Surface
 import io.element.android.libraries.designsystem.theme.components.Text
 import io.element.android.libraries.designsystem.theme.components.TextButton
-import io.element.android.libraries.designsystem.theme.components.TextField
 import io.element.android.libraries.matrix.api.createroom.MomentRoomKind
 import io.element.android.libraries.matrix.api.room.history.RoomHistoryVisibility
 import io.element.android.libraries.matrix.api.room.join.JoinRule
@@ -150,10 +151,7 @@ fun RoomDetailsEditView(
             MomentRoomDetailsEditSection(
                 title = stringResource(id = CommonStrings.common_name),
             ) {
-                TextField(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 20.dp, vertical = 18.dp),
+                MomentRoomDetailsEditTextField(
                     value = state.roomRawName,
                     placeholder = stringResource(CommonStrings.common_room_name_placeholder),
                     singleLine = true,
@@ -169,10 +167,7 @@ fun RoomDetailsEditView(
                     stringResource(id = CommonStrings.common_topic)
                 },
             ) {
-                TextField(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 20.dp, vertical = 18.dp),
+                MomentRoomDetailsEditTextField(
                     value = state.roomTopic,
                     placeholder = if (state.isSpace) {
                         stringResource(CommonStrings.common_space_topic_placeholder)
@@ -372,6 +367,44 @@ private fun MomentRoomDetailsEditRow(
             )
         }
     }
+}
+
+@Composable
+private fun MomentRoomDetailsEditTextField(
+    value: String,
+    placeholder: String,
+    readOnly: Boolean,
+    onValueChange: (String) -> Unit,
+    modifier: Modifier = Modifier,
+    singleLine: Boolean = false,
+    maxLines: Int = if (singleLine) 1 else Int.MAX_VALUE,
+    keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
+) {
+    BasicTextField(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp, vertical = 22.dp),
+        value = value,
+        onValueChange = onValueChange,
+        readOnly = readOnly,
+        singleLine = singleLine,
+        maxLines = maxLines,
+        textStyle = ElementTheme.typography.fontBodyLgRegular.copy(color = ElementTheme.colors.textPrimary),
+        cursorBrush = SolidColor(ElementTheme.colors.textPrimary),
+        keyboardOptions = keyboardOptions,
+        decorationBox = { innerTextField ->
+            Box {
+                if (value.isEmpty()) {
+                    Text(
+                        text = placeholder,
+                        style = ElementTheme.typography.fontBodyLgRegular,
+                        color = ElementTheme.colors.textSecondary,
+                    )
+                }
+                innerTextField()
+            }
+        },
+    )
 }
 
 @Composable
