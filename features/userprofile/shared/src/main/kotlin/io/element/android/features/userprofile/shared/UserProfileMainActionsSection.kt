@@ -59,8 +59,8 @@ fun UserProfileMainActionsSection(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(28.dp),
         color = ElementTheme.colors.bgCanvasDefault,
-        shadowElevation = 8.dp,
-        border = BorderStroke(1.dp, ElementTheme.colors.borderInteractiveSecondary.copy(alpha = 0.55f)),
+        shadowElevation = 2.dp,
+        border = BorderStroke(1.dp, ElementTheme.colors.borderDisabled),
     ) {
         Column {
             var hasPreviousAction = false
@@ -191,7 +191,7 @@ private fun MomentUserProfileActionRow(
 private fun MomentUserProfileActionDivider() {
     HorizontalDivider(
         modifier = Modifier.padding(start = 60.dp),
-        color = ElementTheme.colors.borderInteractiveSecondary.copy(alpha = 0.45f),
+        color = ElementTheme.colors.borderDisabled,
     )
 }
 
