@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="screen_start_chat_moment_title">New chat</string>
+    <string name="screen_start_chat_moment_direct_tab_title">Direct message</string>
     <string name="screen_start_chat_moment_direct_title">Direct message</string>
     <string name="screen_start_chat_moment_direct_description">Search by phone, contact name, or username. We unlock the button as soon as we find the account in Moment.</string>
     <string name="screen_start_chat_moment_direct_card_subtitle">Find one person and open the conversation right away.</string>
@@ -18,21 +19,23 @@
     <string name="screen_start_chat_moment_direct_footer_title">What happens next</string>
     <string name="screen_start_chat_moment_direct_footer_body">If the direct chat already exists, we open it. Otherwise, Moment creates it for you.</string>
     <string name="screen_start_chat_moment_direct_primary_action">Start chat</string>
+    <string name="screen_start_chat_moment_group_tab_title">Group</string>
     <string name="screen_start_chat_moment_group_title">Group</string>
     <string name="screen_start_chat_moment_group_description">Create a shared room for discussions, files, and team decisions.</string>
     <string name="screen_start_chat_moment_group_card_subtitle">Name the group and decide who can join it.</string>
     <string name="screen_start_chat_moment_group_field_label">Group name</string>
     <string name="screen_start_chat_moment_group_placeholder">My group</string>
     <string name="screen_start_chat_moment_group_footer_title">Who can join</string>
-    <string name="screen_start_chat_moment_group_footer_body">Sign in to join group.</string>
+    <string name="screen_start_chat_moment_group_footer_body">Choose who can join this group.</string>
     <string name="screen_start_chat_moment_group_primary_action">Create group</string>
+    <string name="screen_start_chat_moment_channel_tab_title">Channel</string>
     <string name="screen_start_chat_moment_channel_title">Channel</string>
     <string name="screen_start_chat_moment_channel_description">Create a broadcast-style room for announcements and updates.</string>
     <string name="screen_start_chat_moment_channel_card_subtitle">Name the channel and decide how subscribers can join.</string>
     <string name="screen_start_chat_moment_channel_field_label">Channel name</string>
     <string name="screen_start_chat_moment_channel_placeholder">My channel</string>
     <string name="screen_start_chat_moment_channel_footer_title">Who can subscribe</string>
-    <string name="screen_start_chat_moment_channel_footer_body">Sign in to join channel.</string>
+    <string name="screen_start_chat_moment_channel_footer_body">Choose who can subscribe to this channel.</string>
     <string name="screen_start_chat_moment_channel_primary_action">Create channel</string>
     <string name="screen_start_chat_moment_visibility_public_group_title">Public group</string>
     <string name="screen_start_chat_moment_visibility_public_group_description">Anyone with the link can join this group.</string>

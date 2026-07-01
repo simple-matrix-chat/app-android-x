@@ -341,7 +341,7 @@ private fun MomentModeTabs(
                 Spacer(modifier = Modifier.width(4.dp))
                 Text(
                     modifier = Modifier.weight(1f, fill = false),
-                    text = stringResource(mode.titleRes),
+                    text = stringResource(mode.tabTitleRes),
                     style = ElementTheme.typography.fontBodySmMedium.copy(fontWeight = FontWeight.SemiBold),
                     color = if (isSelected) Color.White else ElementTheme.colors.textPrimary,
                     maxLines = 1,
@@ -716,6 +716,7 @@ private fun MomentPrimaryAction(
 }
 
 private enum class MomentStartChatMode(
+    @StringRes val tabTitleRes: Int,
     @StringRes val titleRes: Int,
     @StringRes val descriptionRes: Int,
     @StringRes val cardSubtitleRes: Int,
@@ -728,6 +729,7 @@ private enum class MomentStartChatMode(
     val accentColor: Color,
 ) {
     Direct(
+        tabTitleRes = R.string.screen_start_chat_moment_direct_tab_title,
         titleRes = R.string.screen_start_chat_moment_direct_title,
         descriptionRes = R.string.screen_start_chat_moment_direct_description,
         cardSubtitleRes = R.string.screen_start_chat_moment_direct_card_subtitle,
@@ -740,6 +742,7 @@ private enum class MomentStartChatMode(
         accentColor = MomentDirectAccent,
     ),
     Group(
+        tabTitleRes = R.string.screen_start_chat_moment_group_tab_title,
         titleRes = R.string.screen_start_chat_moment_group_title,
         descriptionRes = R.string.screen_start_chat_moment_group_description,
         cardSubtitleRes = R.string.screen_start_chat_moment_group_card_subtitle,
@@ -752,6 +755,7 @@ private enum class MomentStartChatMode(
         accentColor = MomentGroupAccent,
     ),
     Channel(
+        tabTitleRes = R.string.screen_start_chat_moment_channel_tab_title,
         titleRes = R.string.screen_start_chat_moment_channel_title,
         descriptionRes = R.string.screen_start_chat_moment_channel_description,
         cardSubtitleRes = R.string.screen_start_chat_moment_channel_card_subtitle,
