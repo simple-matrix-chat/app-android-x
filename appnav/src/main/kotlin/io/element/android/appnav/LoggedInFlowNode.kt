@@ -114,6 +114,7 @@ import im.vector.app.features.analytics.plan.JoinedRoom as JoinedRoomAnalyticsEv
 // The maximum number of room nodes that should be kept in the backstack at the same time.
 // Having 5 rooms in the backstack seems reasonable and shouldn't grow the saved state size too much.
 private const val MAX_ROOM_NODE_COUNT = 5
+private val rootBottomBarContentInset = 84.dp
 
 @ContributesNode(SessionScope::class)
 @AssistedInject
@@ -605,7 +606,17 @@ class LoggedInFlowNode(
                 Box(modifier = contentModifier) {
                     val ftueState by ftueService.state.collectAsState()
                     val activeRootTab = backstack.elements.collectAsState().value.activeRootTab()
-                    BackstackView(transitionHandler = rememberLoggedInFlowTransitionHandler(backstack))
+                    val backstackModifier = if (ftueState is FtueState.Complete && activeRootTab != null) {
+                        Modifier
+                            .navigationBarsPadding()
+                            .padding(bottom = rootBottomBarContentInset)
+                    } else {
+                        Modifier
+                    }
+                    BackstackView(
+                        modifier = backstackModifier,
+                        transitionHandler = rememberLoggedInFlowTransitionHandler(backstack),
+                    )
                     if (ftueState is FtueState.Complete) {
                         if (activeRootTab != null) {
                             LoggedInRootBottomBar(

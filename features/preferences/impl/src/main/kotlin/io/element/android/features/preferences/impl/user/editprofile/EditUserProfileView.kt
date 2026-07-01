@@ -257,25 +257,32 @@ private fun MomentEditProfileTopBar(
     onSaveClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Row(
+    Box(
         modifier = modifier
             .fillMaxWidth()
             .height(56.dp),
-        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(
-            modifier = Modifier.size(width = 72.dp, height = 48.dp),
-            contentAlignment = Alignment.CenterStart,
+        Row(
+            modifier = Modifier.fillMaxSize(),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             MomentProfileIconButton(
                 imageVector = CompoundIcons.ChevronLeft(),
                 contentDescription = stringResource(CommonStrings.action_back),
                 onClick = onBackClick,
             )
+            Spacer(modifier = Modifier.weight(1f))
+            if (saveEnabled) {
+                TextButton(
+                    text = stringResource(CommonStrings.action_save),
+                    enabled = true,
+                    onClick = onSaveClick,
+                )
+            }
         }
         Text(
             modifier = Modifier
-                .weight(1f)
+                .align(Alignment.Center)
                 .padding(horizontal = 8.dp),
             text = stringResource(R.string.screen_moment_edit_profile_title),
             style = ElementTheme.typography.fontHeadingMdBold,
@@ -284,16 +291,6 @@ private fun MomentEditProfileTopBar(
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
-        Box(
-            modifier = Modifier.size(width = 72.dp, height = 48.dp),
-            contentAlignment = Alignment.CenterEnd,
-        ) {
-            TextButton(
-                text = stringResource(CommonStrings.action_save),
-                enabled = saveEnabled,
-                onClick = onSaveClick,
-            )
-        }
     }
 }
 

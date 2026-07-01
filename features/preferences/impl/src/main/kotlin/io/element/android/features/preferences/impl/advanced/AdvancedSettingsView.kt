@@ -436,7 +436,11 @@ private fun LiveLocationUpdatesSection(
                 val start = valueRange.start.toInt()
                 val end = valueRange.endInclusive.toInt()
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("${start}m", color = ElementTheme.colors.textSecondary, style = ElementTheme.typography.fontBodyMdRegular)
+                    Text(
+                        text = stringResource(R.string.screen_advanced_settings_live_location_distance_meters_short, start),
+                        color = ElementTheme.colors.textSecondary,
+                        style = ElementTheme.typography.fontBodyMdRegular,
+                    )
                     Slider(
                         modifier = Modifier
                             .weight(1f)
@@ -454,7 +458,11 @@ private fun LiveLocationUpdatesSection(
                             inactiveTickColor = ElementTheme.colors.iconAccentPrimary,
                         )
                     )
-                    Text("${end}m", color = ElementTheme.colors.textSecondary, style = ElementTheme.typography.fontBodyMdRegular)
+                    Text(
+                        text = stringResource(R.string.screen_advanced_settings_live_location_distance_meters_short, end),
+                        color = ElementTheme.colors.textSecondary,
+                        style = ElementTheme.typography.fontBodyMdRegular,
+                    )
                 }
             }
         }

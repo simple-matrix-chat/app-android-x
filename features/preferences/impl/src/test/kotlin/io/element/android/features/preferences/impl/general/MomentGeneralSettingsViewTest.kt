@@ -172,7 +172,7 @@ class MomentGeneralSettingsViewTest {
     }
 
     @Test
-    fun `click on Delete account invokes the expected callback`() = runAndroidComposeUiTest {
+    fun `click on Deactivate account invokes the expected callback`() = runAndroidComposeUiTest {
         val eventsRecorder = EventsRecorder<MomentGeneralSettingsEvent>(expectEvents = false)
         ensureCalledOnce { callback ->
             setView(
@@ -182,12 +182,12 @@ class MomentGeneralSettingsViewTest {
                 ),
                 onDeactivateClick = callback,
             )
-            scrollToAndClickOn(CommonStrings.action_delete_account)
+            scrollToAndClickOn(CommonStrings.action_deactivate_account)
         }
     }
 
     @Test
-    fun `delete account item is hidden when unavailable`() = runAndroidComposeUiTest {
+    fun `deactivate account item is hidden when unavailable`() = runAndroidComposeUiTest {
         val eventsRecorder = EventsRecorder<MomentGeneralSettingsEvent>(expectEvents = false)
         setView(
             state = aMomentGeneralSettingsState(
@@ -195,7 +195,7 @@ class MomentGeneralSettingsViewTest {
                 eventSink = eventsRecorder,
             ),
         )
-        onNodeWithText(activity!!.getString(CommonStrings.action_delete_account)).assertDoesNotExist()
+        onNodeWithText(activity!!.getString(CommonStrings.action_deactivate_account)).assertDoesNotExist()
     }
 }
 

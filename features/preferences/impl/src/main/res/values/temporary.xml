@@ -33,6 +33,7 @@
     <string name="screen_advanced_settings_moment_appearance_description">Choose how Moment looks on this device.</string>
     <string name="screen_advanced_settings_moment_preferences_section_title">Preferences</string>
     <string name="screen_advanced_settings_moment_uploads_section_title">Uploads</string>
+    <string name="screen_advanced_settings_live_location_distance_meters_short">%1$d m</string>
     <string name="screen_moment_privacy_title">Privacy</string>
     <string name="screen_moment_privacy_direct_messages_title">Direct messages</string>
     <string name="screen_moment_privacy_direct_messages_description">Choose who can start a direct chat with you.</string>

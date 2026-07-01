@@ -266,7 +266,7 @@ private fun LogoutSection(
         )
         if (canDeactivateAccount) {
             MomentGeneralRow(
-                title = stringResource(CommonStrings.action_delete_account),
+                title = stringResource(CommonStrings.action_deactivate_account),
                 imageVector = CompoundIcons.Warning(),
                 isDestructive = true,
                 showChevron = false,
