@@ -1,5 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="screen_room_attachment_source_contact">Контакт</string>
+    <string name="screen_room_attachment_source_emoji">Эмодзи</string>
+    <string name="screen_room_attachment_source_photo">Фото</string>
+    <string name="screen_room_attachment_contact_picker_title">Контакты</string>
+    <string name="screen_room_attachment_contact_picker_permission_title">Поделиться контактом</string>
+    <string name="screen_room_attachment_contact_picker_permission_message">Разрешите Moment доступ к контактам, чтобы прикрепить карточку контакта.</string>
+    <string name="screen_room_attachment_contact_picker_permission_allow">Разрешить доступ</string>
+    <string name="screen_room_attachment_contact_picker_loading">Загружаем контакты...</string>
+    <string name="screen_room_attachment_contact_picker_empty_title">Нет контактов</string>
+    <string name="screen_room_attachment_contact_picker_empty_message">На этом устройстве нет контактов.</string>
+    <string name="screen_room_attachment_contact_picker_error_title">Не удалось загрузить контакты</string>
+    <string name="screen_room_attachment_contact_picker_error_message">Проверьте доступ к контактам и попробуйте еще раз.</string>
     <string name="screen_room_ai_disclaimer">ИИ может ошибаться. Проверьте текст перед отправкой.</string>
     <string name="screen_room_ai_disclaimer_full">ИИ может ошибаться. Проверяйте важные факты.</string>
     <string name="screen_room_ai_briefing_alert">Важно</string>
