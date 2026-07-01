@@ -72,7 +72,7 @@ class DefaultMomentAIDailyBriefingManager @Inject constructor(
                 MomentAIBriefingAccountData(
                     roomId = roomId.value,
                     lastPostedDate = today.takeIf { response.posted } ?: accountData?.lastPostedDate,
-                    welcome = accountData?.welcome,
+                    welcomed = accountData?.welcomedValue(),
                 )
             )
 
@@ -167,7 +167,7 @@ class DefaultMomentAIDailyBriefingManager @Inject constructor(
             MomentAIBriefingAccountData(
                 roomId = roomId.value,
                 lastPostedDate = accountData?.lastPostedDate,
-                welcome = accountData?.welcome,
+                welcomed = accountData?.welcomedValue(),
             )
         )
         return roomId
@@ -209,8 +209,14 @@ private data class MomentAIBriefingAccountData(
     val roomId: String? = null,
     @SerialName("last_posted_date")
     val lastPostedDate: String? = null,
-    val welcome: Boolean? = null,
+    val welcomed: Boolean? = null,
+    @SerialName("welcome")
+    val legacyWelcome: Boolean? = null,
 )
+
+private fun MomentAIBriefingAccountData.welcomedValue(): Boolean? {
+    return welcomed ?: legacyWelcome
+}
 
 private data class BriefingRoomCandidate(
     val roomId: RoomId,

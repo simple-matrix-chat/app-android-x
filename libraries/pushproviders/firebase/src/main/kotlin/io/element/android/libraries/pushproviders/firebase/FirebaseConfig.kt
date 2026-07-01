@@ -11,9 +11,9 @@ package io.element.android.libraries.pushproviders.firebase
 object FirebaseConfig {
     /**
      * It is the push gateway for firebase.
-     * Note: pusher_http_url should have path '/_matrix/push/v1/notify' -->
+     * Moment routes push notifications through the app alias.
      */
-    const val PUSHER_HTTP_URL: String = "https://matrix.org/_matrix/push/v1/notify"
+    const val PUSHER_HTTP_URL: String = "https://unmoment.app/api/push/v1/notify"
 
     const val INDEX = 0
     const val NAME = "Firebase"

@@ -33,6 +33,7 @@ internal fun aContextMenuShown(
     directUserId: UserId? = null,
     directUserDisplayName: String? = null,
     isDirectUserBlocked: Boolean = false,
+    canLeaveRoom: Boolean = true,
 ) = RoomListState.ContextMenu.Shown(
     roomId = RoomId("!aRoom:aDomain"),
     roomName = roomName,
@@ -46,5 +47,6 @@ internal fun aContextMenuShown(
     directUserId = directUserId,
     directUserDisplayName = directUserDisplayName,
     isDirectUserBlocked = isDirectUserBlocked,
+    canLeaveRoom = canLeaveRoom,
     displayClearRoomCacheAction = false,
 )

@@ -37,10 +37,15 @@ class DefaultMatrixToConverter : MatrixToConverter {
             // Handle links coming from the matrix.to website.
             .replacePrefix(MATRIX_TO_CUSTOM_SCHEME_BASE_URL, "https://app.element.io/#/")
         val baseUrl = MatrixConfiguration.MATRIX_TO_PERMALINK_BASE_URL
+        val clientBaseUrl = MatrixConfiguration.clientPermalinkBaseUrl.orEmpty()
 
         return when {
             // URL is already a matrix.to
             uriString.startsWith(baseUrl) -> uri
+            // Moment web permalink with a matrix.to-compatible fragment.
+            clientBaseUrl.isNotEmpty() && uriString.startsWith(clientBaseUrl) -> {
+                (baseUrl + uriString.substringAfter(clientBaseUrl)).toUri()
+            }
             // Web or client url
             SUPPORTED_PATHS.any { it in uriString } -> {
                 val path = SUPPORTED_PATHS.first { it in uriString }

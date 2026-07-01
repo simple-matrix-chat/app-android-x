@@ -35,6 +35,12 @@ class DefaultMatrixToConverterTest {
     }
 
     @Test
+    fun `converting a Moment web permalink returns a matrix-to url`() {
+        val url = Uri.parse("https://unmoment.app/#/@test:matrix.org")
+        assertThat(DefaultMatrixToConverter().convert(url)).isEqualTo(Uri.parse("https://matrix.to/#/@test:matrix.org"))
+    }
+
+    @Test
     fun `converting a url with a supported group path returns a matrix-to url`() {
         val url = Uri.parse("https://riot.im/develop/#/group/+group:matrix.org")
         assertThat(DefaultMatrixToConverter().convert(url)).isEqualTo(Uri.parse("https://matrix.to/#/+group:matrix.org"))

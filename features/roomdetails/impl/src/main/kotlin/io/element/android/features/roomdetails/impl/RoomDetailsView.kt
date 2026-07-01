@@ -98,6 +98,7 @@ import io.element.android.services.analyticsproviders.api.trackers.captureIntera
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
+import io.element.android.features.leaveroom.api.R as LeaveRoomR
 
 @Composable
 fun RoomDetailsView(
@@ -287,6 +288,7 @@ fun RoomDetailsView(
 
             if (state.canLeaveRoom) {
                 OtherActionsSection(
+                    isDm = state.roomType is RoomDetailsType.Dm,
                     momentRoomType = state.momentRoomType,
                     canReportRoom = state.canReportRoom,
                     onReportRoomClick = onReportRoomClick,
@@ -999,6 +1001,7 @@ private fun PublicLinkItem(
 
 @Composable
 private fun OtherActionsSection(
+    isDm: Boolean,
     momentRoomType: MomentRoomDetailsType,
     canReportRoom: Boolean,
     onReportRoomClick: () -> Unit,
@@ -1014,13 +1017,14 @@ private fun OtherActionsSection(
             )
         }
         val leaveTitle = when (momentRoomType) {
+            MomentRoomDetailsType.Unknown if isDm -> stringResource(LeaveRoomR.string.action_delete_chat)
             MomentRoomDetailsType.Group -> stringResource(R.string.screen_moment_room_profile_leave_group_android)
             MomentRoomDetailsType.Channel -> stringResource(R.string.screen_moment_room_profile_leave_channel_android)
             MomentRoomDetailsType.Unknown -> stringResource(CommonStrings.action_leave_room)
         }
         MomentRoomDetailsRow(
             title = leaveTitle,
-            imageVector = CompoundIcons.Leave(),
+            imageVector = if (isDm) CompoundIcons.Delete() else CompoundIcons.Leave(),
             onClick = onLeaveRoomClick,
             isDestructive = true,
             showDivider = false,

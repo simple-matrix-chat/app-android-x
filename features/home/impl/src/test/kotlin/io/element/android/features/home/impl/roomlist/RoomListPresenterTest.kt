@@ -167,6 +167,7 @@ class RoomListPresenterTest {
                             directUserDisplayName = null,
                             isDirectUserBlocked = false,
                             hasNewContent = false,
+                            canLeaveRoom = true,
                             displayClearRoomCacheAction = false,
                         )
                     )
@@ -191,6 +192,7 @@ class RoomListPresenterTest {
                             directUserDisplayName = null,
                             isDirectUserBlocked = false,
                             hasNewContent = false,
+                            canLeaveRoom = true,
                             displayClearRoomCacheAction = false,
                         )
                     )
@@ -226,6 +228,7 @@ class RoomListPresenterTest {
                             isDirectUserBlocked = false,
                             // true here.
                             hasNewContent = false,
+                            canLeaveRoom = true,
                             displayClearRoomCacheAction = true,
                         )
                     )
@@ -261,6 +264,7 @@ class RoomListPresenterTest {
                         directUserDisplayName = null,
                         isDirectUserBlocked = false,
                         hasNewContent = false,
+                        canLeaveRoom = true,
                         displayClearRoomCacheAction = false,
                     )
                 )
@@ -282,6 +286,31 @@ class RoomListPresenterTest {
             val initialState = awaitItem()
             initialState.eventSink(RoomListEvent.LeaveRoom(A_ROOM_ID, needsConfirmation = true))
             leaveRoomEventsRecorder.assertSingle(LeaveRoomEvent.LeaveRoom(A_ROOM_ID, needsConfirmation = true))
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `present - leave room skips self direct room`() = runTest {
+        val leaveRoomEventsRecorder = EventsRecorder<LeaveRoomEvent>(expectEvents = false)
+        val room = FakeBaseRoom(
+            initialRoomInfo = aRoomInfo(
+                isDirect = true,
+                isDm = true,
+                activeMembersCount = 1,
+            )
+        )
+        val client = FakeMatrixClient().apply {
+            givenGetRoomResult(A_ROOM_ID, room)
+        }
+        val presenter = createRoomListPresenter(
+            client = client,
+            leaveRoomState = aLeaveRoomState(eventSink = leaveRoomEventsRecorder),
+        )
+        presenter.test {
+            val initialState = awaitItem()
+            initialState.eventSink(RoomListEvent.LeaveRoom(A_ROOM_ID, needsConfirmation = true))
+            leaveRoomEventsRecorder.assertEmpty()
             cancelAndIgnoreRemainingEvents()
         }
     }
@@ -370,6 +399,41 @@ class RoomListPresenterTest {
             val room = updatedState.contentAsRooms().summaries.find { it.id == A_ROOM_ID.value }
             assertThat(room?.isMuted).isTrue()
             assertThat(room?.isHighlighted).isFalse()
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `present - favorite rooms are displayed first preserving relative order`() = runTest {
+        val firstRoomId = RoomId("!first:domain")
+        val secondRoomId = RoomId("!second:domain")
+        val thirdRoomId = RoomId("!third:domain")
+        val fourthRoomId = RoomId("!fourth:domain")
+        val roomList = FakeDynamicRoomList(
+            summaries = MutableStateFlow(
+                listOf(
+                    aRoomSummary(roomId = firstRoomId, isFavorite = false),
+                    aRoomSummary(roomId = secondRoomId, isFavorite = true),
+                    aRoomSummary(roomId = thirdRoomId, isFavorite = false),
+                    aRoomSummary(roomId = fourthRoomId, isFavorite = true),
+                )
+            ),
+            loadingState = MutableStateFlow(RoomList.LoadingState.Loaded(4))
+        )
+        val roomListService = FakeRoomListService(
+            createRoomListLambda = { roomList }
+        )
+        val presenter = createRoomListPresenter(
+            client = FakeMatrixClient(roomListService = roomListService),
+        )
+        presenter.test {
+            val state = consumeItemsUntilPredicate { it.contentState is RoomListContentState.Rooms }.last()
+            assertThat(state.contentAsRooms().summaries.map { it.roomId }).containsExactly(
+                secondRoomId,
+                fourthRoomId,
+                firstRoomId,
+                thirdRoomId,
+            ).inOrder()
             cancelAndIgnoreRemainingEvents()
         }
     }

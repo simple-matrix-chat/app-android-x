@@ -44,7 +44,10 @@ import io.element.android.libraries.dateformatter.api.DateFormatterMode
 import io.element.android.libraries.di.RoomScope
 import io.element.android.libraries.featureflag.api.FeatureFlagService
 import io.element.android.libraries.featureflag.api.FeatureFlags
+import io.element.android.libraries.matrix.api.MatrixClient
 import io.element.android.libraries.matrix.api.core.EventId
+import io.element.android.libraries.matrix.api.createroom.MomentRoomKind
+import io.element.android.libraries.matrix.api.createroom.MomentRoomKindResolver
 import io.element.android.libraries.matrix.api.room.BaseRoom
 import io.element.android.libraries.matrix.api.timeline.Timeline
 import io.element.android.libraries.preferences.api.store.AppPreferencesStore
@@ -76,6 +79,7 @@ class DefaultActionListPresenter(
     private val userSendFailureFactory: VerifiedUserSendFailureFactory,
     private val dateFormatter: DateFormatter,
     private val featureFlagService: FeatureFlagService,
+    private val matrixClient: MatrixClient,
     private val getRecentEmojis: GetRecentEmojis,
 ) : ActionListPresenter {
     @AssistedFactory
@@ -106,8 +110,6 @@ class DefaultActionListPresenter(
             room.roomInfoFlow.map { it.pinnedEventIds }
         }.collectAsState(initial = persistentListOf())
 
-        val isThreadsEnabled = featureFlagService.isFeatureEnabledFlow(FeatureFlags.Threads).collectAsState(false)
-
         fun handleEvent(event: ActionListEvent) {
             when (event) {
                 ActionListEvent.Clear -> target.value = ActionListState.Target.None
@@ -117,7 +119,6 @@ class DefaultActionListPresenter(
                     isDeveloperModeEnabled = isDeveloperModeEnabled,
                     pinnedEventIds = pinnedEventIds,
                     target = target,
-                    isThreadsEnabled = isThreadsEnabled.value,
                 )
             }
         }
@@ -134,10 +135,10 @@ class DefaultActionListPresenter(
         isDeveloperModeEnabled: Boolean,
         pinnedEventIds: ImmutableList<EventId>,
         target: MutableState<ActionListState.Target>,
-        isThreadsEnabled: Boolean,
     ) = launch {
         target.value = ActionListState.Target.Loading(timelineItem)
 
+        val isThreadsEnabled = areThreadsEnabled()
         val actions = buildActions(
             timelineItem = timelineItem,
             usersEventPermissions = usersEventPermissions,
@@ -255,6 +256,20 @@ class DefaultActionListPresenter(
             .postFilter(timelineItem.content)
             .sortedWith(comparator)
             .let(postProcessor::process)
+    }
+
+    private suspend fun areThreadsEnabled(): Boolean {
+        if (!featureFlagService.isFeatureEnabled(FeatureFlags.Threads)) {
+            return false
+        }
+        if (room.info().isDm || room.info().isSpace) {
+            return false
+        }
+        return MomentRoomKindResolver.fetch(
+            client = matrixClient,
+            roomId = room.roomId,
+            attempts = 1,
+        ) == MomentRoomKind.Channel
     }
 }
 

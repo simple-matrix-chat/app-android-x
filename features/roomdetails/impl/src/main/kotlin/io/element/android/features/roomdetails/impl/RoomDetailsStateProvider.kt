@@ -176,6 +176,7 @@ fun aDmRoomDetailsState(
     isDmMemberIgnored: Boolean = false,
     roomName: String = "Daniel",
     isEncrypted: Boolean = true,
+    eventSink: (RoomDetailsEvent) -> Unit = {},
 ) = aRoomDetailsState(
     roomName = roomName,
     isPublic = false,
@@ -184,7 +185,8 @@ fun aDmRoomDetailsState(
     roomType = RoomDetailsType.Dm(otherMember = aDmRoomMember(isIgnored = isDmMemberIgnored)),
     roomMemberDetailsState = aUserProfileState(
         isBlocked = AsyncData.Success(isDmMemberIgnored),
-    )
+    ),
+    eventSink = eventSink,
 )
 
 fun aSharedHistoryRoomDetailsState(

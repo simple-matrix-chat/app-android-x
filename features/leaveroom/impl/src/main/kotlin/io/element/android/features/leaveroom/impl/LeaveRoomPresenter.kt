@@ -41,17 +41,22 @@ class LeaveRoomPresenter(
     override fun present(): LeaveRoomState {
         val scope = rememberCoroutineScope()
         val leaveAction = remember { mutableStateOf<AsyncAction<Unit>>(AsyncAction.Uninitialized) }
+        val isDeletingChat = remember { mutableStateOf(false) }
         return InternalLeaveRoomState(
             leaveAction = leaveAction.value,
+            isDeletingChat = isDeletingChat.value,
         ) { event ->
             when (event) {
                 is LeaveRoomEvent.LeaveRoom ->
                     if (event.needsConfirmation) {
-                        scope.showLeaveRoomAlert(roomId = event.roomId, leaveAction = leaveAction)
+                        scope.showLeaveRoomAlert(roomId = event.roomId, leaveAction = leaveAction, isDeletingChat = isDeletingChat)
                     } else {
-                        scope.leaveRoom(roomId = event.roomId, leaveAction = leaveAction)
+                        scope.leaveRoom(roomId = event.roomId, leaveAction = leaveAction, isDeletingChat = isDeletingChat)
                     }
-                InternalLeaveRoomEvent.ResetState -> leaveAction.value = AsyncAction.Uninitialized
+                InternalLeaveRoomEvent.ResetState -> {
+                    leaveAction.value = AsyncAction.Uninitialized
+                    isDeletingChat.value = false
+                }
             }
         }
     }
@@ -59,9 +64,11 @@ class LeaveRoomPresenter(
     private fun CoroutineScope.showLeaveRoomAlert(
         roomId: RoomId,
         leaveAction: MutableState<AsyncAction<Unit>>,
+        isDeletingChat: MutableState<Boolean>,
     ) = launch(dispatchers.io) {
         client.getRoom(roomId)?.use { room ->
             val roomInfo = room.roomInfoFlow.first()
+            isDeletingChat.value = roomInfo.isDm
             leaveAction.value = when {
                 roomInfo.isDm -> Confirmation.Dm(roomId)
                 room.isLastOwner() && roomInfo.joinedMembersCount > 1L -> Confirmation.LastOwnerInRoom(roomId)
@@ -76,9 +83,11 @@ class LeaveRoomPresenter(
     private fun CoroutineScope.leaveRoom(
         roomId: RoomId,
         leaveAction: MutableState<AsyncAction<Unit>>,
+        isDeletingChat: MutableState<Boolean>,
     ) = launch(dispatchers.io) {
         leaveAction.runCatchingUpdatingState {
             client.getRoom(roomId)!!.use { room ->
+                isDeletingChat.value = room.roomInfoFlow.value.isDm
                 room
                     .leave()
                     .onSuccess { notificationConversationService.onLeftRoom(client.sessionId, roomId) }

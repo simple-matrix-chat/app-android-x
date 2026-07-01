@@ -122,6 +122,7 @@ interface MatrixClient {
     suspend fun setProfileUsername(username: String, displayName: String): Result<String>
     suspend fun getPublicProfile(userId: UserId): Result<MatrixPublicProfile?>
     suspend fun createUserProfileLink(userId: UserId): Result<String?>
+    suspend fun ensureSavedMessagesRoom(): Result<RoomId>
     suspend fun getAccountManagementUrl(action: AccountManagementAction?): Result<String?>
     suspend fun getAccountData(eventType: String): Result<String?>
     suspend fun setAccountData(eventType: String, content: String): Result<Unit>

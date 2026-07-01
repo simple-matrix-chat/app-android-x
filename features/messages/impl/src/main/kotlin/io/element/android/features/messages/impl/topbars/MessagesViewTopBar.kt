@@ -64,6 +64,7 @@ internal fun MessagesViewTopBar(
     onRoomDetailsClick: () -> Unit,
     onBackClick: () -> Unit,
     onAIBriefingClick: () -> Unit,
+    showAIBriefingAction: Boolean,
     modifier: Modifier = Modifier,
     menuActions: @Composable RowScope.() -> Unit,
 ) {
@@ -113,15 +114,17 @@ internal fun MessagesViewTopBar(
                 horizontalArrangement = Arrangement.spacedBy(MomentRoomHeaderActionSpacing),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                IconButton(
-                    modifier = Modifier.size(MomentRoomHeaderActionSize),
-                    onClick = onAIBriefingClick,
-                ) {
-                    Icon(
-                        resourceId = R.drawable.ic_moment_sparkles,
-                        contentDescription = stringResource(R.string.screen_room_ai_briefing_title),
-                        tint = ElementTheme.colors.iconPrimary,
-                    )
+                if (showAIBriefingAction) {
+                    IconButton(
+                        modifier = Modifier.size(MomentRoomHeaderActionSize),
+                        onClick = onAIBriefingClick,
+                    ) {
+                        Icon(
+                            resourceId = R.drawable.ic_moment_sparkles,
+                            contentDescription = stringResource(R.string.screen_room_ai_briefing_title),
+                            tint = ElementTheme.colors.iconPrimary,
+                        )
+                    }
                 }
                 menuActions()
                 IconButton(
@@ -171,11 +174,13 @@ internal fun MessagesViewTopBarPreview() = ElementPreview {
         roomName: String? = ROOM_NAME,
         roomCallState: RoomCallState = RoomCallState.Unavailable,
         displayThreads: Boolean = false,
+        showAIBriefingAction: Boolean = true,
     ) = MessagesViewTopBar(
         roomName = roomName,
         onRoomDetailsClick = {},
         onBackClick = {},
         onAIBriefingClick = {},
+        showAIBriefingAction = showAIBriefingAction,
         menuActions = {
             MessagesMenuActions(
                 roomCallState = roomCallState,
@@ -206,6 +211,11 @@ internal fun MessagesViewTopBarPreview() = ElementPreview {
         HorizontalDivider()
         AMessagesViewTopBar(
             displayThreads = true,
+        )
+        HorizontalDivider()
+        AMessagesViewTopBar(
+            roomName = "Daily briefing",
+            showAIBriefingAction = false,
         )
     }
 }

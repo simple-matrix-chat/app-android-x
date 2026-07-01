@@ -39,6 +39,7 @@ import io.element.android.libraries.sessionstorage.api.SessionStore
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
+import timber.log.Timber
 
 @Inject
 class HomePresenter(
@@ -81,6 +82,10 @@ class HomePresenter(
         LaunchedEffect(Unit) {
             // Force a refresh of the profile
             client.getUserProfile()
+            client.ensureSavedMessagesRoom()
+                .onFailure { failure ->
+                    Timber.e(failure, "Failed ensuring Moment saved messages room")
+                }
         }
         // Avatar indicator
         val showAvatarIndicator by indicatorService.showRoomListTopBarIndicator()

@@ -53,6 +53,7 @@ import io.element.android.libraries.matrix.test.A_UNIQUE_ID_2
 import io.element.android.libraries.matrix.test.A_USER_ID
 import io.element.android.libraries.matrix.test.A_USER_ID_2
 import io.element.android.libraries.matrix.test.A_USER_ID_3
+import io.element.android.libraries.matrix.test.FakeMatrixClient
 import io.element.android.libraries.matrix.test.room.FakeBaseRoom
 import io.element.android.libraries.matrix.test.room.FakeJoinedRoom
 import io.element.android.libraries.matrix.test.room.aRoomMember
@@ -1098,6 +1099,9 @@ class TimelinePresenterTest {
         sessionPreferencesStore: InMemorySessionPreferencesStore = InMemorySessionPreferencesStore(),
         timelineItemIndexer: TimelineItemIndexer = TimelineItemIndexer(),
         featureFlagService: FakeFeatureFlagService = FakeFeatureFlagService(),
+        matrixClient: FakeMatrixClient = FakeMatrixClient(
+            getRoomStateEventContentLambda = { _, _ -> Result.success("""{"kind":"channel"}""") },
+        ),
         liveLocationShareManager: FakeActiveLiveLocationShareManager = FakeActiveLiveLocationShareManager(),
     ): TimelinePresenter {
         return TimelinePresenter(
@@ -1116,6 +1120,7 @@ class TimelinePresenterTest {
             typingNotificationPresenter = { aTypingNotificationState() },
             roomCallStatePresenter = { aStandByCallState() },
             featureFlagService = featureFlagService,
+            matrixClient = matrixClient,
             analyticsService = FakeAnalyticsService(),
             liveLocationShareManager = liveLocationShareManager,
         )

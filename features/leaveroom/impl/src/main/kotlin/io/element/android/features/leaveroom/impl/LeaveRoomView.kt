@@ -50,7 +50,7 @@ fun LeaveRoomView(
         },
         errorTitle = { stringResource(CommonStrings.common_something_went_wrong) },
         errorMessage = { stringResource(CommonStrings.error_network_or_server_issue) },
-        progressDialog = { LeaveRoomProgressDialog() },
+        progressDialog = { LeaveRoomProgressDialog(isDeletingChat = state.isDeletingChat) },
     )
 }
 
@@ -64,8 +64,11 @@ private fun LeaveRoomConfirmationDialog(
     val defaultDismissAction = { eventSink(InternalLeaveRoomEvent.ResetState) }
     when (confirmation) {
         is Confirmation.Dm -> LeaveRoomConfirmationDialog(
-            text = stringResource(R.string.leave_room_alert_private_subtitle),
-            isDm = false,
+            isDm = true,
+            title = stringResource(R.string.delete_chat_alert_title),
+            text = stringResource(R.string.delete_chat_alert_subtitle),
+            submitText = stringResource(CommonStrings.action_delete),
+            destructiveSubmit = true,
             onSubmitClick = defaultOnSubmitClick(confirmation.roomId),
             onDismiss = defaultDismissAction,
         )
@@ -129,9 +132,12 @@ private fun LeaveRoomConfirmationDialog(
 }
 
 @Composable
-private fun LeaveRoomProgressDialog(modifier: Modifier = Modifier) {
+private fun LeaveRoomProgressDialog(
+    isDeletingChat: Boolean,
+    modifier: Modifier = Modifier,
+) {
     ProgressDialog(
-        text = stringResource(CommonStrings.common_leaving_room),
+        text = stringResource(if (isDeletingChat) R.string.common_deleting_chat else CommonStrings.common_leaving_room),
         modifier = modifier,
     )
 }

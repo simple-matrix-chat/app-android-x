@@ -35,6 +35,7 @@ import io.element.android.libraries.designsystem.theme.components.Text
 import io.element.android.libraries.matrix.api.core.RoomId
 import io.element.android.libraries.matrix.api.core.UserId
 import io.element.android.libraries.ui.strings.CommonStrings
+import io.element.android.features.leaveroom.api.R as LeaveRoomR
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -289,18 +290,20 @@ private fun RoomListModalBottomSheetContent(
                 style = ListItemStyle.Destructive,
             )
         }
-        ListItem(
-            headlineContent = {
-                Text(text = stringResource(CommonStrings.action_leave_room))
-            },
-            modifier = Modifier.clickable { onLeaveRoomClick() },
-            leadingContent = ListItemContent.Icon(
-                iconSource = IconSource.Vector(
-                    CompoundIcons.Leave(),
-                )
-            ),
-            style = ListItemStyle.Destructive,
-        )
+        if (contextMenu.canLeaveRoom) {
+            ListItem(
+                headlineContent = {
+                    Text(text = stringResource(if (contextMenu.isDm) LeaveRoomR.string.action_delete_chat else CommonStrings.action_leave_room))
+                },
+                modifier = Modifier.clickable { onLeaveRoomClick() },
+                leadingContent = ListItemContent.Icon(
+                    iconSource = IconSource.Vector(
+                        if (contextMenu.isDm) CompoundIcons.Delete() else CompoundIcons.Leave(),
+                    )
+                ),
+                style = ListItemStyle.Destructive,
+            )
+        }
         if (contextMenu.displayClearRoomCacheAction) {
             ListItem(
                 headlineContent = {

@@ -10,6 +10,7 @@ package io.element.android.features.home.impl.datasource
 
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
+import io.element.android.features.home.impl.model.LatestEvent
 import io.element.android.features.home.impl.model.RoomListRoomSummary
 import io.element.android.libraries.androidutils.diff.DiffCacheUpdater
 import io.element.android.libraries.androidutils.diff.MutableListDiffCache
@@ -75,6 +76,7 @@ class RoomListDataSource(
 
     private val lock = Mutex()
     private val diffCache = MutableListDiffCache<RoomListRoomSummary>()
+    private var cachedRoomSummariesById = emptyMap<RoomId, RoomListRoomSummary>()
     private val diffCacheUpdater = DiffCacheUpdater<RoomSummary, RoomListRoomSummary>(diffCache = diffCache, detectMoves = true) { old, new ->
         old?.roomId == new?.roomId
     }
@@ -188,7 +190,7 @@ class RoomListDataSource(
 
         // TODO remove once https://github.com/element-hq/element-x-android/issues/5031 has been confirmed as fixed
         val duplicates = cachingResults.filter { (_, operations) -> operations.size > 1 }
-        if (duplicates.isNotEmpty()) {
+        val summariesToEmit = if (duplicates.isNotEmpty()) {
             analyticsService.trackError(
                 IllegalStateException(
                     "Found duplicates in room summaries after a local UI update: $duplicates. " +
@@ -197,16 +199,27 @@ class RoomListDataSource(
             )
 
             // Remove duplicates before emitting the new values
-            _roomSummariesFlow.emit(roomListRoomSummaries.distinctBy { it.roomId }.toImmutableList())
+            roomListRoomSummaries.distinctBy { it.roomId }.toImmutableList()
         } else {
-            _roomSummariesFlow.emit(roomListRoomSummaries.toImmutableList())
+            roomListRoomSummaries.toImmutableList()
         }
+        cacheRoomSummaries(summariesToEmit)
+        _roomSummariesFlow.emit(summariesToEmit)
     }
 
     private fun buildAndCacheItem(roomSummaries: List<RoomSummary>, index: Int): RoomListRoomSummary? {
-        val roomListSummary = roomSummaries.getOrNull(index)?.let { roomListRoomSummaryFactory.create(it) }
+        val roomListSummary = roomSummaries.getOrNull(index)?.let { roomSummary ->
+            roomListRoomSummaryFactory.create(roomSummary)
+                .preservingLatestEventFrom(cachedRoomSummariesById[roomSummary.roomId])
+        }
         diffCache[index] = roomListSummary
         return roomListSummary
+    }
+
+    private fun cacheRoomSummaries(roomSummaries: List<RoomListRoomSummary>) {
+        if (roomSummaries.isNotEmpty()) {
+            cachedRoomSummariesById = roomSummaries.associateBy { it.roomId }
+        }
     }
 
     private suspend fun rebuildAllRoomSummaries() {
@@ -217,4 +230,14 @@ class RoomListDataSource(
             }
         }
     }
+}
+
+private fun RoomListRoomSummary.preservingLatestEventFrom(previousSummary: RoomListRoomSummary?): RoomListRoomSummary {
+    if (previousSummary?.roomId != roomId || latestEvent !is LatestEvent.None) {
+        return this
+    }
+    return copy(
+        latestEvent = previousSummary.latestEvent,
+        timestamp = previousSummary.timestamp,
+    )
 }

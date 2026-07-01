@@ -123,8 +123,9 @@ class LeaveBaseRoomPresenterTest {
         presenter.stateFlow().test {
             val initialState = awaitItem()
             initialState.eventSink(LeaveRoomEvent.LeaveRoom(A_ROOM_ID, needsConfirmation = true))
-            val confirmationState = awaitItem()
+            val confirmationState = awaitItem().takeUnless { it.leaveAction == AsyncAction.Uninitialized } ?: awaitItem()
             assertThat(confirmationState.leaveAction).isEqualTo(Confirmation.Dm(A_ROOM_ID))
+            assertThat(confirmationState.isDeletingChat).isTrue()
         }
     }
 

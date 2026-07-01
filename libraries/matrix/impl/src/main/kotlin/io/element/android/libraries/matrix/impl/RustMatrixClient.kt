@@ -186,6 +186,7 @@ private const val PROFILE_USERNAME_REGISTRY_ROOM_NAME = "Moment Username Registr
 private const val BFF_PUBLIC_PROFILE_SYNC_PATH = "oauth-bff/api/v1/sync-public-profile"
 private const val BFF_PUBLIC_IDENTITY_LOOKUP_PATH = "oauth-bff/api/v1/lookup-user-public-identity"
 private const val BFF_PUBLIC_LINKS_PATH = "oauth-bff/api/v1/public-links"
+private const val BFF_SAVED_MESSAGES_ENSURE_PATH = "oauth-bff/api/v1/saved-messages/ensure"
 private const val BFF_USER_SEARCH_PATH = "oauth-bff/api/v1/search-users"
 private const val BFF_PRIVACY_SETTINGS_SYNC_PATH = "oauth-bff/api/v1/sync-privacy-settings"
 private const val MOMENT_ROOM_KIND_EVENT_TYPE = "io.moment.room_kind"
@@ -1083,6 +1084,32 @@ class RustMatrixClient(
         }
     }
 
+    override suspend fun ensureSavedMessagesRoom(): Result<RoomId> = withContext(sessionDispatcher) {
+        runCatchingExceptions {
+            try {
+                val roomId = parseEnsureSavedMessagesRoomId(
+                    performStringRequest(
+                        openBffRequest(
+                            session = innerClient.session(),
+                            userAgent = userAgentProvider.provide(),
+                            method = "POST",
+                            path = BFF_SAVED_MESSAGES_ENSURE_PATH,
+                            body = "{}",
+                        )
+                    )
+                )
+                if (roomId != null) {
+                    return@runCatchingExceptions roomId
+                }
+            } catch (failure: Throwable) {
+                Timber.e(failure, "Moment saved messages BFF ensure failed")
+            }
+
+            findDM(sessionId).getOrThrow()
+                ?: createDM(sessionId).getOrThrow()
+        }
+    }
+
     override suspend fun getSessionDevices(): Result<List<MatrixSessionDevice>> = withContext(sessionDispatcher) {
         runCatchingExceptions {
             val session = innerClient.session()
@@ -1901,6 +1928,15 @@ private fun createPublicLinkBody(
         roomId?.let { put("roomId", it.trim()) }
         eventId?.let { put("eventId", it.trim()) }
     }.toString()
+}
+
+private fun parseEnsureSavedMessagesRoomId(content: String): RoomId? {
+    return Json.parseToJsonElement(content)
+        .jsonObject["roomId"]
+        ?.jsonPrimitive
+        ?.contentOrNull
+        ?.nilIfBlank()
+        ?.let(::RoomId)
 }
 
 private fun parsePublicProfile(content: String): MatrixPublicProfile? {

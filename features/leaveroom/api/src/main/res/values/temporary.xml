@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="action_delete_chat">Delete chat</string>
+    <string name="common_deleting_chat">Deleting chat</string>
+    <string name="delete_chat_alert_subtitle">This chat will be removed from your chat list. You can start a new conversation later.</string>
+    <string name="delete_chat_alert_title">Delete chat?</string>
+</resources>

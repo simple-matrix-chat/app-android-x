@@ -113,6 +113,7 @@ class FakeMatrixClient(
     private var setProfileUsernameResult: (String, String) -> Result<String> = { username, _ -> Result.success(MatrixProfileUsername.normalize(username)) },
     private val getPublicProfileResult: (UserId) -> Result<MatrixPublicProfile?> = { Result.success(null) },
     private val createUserProfileLinkResult: (UserId) -> Result<String?> = { Result.success(MatrixProfileLink.fallbackUserLink(it)) },
+    private val ensureSavedMessagesRoomResult: () -> Result<RoomId> = { Result.success(A_ROOM_ID) },
     private val getSessionDevicesResult: () -> Result<List<MatrixSessionDevice>> = {
         Result.success(
             listOf(
@@ -248,6 +249,10 @@ class FakeMatrixClient(
 
     override suspend fun createDM(userId: UserId): Result<RoomId> = simulateLongTask {
         return createDmResult
+    }
+
+    override suspend fun ensureSavedMessagesRoom(): Result<RoomId> {
+        return ensureSavedMessagesRoomResult()
     }
 
     override suspend fun getProfile(userId: UserId): Result<MatrixUser> {

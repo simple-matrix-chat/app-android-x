@@ -28,12 +28,14 @@ class InternalLeaveRoomStateProvider : PreviewParameterProvider<InternalLeaveRoo
             ),
             aLeaveRoomState(
                 leaveAction = Confirmation.Dm(roomId = A_ROOM_ID),
+                isDeletingChat = true,
             ),
             aLeaveRoomState(
                 leaveAction = Confirmation.LastOwnerInRoom(roomId = A_ROOM_ID),
             ),
             aLeaveRoomState(
                 leaveAction = AsyncAction.Loading,
+                isDeletingChat = true,
             ),
             aLeaveRoomState(
                 leaveAction = AsyncAction.Failure(RuntimeException("Something went wrong")),
@@ -45,8 +47,10 @@ private val A_ROOM_ID = RoomId("!aRoomId:aDomain")
 
 fun aLeaveRoomState(
     leaveAction: AsyncAction<Unit> = AsyncAction.Uninitialized,
+    isDeletingChat: Boolean = false,
     eventSink: (LeaveRoomEvent) -> Unit = {},
 ) = InternalLeaveRoomState(
     leaveAction = leaveAction,
+    isDeletingChat = isDeletingChat,
     eventSink = eventSink,
 )

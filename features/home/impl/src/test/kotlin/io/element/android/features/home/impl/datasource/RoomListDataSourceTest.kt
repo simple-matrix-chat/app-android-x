@@ -11,13 +11,17 @@ package io.element.android.features.home.impl.datasource
 import app.cash.turbine.test
 import com.google.common.truth.Truth.assertThat
 import io.element.android.features.home.impl.FakeDateTimeObserver
+import io.element.android.features.home.impl.model.LatestEvent
 import io.element.android.libraries.androidutils.system.DateTimeObserver
 import io.element.android.libraries.dateformatter.test.FakeDateFormatter
+import io.element.android.libraries.eventformatter.test.FakeRoomLatestEventFormatter
+import io.element.android.libraries.matrix.api.roomlist.LatestEventValue
 import io.element.android.libraries.matrix.api.roomlist.RoomListService
 import io.element.android.libraries.matrix.test.A_ROOM_ID
 import io.element.android.libraries.matrix.test.A_ROOM_ID_2
 import io.element.android.libraries.matrix.test.A_ROOM_ID_3
 import io.element.android.libraries.matrix.test.notificationsettings.FakeNotificationSettingsService
+import io.element.android.libraries.matrix.test.room.aRemoteLatestEvent
 import io.element.android.libraries.matrix.test.room.aRoomSummary
 import io.element.android.libraries.matrix.test.roomlist.FakeDynamicRoomList
 import io.element.android.libraries.matrix.test.roomlist.FakeRoomListService
@@ -195,6 +199,61 @@ class RoomListDataSourceTest {
             assertThat(afterSecondMidnight.map { it.roomId }.toSet()).hasSize(afterSecondMidnight.size)
 
             assertThat(analyticsService.trackedErrors).isEmpty()
+        }
+    }
+
+    @Test
+    fun `when SDK update temporarily loses latest event, previous preview is preserved`() = runTest {
+        val latestEventFormatter = FakeRoomLatestEventFormatter().apply {
+            givenFormatResult("Previous preview")
+        }
+        val summariesFlow = MutableStateFlow(
+            listOf(
+                aRoomSummary(
+                    roomId = A_ROOM_ID,
+                    latestEvent = aRemoteLatestEvent(timestamp = 123),
+                )
+            )
+        )
+        val roomList = FakeDynamicRoomList(summaries = summariesFlow)
+        val roomListService = FakeRoomListService(
+            createRoomListLambda = { roomList }
+        ).apply {
+            postState(RoomListService.State.Running)
+        }
+        val roomListDataSource = createRoomListDataSource(
+            roomListService = roomListService,
+            roomListRoomSummaryFactory = aRoomListRoomSummaryFactory(
+                roomLatestEventFormatter = latestEventFormatter,
+            ),
+        )
+
+        roomListDataSource.roomSummariesFlow.test {
+            roomListDataSource.launchIn(backgroundScope)
+            val initial = awaitItem().first()
+            assertThat(initial.latestEvent).isEqualTo(LatestEvent.Synced("Previous preview"))
+            assertThat(initial.timestamp).isEqualTo("Today")
+
+            summariesFlow.value = listOf(
+                aRoomSummary(
+                    roomId = A_ROOM_ID,
+                    latestEvent = LatestEventValue.None,
+                )
+            )
+            val emptyLatestEventUpdate = awaitItem().first()
+            assertThat(emptyLatestEventUpdate.latestEvent).isEqualTo(initial.latestEvent)
+            assertThat(emptyLatestEventUpdate.timestamp).isEqualTo(initial.timestamp)
+
+            latestEventFormatter.givenFormatResult("Fresh preview")
+            summariesFlow.value = listOf(
+                aRoomSummary(
+                    roomId = A_ROOM_ID,
+                    latestEvent = aRemoteLatestEvent(timestamp = 456),
+                )
+            )
+            val freshLatestEventUpdate = awaitItem().first()
+            assertThat(freshLatestEventUpdate.latestEvent).isEqualTo(LatestEvent.Synced("Fresh preview"))
+            assertThat(freshLatestEventUpdate.timestamp).isEqualTo("Today")
         }
     }
 

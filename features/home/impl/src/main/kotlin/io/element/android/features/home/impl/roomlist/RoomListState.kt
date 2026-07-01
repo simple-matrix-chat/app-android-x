@@ -53,6 +53,7 @@ data class RoomListState(
             val directUserDisplayName: String?,
             val isDirectUserBlocked: Boolean,
             val hasNewContent: Boolean,
+            val canLeaveRoom: Boolean,
             val displayClearRoomCacheAction: Boolean,
         ) : ContextMenu
     }

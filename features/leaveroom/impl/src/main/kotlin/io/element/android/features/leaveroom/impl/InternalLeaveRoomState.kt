@@ -16,6 +16,7 @@ import io.element.android.libraries.matrix.api.core.RoomId
 
 data class InternalLeaveRoomState(
     val leaveAction: AsyncAction<Unit>,
+    val isDeletingChat: Boolean,
     override val eventSink: (LeaveRoomEvent) -> Unit
 ) : LeaveRoomState
 

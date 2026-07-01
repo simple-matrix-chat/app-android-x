@@ -10,6 +10,7 @@ package io.element.android.libraries.matrix.impl.permalink
 
 import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.ContributesBinding
+import io.element.android.appconfig.MatrixConfiguration
 import io.element.android.libraries.core.extensions.runCatchingExceptions
 import io.element.android.libraries.matrix.api.core.MatrixPatterns
 import io.element.android.libraries.matrix.api.core.RoomAlias
@@ -26,7 +27,7 @@ class DefaultPermalinkBuilder : PermalinkBuilder {
             return Result.failure(PermalinkBuilderError.InvalidData)
         }
         return runCatchingExceptions {
-            matrixToUserPermalink(userId.value)
+            clientPermalinkFor(userId.value) ?: matrixToUserPermalink(userId.value)
         }
     }
 
@@ -35,7 +36,15 @@ class DefaultPermalinkBuilder : PermalinkBuilder {
             return Result.failure(PermalinkBuilderError.InvalidData)
         }
         return runCatchingExceptions {
-            matrixToRoomAliasPermalink(roomAlias.value)
+            clientPermalinkFor(roomAlias.value) ?: matrixToRoomAliasPermalink(roomAlias.value)
         }
+    }
+
+    private fun clientPermalinkFor(matrixId: String): String? {
+        return MatrixConfiguration.clientPermalinkBaseUrl
+            ?.trim()
+            ?.takeIf { it.isNotEmpty() }
+            ?.trimEnd('/')
+            ?.let { baseUrl -> "$baseUrl/${matrixId.trimStart('/')}" }
     }
 }

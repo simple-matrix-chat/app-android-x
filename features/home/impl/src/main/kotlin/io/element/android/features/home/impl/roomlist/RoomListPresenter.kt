@@ -33,6 +33,7 @@ import io.element.android.features.home.impl.filters.MomentMutedChatsStore
 import io.element.android.features.home.impl.filters.RoomListFiltersEvent
 import io.element.android.features.home.impl.filters.RoomListFiltersState
 import io.element.android.features.home.impl.filters.matches
+import io.element.android.features.home.impl.model.RoomListRoomSummary
 import io.element.android.features.home.impl.model.RoomSummaryDisplayType
 import io.element.android.features.home.impl.search.RoomListSearchEvent
 import io.element.android.features.home.impl.search.RoomListSearchState
@@ -145,7 +146,7 @@ class RoomListPresenter(
                     contextMenu.value = RoomListState.ContextMenu.Hidden
                 }
                 is RoomListEvent.LeaveRoom -> {
-                    leaveRoomState.eventSink(LeaveRoomEvent.LeaveRoom(event.roomId, needsConfirmation = event.needsConfirmation))
+                    coroutineScope.leaveRoom(event, leaveRoomState)
                 }
                 is RoomListEvent.SetRoomIsFavorite -> coroutineScope.setRoomIsFavorite(event.roomId, event.isFavorite)
                 is RoomListEvent.SetRoomIsArchived -> coroutineScope.launch {
@@ -288,6 +289,7 @@ class RoomListPresenter(
                         batteryOptimizationState = batteryOptimizationPresenter.present(),
                         summaries = summaries
                             .filter { it.matches(selectedFilter) }
+                            .favoriteRoomsFirst()
                             .toImmutableList(),
                         seenRoomInvites = seenRoomInvites.toImmutableSet(),
                     ),
@@ -312,11 +314,13 @@ class RoomListPresenter(
             directUserDisplayName = event.roomSummary.directUserDisplayName,
             isDirectUserBlocked = event.roomSummary.isDirectUserBlocked,
             hasNewContent = event.roomSummary.hasNewContent,
+            canLeaveRoom = event.roomSummary.canLeaveRoom(client.sessionId),
             displayClearRoomCacheAction = appPreferencesStore.isDeveloperModeEnabledFlow().first(),
         )
         contextMenuState.value = initialState
 
         client.getRoom(event.roomSummary.roomId)?.use { room ->
+            val roomInfo = room.roomInfoFlow.value
             val directRoomMember = if (event.roomSummary.isDirect || room.isDm()) {
                 room.getDirectRoomMember()
             } else {
@@ -328,6 +332,7 @@ class RoomListPresenter(
                 directUserId = directUserId,
                 directUserDisplayName = directUserDisplayName,
                 isDirectUserBlocked = directUserId?.let { client.ignoredUsersFlow.value.contains(it) } == true,
+                canLeaveRoom = !roomInfo.isSelfDirectRoom(),
             )
             contextMenuState.value = baseState
 
@@ -364,6 +369,15 @@ class RoomListPresenter(
                     analyticsService.captureInteraction(name = Interaction.Name.MobileRoomListRoomContextMenuFavouriteToggle)
                 }
         }
+    }
+
+    private fun CoroutineScope.leaveRoom(event: RoomListEvent.LeaveRoom, leaveRoomState: LeaveRoomState) = launch {
+        client.getRoom(event.roomId)?.use { room ->
+            if (room.roomInfoFlow.value.isSelfDirectRoom()) {
+                return@launch
+            }
+        }
+        leaveRoomState.eventSink(LeaveRoomEvent.LeaveRoom(event.roomId, needsConfirmation = event.needsConfirmation))
     }
 
     private fun CoroutineScope.muteRoom(roomId: RoomId, duration: MomentHomeMuteDuration) = launch {
@@ -433,3 +447,20 @@ private data class RoomListPresentationContent(
     val contentState: RoomListContentState,
     val filtersState: RoomListFiltersState,
 )
+
+private fun List<RoomListRoomSummary>.favoriteRoomsFirst(): List<RoomListRoomSummary> {
+    return withIndex()
+        .sortedWith(
+            compareBy<IndexedValue<RoomListRoomSummary>> { if (it.value.isFavorite) 0 else 1 }
+                .thenBy { it.index }
+        )
+        .map { it.value }
+}
+
+private fun RoomListRoomSummary.canLeaveRoom(sessionId: UserId): Boolean {
+    return !isDirect || directUserId?.let { it != sessionId } == true
+}
+
+private fun io.element.android.libraries.matrix.api.room.RoomInfo.isSelfDirectRoom(): Boolean {
+    return isDirect && activeMembersCount <= 1
+}

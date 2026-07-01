@@ -85,6 +85,8 @@ import io.element.android.libraries.featureflag.api.FeatureFlags
 import io.element.android.libraries.matrix.api.MatrixClient
 import io.element.android.libraries.matrix.api.core.EventId
 import io.element.android.libraries.matrix.api.core.toThreadId
+import io.element.android.libraries.matrix.api.createroom.MomentRoomKind
+import io.element.android.libraries.matrix.api.createroom.MomentRoomKindResolver
 import io.element.android.libraries.matrix.api.permalink.PermalinkParser
 import io.element.android.libraries.matrix.api.room.JoinedRoom
 import io.element.android.libraries.matrix.api.room.RoomInfo
@@ -180,13 +182,24 @@ class MessagesPresenter(
         val pinnedMessagesBannerState = pinnedMessagesBannerPresenter.present()
         val roomCallState = roomCallStatePresenter.present()
         val roomMemberModerationState = roomMemberModerationPresenter.present()
-        val threadsList by produceState(persistentListOf()) {
-            room.threadsListService.subscribeToItemUpdates()
-                .onStart { room.threadsListService.paginate() }
-                .collectLatest { value = it.toImmutableList() }
+        val isThreadsFeatureEnabled by featureFlagService.isFeatureEnabledFlow(FeatureFlags.Threads).collectAsState(initial = false)
+        val areThreadsEnabledInRoom by produceState(false, room.roomId, roomInfo.isDm, roomInfo.isSpace, isThreadsFeatureEnabled) {
+            value = !roomInfo.isDm &&
+                !roomInfo.isSpace &&
+                isThreadsFeatureEnabled &&
+                MomentRoomKindResolver.fetch(matrixClient, room.roomId) == MomentRoomKind.Channel
         }
-
-        val canOpenThreadList by featureFlagService.isFeatureEnabledFlow(FeatureFlags.RoomThreadList).collectAsState(initial = false)
+        val isRoomThreadListFeatureEnabled by featureFlagService.isFeatureEnabledFlow(FeatureFlags.RoomThreadList).collectAsState(initial = false)
+        val canOpenThreadList = isRoomThreadListFeatureEnabled && areThreadsEnabledInRoom
+        val threadsList by produceState(persistentListOf(), canOpenThreadList) {
+            if (canOpenThreadList) {
+                room.threadsListService.subscribeToItemUpdates()
+                    .onStart { room.threadsListService.paginate() }
+                    .collectLatest { value = it.toImmutableList() }
+            } else {
+                value = persistentListOf()
+            }
+        }
         val isCurrentlySharingLiveLocationInRoom by remember { liveLocationShareManager.isCurrentlySharing(room.roomId) }.collectAsState()
         val roomMessageSearchQuery = rememberTextFieldState()
         var isRoomMessageSearchActive by remember { mutableStateOf(false) }
@@ -491,6 +504,7 @@ class MessagesPresenter(
                         enableTextFormatting = composerState.showTextFormatting,
                         timelineState = timelineState,
                         timelineProtectionState = timelineProtectionState,
+                        areThreadsEnabledInRoom = areThreadsEnabledInRoom,
                         requestAIFactCheck = ::requestAIFactCheck,
                         requestAISummary = ::requestAISummary,
                     )
@@ -628,6 +642,7 @@ class MessagesPresenter(
         timelineProtectionState: TimelineProtectionState,
         enableTextFormatting: Boolean,
         timelineState: TimelineState,
+        areThreadsEnabledInRoom: Boolean,
         requestAIFactCheck: suspend (TimelineItem.Event) -> Unit,
         requestAISummary: suspend (TimelineItem.Event) -> Unit,
     ) = launch {
@@ -643,8 +658,7 @@ class MessagesPresenter(
             TimelineItemAction.RemoveCaption -> handleRemoveCaption(targetEvent)
             TimelineItemAction.Reply -> handleActionReply(targetEvent, composerState, timelineProtectionState)
             TimelineItemAction.ReplyInThread -> {
-                val displayThreads = featureFlagService.isFeatureEnabled(FeatureFlags.Threads)
-                if (displayThreads) {
+                if (areThreadsEnabledInRoom) {
                     // Get either the thread id this event is in, or the event id if it's not in a thread so we can start one
                     val threadId = when (targetEvent.threadInfo) {
                         is TimelineItemThreadInfo.ThreadResponse -> targetEvent.threadInfo.threadRootId

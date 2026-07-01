@@ -267,6 +267,7 @@ fun MessagesView(
                                     state.eventSink(MessagesEvent.OpenAIBriefing)
                                 }
                             },
+                            showAIBriefingAction = !state.dailyBriefingComposerState.isVisible,
                             menuActions = {
                                 MessagesMenuActions(
                                     displayThreads = state.timelineState.timelineMode !is Timeline.Mode.Thread && state.threads.hasThreads,

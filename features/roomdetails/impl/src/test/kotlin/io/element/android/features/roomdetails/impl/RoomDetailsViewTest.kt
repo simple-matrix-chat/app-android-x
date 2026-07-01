@@ -39,6 +39,7 @@ import io.element.android.tests.testutils.pressBack
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
+import io.element.android.features.leaveroom.api.R as LeaveRoomR
 
 @RunWith(AndroidJUnit4::class)
 class RoomDetailsViewTest {
@@ -357,6 +358,20 @@ class RoomDetailsViewTest {
             ),
         )
         clickOn(R.string.screen_moment_room_profile_leave_channel_android)
+        eventsRecorder.assertSingle(RoomDetailsEvent.LeaveRoom(needsConfirmation = true))
+    }
+
+    @Config(qualifiers = "h1500dp")
+    @Test
+    fun `click on DM delete chat emits expected Event`() = runAndroidComposeUiTest {
+        val eventsRecorder = EventsRecorder<RoomDetailsEvent>()
+        setRoomDetailView(
+            state = aDmRoomDetailsState(
+                roomName = "Alice",
+                eventSink = eventsRecorder,
+            ),
+        )
+        clickOn(LeaveRoomR.string.action_delete_chat)
         eventsRecorder.assertSingle(RoomDetailsEvent.LeaveRoom(needsConfirmation = true))
     }
 

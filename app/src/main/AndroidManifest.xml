@@ -131,30 +131,6 @@
                 <data android:host="mobile.element.io" />
                 <data android:path="/element/" />
             </intent-filter>
-            <!--
-              matrix: links
-            -->
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-
-                <data android:scheme="matrix" />
-            </intent-filter>
-            <!--
-              links from matrix.to website
-            -->
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-
-                <data android:scheme="element" />
-                <data android:host="user" />
-                <data android:host="room" />
-            </intent-filter>
             <!-- Incoming share simple -->
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />

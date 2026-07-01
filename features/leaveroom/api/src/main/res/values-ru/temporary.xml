@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="action_delete_chat">Удалить чат</string>
+    <string name="common_deleting_chat">Удаляем чат</string>
+    <string name="delete_chat_alert_subtitle">Чат будет удален из списка. Позже вы сможете начать новую переписку.</string>
+    <string name="delete_chat_alert_title">Удалить чат?</string>
+</resources>

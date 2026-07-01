@@ -31,6 +31,7 @@ import io.element.android.tests.testutils.clickOn
 import io.element.android.tests.testutils.setSafeContent
 import org.junit.Test
 import org.junit.runner.RunWith
+import io.element.android.features.leaveroom.api.R as LeaveRoomR
 
 @RunWith(AndroidJUnit4::class)
 class RoomListContextMenuTest {
@@ -83,6 +84,33 @@ class RoomListContextMenuTest {
                 RoomListEvent.LeaveRoom(contextMenu.roomId, needsConfirmation = true),
             )
         )
+    }
+
+    @Test
+    fun `clicking on Delete chat in DM generates expected Events`() = runAndroidComposeUiTest {
+        val eventsRecorder = EventsRecorder<RoomListEvent>()
+        val contextMenu = aContextMenuShown(isDm = true, canLeaveRoom = true)
+        setRoomListContextMenu(
+            contextMenu = contextMenu,
+            eventSink = eventsRecorder,
+        )
+        scrollToAndClickOn(LeaveRoomR.string.action_delete_chat)
+        eventsRecorder.assertList(
+            listOf(
+                RoomListEvent.HideContextMenu,
+                RoomListEvent.LeaveRoom(contextMenu.roomId, needsConfirmation = true),
+            )
+        )
+    }
+
+    @Test
+    fun `self direct context menu does not show Delete chat`() = runAndroidComposeUiTest {
+        setRoomListContextMenu(
+            contextMenu = aContextMenuShown(isDm = true, canLeaveRoom = false),
+            eventSink = EventsRecorder(expectEvents = false),
+        )
+        onNode(hasText(activity!!.getString(LeaveRoomR.string.action_delete_chat)) and hasClickAction())
+            .assertDoesNotExist()
     }
 
     @Test

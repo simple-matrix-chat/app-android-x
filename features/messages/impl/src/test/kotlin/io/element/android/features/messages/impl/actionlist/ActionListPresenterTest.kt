@@ -39,6 +39,7 @@ import io.element.android.libraries.matrix.test.A_MESSAGE
 import io.element.android.libraries.matrix.test.A_THREAD_ID
 import io.element.android.libraries.matrix.test.A_TRANSACTION_ID
 import io.element.android.libraries.matrix.test.A_USER_ID
+import io.element.android.libraries.matrix.test.FakeMatrixClient
 import io.element.android.libraries.matrix.test.room.FakeBaseRoom
 import io.element.android.libraries.matrix.test.room.aRoomInfo
 import io.element.android.libraries.preferences.test.InMemoryAppPreferencesStore
@@ -1396,6 +1397,45 @@ class ActionListPresenterTest {
     }
 
     @Test
+    fun `present - compute for remote timeline item in group room with threads enabled`() = runTest {
+        val presenter = createActionListPresenter(
+            isDeveloperModeEnabled = false,
+            featureFlagService = FakeFeatureFlagService(initialState = mapOf(FeatureFlags.Threads.key to true)),
+            matrixClient = FakeMatrixClient(
+                getRoomStateEventContentLambda = { _, _ -> Result.success("""{"kind":"group"}""") },
+            ),
+        )
+        presenter.test {
+            val initialState = awaitItem()
+            val messageEvent = aMessageEvent(
+                eventId = AN_EVENT_ID,
+                isMine = true,
+                isEditable = false,
+                content = aTimelineItemVoiceContent(
+                    caption = null,
+                ),
+            )
+
+            initialState.eventSink.invoke(
+                ActionListEvent.ComputeForMessage(
+                    event = messageEvent,
+                    userEventPermissions = aUserEventPermissions(
+                        canRedactOwn = true,
+                        canRedactOther = false,
+                        canSendMessage = true,
+                        canSendReaction = true,
+                        canPinUnpin = true
+                    )
+                )
+            )
+            val successState = awaitItem()
+            val target = successState.target as ActionListState.Target.Success
+            assertThat(target.actions).doesNotContain(TimelineItemAction.ReplyInThread)
+            assertThat(target.actions).contains(TimelineItemAction.Reply)
+        }
+    }
+
+    @Test
     fun `present - compute for remote timeline item already in thread with threads enabled`() = runTest {
         val presenter = createActionListPresenter(
             isDeveloperModeEnabled = false,
@@ -1547,6 +1587,9 @@ private fun createActionListPresenter(
     room: BaseRoom = FakeBaseRoom(),
     timelineMode: Timeline.Mode = Timeline.Mode.Live,
     featureFlagService: FakeFeatureFlagService = FakeFeatureFlagService(),
+    matrixClient: FakeMatrixClient = FakeMatrixClient(
+        getRoomStateEventContentLambda = { _, _ -> Result.success("""{"kind":"channel"}""") },
+    ),
     recentEmojis: GetRecentEmojis = GetRecentEmojis { Result.success(persistentListOf()) },
 ): ActionListPresenter {
     val preferencesStore = InMemoryAppPreferencesStore(isDeveloperModeEnabled = isDeveloperModeEnabled)
@@ -1558,6 +1601,7 @@ private fun createActionListPresenter(
         dateFormatter = FakeDateFormatter(),
         timelineMode = timelineMode,
         featureFlagService = featureFlagService,
+        matrixClient = matrixClient,
         getRecentEmojis = recentEmojis,
     )
 }

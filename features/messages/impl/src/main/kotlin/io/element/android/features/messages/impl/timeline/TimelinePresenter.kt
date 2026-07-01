@@ -44,9 +44,12 @@ import io.element.android.libraries.core.coroutine.CoroutineDispatchers
 import io.element.android.libraries.di.annotations.SessionCoroutineScope
 import io.element.android.libraries.featureflag.api.FeatureFlagService
 import io.element.android.libraries.featureflag.api.FeatureFlags
+import io.element.android.libraries.matrix.api.MatrixClient
 import io.element.android.libraries.matrix.api.core.EventId
 import io.element.android.libraries.matrix.api.core.UniqueId
 import io.element.android.libraries.matrix.api.core.asEventId
+import io.element.android.libraries.matrix.api.createroom.MomentRoomKind
+import io.element.android.libraries.matrix.api.createroom.MomentRoomKindResolver
 import io.element.android.libraries.matrix.api.room.JoinedRoom
 import io.element.android.libraries.matrix.api.room.powerlevels.permissionsAsState
 import io.element.android.libraries.matrix.api.room.roomMembers
@@ -92,6 +95,7 @@ class TimelinePresenter(
     private val typingNotificationPresenter: Presenter<TypingNotificationState>,
     private val roomCallStatePresenter: Presenter<RoomCallState>,
     private val featureFlagService: FeatureFlagService,
+    private val matrixClient: MatrixClient,
     private val analyticsService: AnalyticsService,
     private val liveLocationShareManager: ActiveLiveLocationShareManager,
 ) : Presenter<TimelineState> {
@@ -145,8 +149,12 @@ class TimelinePresenter(
             timelineController.isLive()
         }.collectAsState(initial = true)
 
-        val displayThreadSummaries by produceState(false) {
-            value = featureFlagService.isFeatureEnabled(FeatureFlags.Threads)
+        val isThreadsFeatureEnabled by featureFlagService.isFeatureEnabledFlow(FeatureFlags.Threads).collectAsState(initial = false)
+        val areThreadsEnabledInRoom by produceState(false, room.roomId, roomInfo.isDm, roomInfo.isSpace, isThreadsFeatureEnabled) {
+            value = !roomInfo.isDm &&
+                !roomInfo.isSpace &&
+                isThreadsFeatureEnabled &&
+                MomentRoomKindResolver.fetch(matrixClient, room.roomId) == MomentRoomKind.Channel
         }
         val displayFloatingDateBadge by produceState(false) {
             value = featureFlagService.isFeatureEnabled(FeatureFlags.FloatingDateBadge)
@@ -229,10 +237,12 @@ class TimelinePresenter(
                     navigator.navigateToRoom(event.roomId, null, serverNames)
                 }
                 is TimelineEvent.OpenThread -> {
-                    navigator.navigateToThread(
-                        threadRootId = event.threadRootEventId,
-                        focusedEventId = event.focusedEvent,
-                    )
+                    if (areThreadsEnabledInRoom || timelineMode is Timeline.Mode.Thread) {
+                        navigator.navigateToThread(
+                            threadRootId = event.threadRootEventId,
+                            focusedEventId = event.focusedEvent,
+                        )
+                    }
                 }
             }
         }
@@ -316,7 +326,7 @@ class TimelinePresenter(
             isLive = isLive,
             focusRequestState = focusRequestState.value,
             resolveVerifiedUserSendFailureState = resolveVerifiedUserSendFailureState,
-            displayThreadSummaries = displayThreadSummaries,
+            displayThreadSummaries = areThreadsEnabledInRoom,
             displayFloatingDateBadge = displayFloatingDateBadge,
             eventSink = ::handleEvent,
         )
