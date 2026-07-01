@@ -289,9 +289,9 @@ private fun MomentRoomDetailsEditTopBar(
             modifier = Modifier
                 .align(Alignment.Center)
                 .fillMaxWidth()
-                .padding(horizontal = 112.dp),
+                .padding(horizontal = 96.dp),
             text = title,
-            style = ElementTheme.typography.fontHeadingMdBold,
+            style = ElementTheme.typography.fontHeadingSmMedium,
             color = ElementTheme.colors.textPrimary,
             textAlign = TextAlign.Center,
             maxLines = 1,
@@ -404,20 +404,20 @@ private fun MomentRoomDetailsEditSection(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     Column(
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Text(
-            modifier = Modifier.padding(horizontal = 8.dp),
+            modifier = Modifier.padding(horizontal = 4.dp),
             text = title,
-            style = ElementTheme.typography.fontBodyMdMedium,
+            style = ElementTheme.typography.fontBodySmMedium,
             color = ElementTheme.colors.textSecondary,
         )
         Surface(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(28.dp),
+            shape = RoundedCornerShape(24.dp),
             color = ElementTheme.colors.bgCanvasDefault,
             border = BorderStroke(1.dp, ElementTheme.colors.borderDisabled),
-            shadowElevation = 3.dp,
+            shadowElevation = 0.dp,
         ) {
             Column(content = content)
         }
